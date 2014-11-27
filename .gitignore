@@ -1,0 +1,10 @@
+Proposal/Backup*
+Proposal/dist*
+Proposal/bin*
+Proposal/obj*
+*.suo
+*.log
+*.out
+*cabal.sandbox.config
+*.cabal-sandbox*
+*.aux

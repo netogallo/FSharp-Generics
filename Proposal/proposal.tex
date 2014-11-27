@@ -1,0 +1,219 @@
+\documentclass[8pt]{extarticle}
+\usepackage{extsizes}
+\usepackage{fullpage}
+\usepackage{amsmath,amsfonts,amssymb}
+\usepackage{cite}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{alltt}
+\title{Assignment 1: Problem 1}
+\author{Ernesto Rodriguez}
+\begin{document}
+\Huge{\bf Generic Programming in F\#\\[1cm]}
+\large{\bf Ernesto Rodriguez\\[0.5cm]}
+\emph{Computer Science \\ Utrecht University \\ Utrecht \\ The Netherlands \\[0.5cm]}
+\emph{Type: Master's Thesis Proposal \\ Date: November 28th, 2015 \\ Supervisor: Prof. Dr. Wouter Swierstra\\}
+\line(1,0){520}\\ \\
+\Large{\bf Executive Summary\\ \\}
+Often enough the type system gets in the way of the programer and requires him to write several times the same boilerplate code in order for the program to type-check. One particular effort to reduce this inconvenience is Generic programming. Generic programming allows programers to define functions that operate on the strucutre of the data (the representation) such that the same generic functions can work on different types and additionaly the compiler is able to type-check the correctness of the algorithm. This approach has matured over many years in Haskell and proven to be useful in applications such as Quickcheck. The F\# programming language would also benefit from Generic programming since currently the only alternative there exists is reflection. Unfortunately, it is not straightforward to translate the existing Haskell approaches to F\# since the language lacks features in it's type-syste, in particular higher-kind generics and implicit parameters (Type-Classes). The objective of this research is to investigate the possible approaches for generic programming in F\#, taking as inspiration what exists in Haskell, and developing a type-provider that can generate the boilerplate code necessary for Generic programming.
+\line(1,0){520}
+\section{Introduction}
+
+Often enough one desieres to write functions that are heavily dependent on the structure of data and hardly on the type of the data. Such functions are trival with dynamic typing and impossible with static typing leading to multiple implementations of essentially the same algorithm. To address this shortcomming, Generic Programming has been developed, mostly in the context of Haskell. Generic Programming provides the programmer a mechanism to represent types (usually algebraic data types) which he uses to implement algorithms that operate on the representation of the type and are then translated to the original type or the resulting type.
+\\\\
+There exists several approaches in Haskell\cite{SYB,Regular,MultiRec} each of them with their own advantages and limitations. For example Regular\cite{Regular} is a very lightweight library but dosen't suporrt mutually recursive types. MultiRec\cite{MultiRec} supports mutually recursive types but generic algorithms have an extra degree of complexity. It has been shown that Generic programming works well in Scala\cite{ScalaGen} although it isn't much of a surprise since Scala supports most type-system features in Haskell; the most notable differences are that Scala supports sub-typing (making type inference undecidible) and Scala uses implicit arguments as a replacement for type-classes.
+\\\\
+One would expect that the existing literature would naturally translate to the ML dialect F\# but F\# lacks certain type-system features, in particular higher-kind generics and implicit parameters, which are heavily used for the existing approaches\cite{SYB,Regular,MultiRec}. The absence of theese features can be tought to be a language maturity issue which, when addressed, could potentially make this work worthless but there are at least two reasons not to expect theese features to ever be part of the F\# language:
+\begin{enumerate}
+  \item Even though type inference is not decidible in F\#, it is much better than it is in Scala and such features could threaten this luxury
+  \item F\# offers complete interoperability with other .Net languages. Theese features would either require changes in the .Net platform and it's guest languages or type erassure (as done in Scala)
+\end{enumerate}
+\section{Background}
+The following section contains a breif overview of the concepts that will be dealt with during this research. It is by no means comprehensive and the reader is adviced to consult the refrenced literature for more details.
+\subsection{Overview of Generic Programming}
+The term Generic Programming is very broad. In \cite{GenLangComp} the following definition is given: ''Generic programming is a sub-discipline of computer science that deals with finding abstract representations of efficient algorithms, data structures and other software concepts, with their systematic organization''. Many approaches exist that fit this deffinition, in particular, the most popular one are the so called ''Generics'' as described in \cite{GenLangComp} which are a mechanism that allows programming languages to abstract over the type inside a container type.
+\\\\
+The present research focuses on a different kind of Generic Programming, namely Data-Type Generic programming as it is described here\cite{CompGen}. The term Generic Programming will always refer to Data-Type Generic Programming in this document. The idea behind Generic Programming is to define algorithms that operate on the structure of Algebraic Data Types (ADTs) and some of it's variants.
+\\\\
+Even though ADTs are a simple concept, advanced features of higher order programming languages such as parametric polymorphism and higher-kinds impose a lot of difficulties when designing a Generic Programming library. Hardly any of the existing libraries \cite{CompGen} supports all the features of the Haskell 98 standard. Based on years of experience of the top researchers of the field, in \cite{CompGen} a list of desireable features of a good generic programming library is given. No name a few:
+\begin{itemize}
+\item Size of the universe (how much data-types are supported): Does the library support ADTs with multiple type arguments (ie. ADTs of kind $*\to (* \to (*\to ...))$)? Can the type arguments of the ADTs be higher-kinded? Can the size of the universe be easily extended?
+\item Expressiveness: Are generic functions first class functions? Are the representations of ADTs as simple as the can be? Does the library provide additional metadata about the ADTs (ie. constructor names, operator fixity, etc.)
+\item Usability: Is it easy to learn? Does it provide tools to automate the definition of representations? Does it perform well?
+\end{itemize}
+For many years, Generic Programing was a dark magic for hard-core Haskell users but lately it has become a standard tool since at least the two main Hakell compilers, namely The Glassgow Haskell Compiler (GHC) and the Utrecht Haskell Compiler (UHC) provide built in support for generic programming \cite{SYB,GenericDeriving}. 
+\\\\
+The Generic Deriving \cite{GenericDeriving} is simple and easy to learn. It's most notable drawback is that it only supports ADTS with a single type argument. Many generic algorithms are still expressible with this restriction making it a very useful library. The author of the document has been developing a small project to experiment with the library \cite{Kwargs} and did find the single type-argument restriction problematic for his purposes.
+\\\\
+Before introducing in detail how Generic Programming works, the reader should be aware there exists roughly three approaches to develop Generic Programming libraries in Haskell:
+\begin{itemize}
+\item Type-Classes based approaches like Generic Deriving\cite{GenericDeriving}, Multi-Rec \cite{MultiRec} and PolyP\cite{PolyLib}
+\item Combinator based libraries like SYB\cite{SYB} and it's variants
+\item GADTs like RepLib\cite{RepLib}
+\end{itemize}
+In the following section we present a breif overview of how Generic Programming works based on the Type-Class approach.
+\subsection{A breif introduction to Generic Programming}
+This section introduces Generic Programming as it is done by the Regular\cite{Reglar} library. This library has been chosen because:
+\begin{enumerate}
+\item Generic Deriving which probably the most common implementation is based on Regular
+\item It was designed with simplicity in mind
+\end{enumerate}
+The running example will be implementing the generic function \verb+gmap+ for the type \verb+Int+. This function takes a functional argument and applies it to all the integer values of a type. Concretely it looks like:
+\begin{lstlisting}[
+  mathescape,
+  columns=fullflexible,
+  basicstyle=\fontfamily{lmvtt}\selectfont,
+]
+  gmap :: (GMap (PF a), Regular a) $\Rightarrow$ (Int $\to$ Int) $\to$ a $\to$ a
+  gmap (+1) (Cons 1 (Cons 2 Nil)) $\equiv$ (Cons 2 (Cons 3 Nil))
+  gmap (+1) (Just 1) $\equiv$ Just 2
+  gmap (+1) Nothing $\equiv$ Nothing
+\end{lstlisting}
+The type signature includes three constraints which are:
+\begin{itemize}
+\item \verb+Regular+ which is the universe of all types that have a representation in Regular
+\item \verb+GMap+ which is a user-defined Type-Class that implements the operation (more about later).
+\item \verb+PF+ which stands for pattern functor is the abstraction used to recurse over sub-trees of the type (ie. recursive types). The details about the pattern functor are presented in \cite{Regular} but are not necessary to understand the intuition behind Generic Programming.
+\end{itemize}
+The magic behind Generic Programming happens with what is called the representation of a type. A representation is meerly a generic mechanism to represent the structure of an ADT. Regular provides the follwoing constructs to build representations:
+\begin{lstlisting}[
+  mathescape,
+  columns=fullflexible,
+  basicstyle=\fontfamily{lmvtt}\selectfont,
+]
+  data Unit r = Unit
+  data K a r = K a
+  data (f :+: g) r = Inl (f r) | Inr (g r)
+  data (f :*: g) r = f r :*: g r
+  data Id r = Id r
+\end{lstlisting}
+Theese constructs correspond to the syntax of an ADT as follows:
+\begin{itemize}
+\item \verb+Unit+ corresponds to constructors that take no arguments (ie. \verb+Nothing+ or \verb+Nil+)
+\item \verb+K+ corresponds to constructors that take one argument and singleton values (ie. \verb+Just+)
+\item \verb-:+:- to sum of two constructors. Denotes that a type can be defined either by the constructors represented by either of its arguments.
+\item \verb+:*:+ to the product of constructors. Denotes that a type is constructed out of multiple components (ie. \verb+Cons+ requires a value and list)
+\item \verb+Id+ represents recursion within the type (ie. a type defined in terms of itself like a list).
+\end{itemize}
+Concretely speaking, lets take a look at the \verb+List+ type and its representation:
+\begin{lstlisting}[
+  mathescape,
+  columns=fullflexible,
+  basicstyle=\fontfamily{lmvtt}\selectfont,
+]
+  data List a = Cons a (List a) | Nil
+
+  instance Regular (List a) where
+    type PF (List a) = K a :*: Id :+: Unit
+\end{lstlisting}
+From this representation it is straightforward to define the \verb+from+ and \verb+to+ functions which are part of the \verb+Regular+ type-class. Theese functions convert data back and forth to/from representations. In fact, Regular provides Template Haskell splices that do it automatically. For completeness, the definition is shown below:
+\begin{lstlisting}[
+  mathescape,
+  columns=fullflexible,
+  basicstyle=\fontfamily{lmvtt}\selectfont,
+]
+  instance Regular (List a) where
+
+    from (Cons x xs) = Inr (K x :*: Id xs)
+    from Nil = Inl Unit
+    
+    to (Inr (K x :*: Id xs)) = Cons x xs
+    to (Inl Unit) = Nil
+\end{lstlisting}
+The next step is writing generic functions that work with representations. The example here will be restricted to types that contain only integers in the \verb+K+ constructor but this restriction can be dropped. A complete running example can be found here\cite{RegularGit}.
+\\\\
+Regular uses the type-class approach, so the method proceeds by defining a typeclass that performs the operations that interest us and the different pieces of the representation are made instances of that type-class. For the running example, the type-class is defined below:
+\begin{lstlisting}[
+  mathescape,
+  columns=fullflexible,
+  basicstyle=\fontfamily{lmvtt}\selectfont,
+]
+  class GMap f where
+    gmap' :: (GMap (PF r), Regular r) => (Int $\to$ Int) $\to$ f r $\to$ f r
+\end{lstlisting}
+The function \verb+gmap'+ of this class works on any container \verb+f+ and additonally we require that the contents of \verb+f+ are inside the universe of types representable in by Regular (ie. a PF representation has been defined with the \verb+to+ and \verb+from+ functions). The only reason this restriction is necessary is because lists are recursive types.
+\\\\
+To proceed we need to make the containers denoted by \verb+f+ instances of GMap. So as expected, the containers that interest us are the types used define the representations. Following are the instances defind for the \verb+GMap+ class:
+\begin{lstlisting}[
+  mathescape,
+  columns=fullflexible,
+  basicstyle=\fontfamily{lmvtt}\selectfont,
+]
+  instance GMap U where
+    gmap' _ _ = U
+
+  instance GMap (K Int) where
+    gmap' f (K i) = K (f i)
+
+  instance (GMap g, GMap h) => GMap (g :+: h) where
+    gmap' f (Inl a) = Inl (gmap' f a)
+    gmap' f (Inr a) = Inr (gmap' f a)
+
+  instance (GMap g, GMap h) => GMap (g :*: h) where
+    gmap' f (g :*: h) = gmap' f g :*: gmap' f h
+
+  instance GMap Id where
+    gmap' f (Id r) = (Id $\circ$ to $\circ$ gmap' f $\circ$ from) r
+\end{lstlisting}
+What is happening here is the following:
+\begin{itemize}
+\item For the \verb+U+ case, nothing happens since the constructor contains no values.
+\item For the \verb+K+ case, the function is applied to the contents and then packed again.
+\item For the \verb-:+:- case, pattern matching is performed to determine which of the constructor cases is being dealt with and \verb+gmap'+ is applied to the contents of the constructor. The result is again packed in the same branch case.
+\item For the \verb+:*:+ case, the \verb+gmap'+ function is applied to each of the values of the constructor and then packed with the original structure.
+\item For the \verb+Id+ case: The recursive type contained in \verb+Id+ is transformed to its representation, \verb+gmap'+ is recursively applied and the result is converted back from the representation to a value.
+\end{itemize}
+To tie everything up and define the \verb+gmap+ function above, we simply wrap \verb+gmap'+ with the \verb+to+ and \verb+from+ functions:
+\begin{lstlisting}[
+  mathescape,
+  columns=fullflexible,
+  basicstyle=\fontfamily{lmvtt}\selectfont,
+]
+  gmap f = to $\circ$ gmap' f $\circ$ from
+\end{lstlisting}
+This concludes the breif introduction to Generic Programming. It meerly scratches the surface of all work that has been done in the field. This implementation has the follwoing limitations:
+\begin{itemize}
+\item Generic types do not abstract over the types of constructor values. This restricts the \verb+gmap+ function only to be definable for function arguments of concrete types (ie. \verb+Int+$\to$\verb+Int+) or typeclasses. Using the \verb+Typeable+ class, the function can operate with many different types. Such approach is demostrated in \cite{RegularGit}. Other libraries including Generic Deriving don't have the limitation.
+\item Due to the restriction above, the \verb+gmap+ function cannot change the type of the constructor values
+\item Producers (such as \verb+read+) for higher-kinded ADTs would be impossible due to the limitation above
+\end{itemize}
+\subsection{The F\# programming languages and Type Providers}
+The F\#\cite{FSharp} programming language is an ML dialect with support for object oriented programming. The language enjoys parametric polymorphism, higher order functions, inheritance/sub-typeing. It's most notable limitation compared to Haskell is the lack of support for higher-kinded generics (ie. polymorphism on types with kind ($*\to *$) and so on).
+\\\\
+The language was designed with pragmatism and safety in mind. Type inference, although not decidible, is very complete in the language. The F\# code is interoperable with C\# and other .Net languages without the need of type erassure. The philosopy of the language is being a functioinal first programming language that uses objects and sub-typing whenever convenient.
+\\\\
+A particular feature of the F\# language is type-providers\cite{TypeProviders}. Type-providers allow the compiler to obtain types form external sources. An example is obtaining a type that represents the structure of an SQL database by reading it from the database. A type provider can be defined by any end user and used in any program by means of special notation. Internally, a type provider is a function that can inspect the source code of the file in compilation and any other source it wishes and returns one or several F\# types. The elegant module system of the language allows modules to be treated as objects so several types can be attached to a module meerly by adding members to it.
+\\\\
+Even though type providers were not meant to be a meta-programming mechanism. They don't have much restrictions from being one. In fact, any type supported by the .Net platform can be generated with a type provider even if it is not definible in F\# itself. They are also lazy so they can provide a module that contains infinite number of type definitions and only use the types as they are required in the program.
+
+\section{Objectives and Evaluation}
+The objectives of the present research are the following:
+\begin{itemize}
+\item Research the exisiting approaches to Generic Programming to decide what features and limitations would be best suited for a library in F\#.
+\item Design at least two libraries for Generic Programming in F\#.
+\item Design a library that supports ADTs of higher kind or outline the limitations that make such library impossible.
+\item Evaluate wether features (such as inheritance) which apre present in F\# but absent in Haskell provide extra value in designing Generic Programming libraries.
+\item Implement a mechanism that can automatically derive the representation of generic types. Possibly using type providers because of their affinity with the language.
+\item Investigate whether it is possible and valuable to support F\# specific augmentations to the ADTs with a Generic Programming library.
+\end{itemize}
+In the Haskell language, it has been observed that the type-class approach is probably the best method to provide generic programming. It extends nicely\cite{SYB,CompGen} and approaches such as SYB had to use it up to some degree for it to be extensible. Such approach is not directly possible in F\# since the language lacks implicit arguments and higher-kind generics. An approach with the same spirit will be considered using interfaces and inheritance to emulate context. Nevertheless, a combinator based approach (and possibly other creative solutions) should also be throughly considered because it might happen that it is much better suitable for F\#. To explore how theese approaches fit in F\#, several libraries will be designed and each will be evaluated under the criteriums of \cite{CompGen} and other assesments defined by the author.
+\\\\
+It is possible that supporting ADTs with multiple type arguments results impossible in F\#. In such a case, the present research intends to outline the type-system limitations of the language that restrict such approaches. On the other hand, the convenience of type providers and programming environemnts (Visual Stuido) of F\# might make it possible to support theese types in an elegant fashion which would be impossible to have in Haskell. In the end, F\# programmers are not very sensitive to unsafe operations as long as the interface provided is safe. Sub-typing and inheritance also give another dimension of flexibility for F\#. For example, in the language one can pattern match over sub-types of a type which. This allows the \verb+gmap+ function to be defined in a cleaner style\cite{RegularFSharp}.
+\\\\
+ADTs in F\# can be extended with annotations and subtypes. Theese are available at run-time via reflection and it would be desireable to make them accessible for generic programmers. In the best of cases, the metadata containers of the F\# libraries could simply be extended to include such information and expect that it will turn out useful in that way.
+\\\\
+Of the criteriums presented in \cite{CompGen} extra attention will be giving on having a library that:
+\begin{enumerate}
+\item Supports ADTs with at least one type argument.
+\item Allows the universe to be extended in an ad-hoc manner. Without having to re-compile the generic algorithms whenever new types are introduced.
+\section{enumerate}
+Achieveing \#2 is threatened by the fact that F\# dosen't support type-classes nor higher-kind generics, both mechanisms are heavily used by the Haskell libraries that are extensible. In the best of cases, using inheritance and interfaces will do the job. Due to this limitations, it is also expected that the libraries in F\# will internally require unsafe operations such as casting and type erassure.
+\begin{itemize}
+\item February 15th, 2013: Complete the development of the code to create, train and run the ESNs and the code used to extract the motion capture data.
+\item March 15th, 2013: Complete the creation of the expert neural networks.
+\item April 15th, 2013: Complete testing the classifiers. Measure the performance with aligned and unaligned motion capture data.
+\item May 15th, 2013: Final report submission.
+\end{itemize}
+\bibliographystyle{plain}
+\bibliography{references}
+\end{document}
