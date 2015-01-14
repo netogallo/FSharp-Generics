@@ -6,7 +6,6 @@
 \usepackage{hyperref}
 \usepackage{listings}
 \usepackage{alltt}
-\title{Assignment 1: Problem 1}
 \author{Ernesto Rodriguez}
 \begin{document}
 \Huge{\bf Generic Programming in F\#\\[1cm]}
@@ -15,7 +14,7 @@
 \emph{Type: Master's Thesis Proposal \\ Date: November 28th, 2015 \\ Supervisor: Dr. Wouter Swierstra\\}
 \line(1,0){520}\\ \\
 \Large{\bf Executive Summary\\ \\}
-Type systems are by far the most used static verification tool. Well designed type systems allow the programmer to write code without any extra burden while providing extra safety. Type information can be used to generalize algorithms over large families of structures, this is known as Generic Programming. Generic Programming allows programmers to define functions over the structure of the data (the representation) such that the same generic functions can work on different types; additionally the compiler is able to type-check the correctness of the algorithm. This approach has matured over many years in Haskell and proven to be useful allowing the compiler to automatically derive functions such as binary serialization for different data. The F\# programming language would also benefit from Generic Programming since currently the only alternative there exists is reflection. Unfortunately, it is not straightforward to translate the existing Haskell approaches to F\# since the language lacks features in its type-system, in particular higher-kind generics and implicit parameters (Type-Classes). The objective of this research is to investigate the possible approaches for generic programming in F\#, taking as inspiration what exists in Haskell, and developing a type-provider that can generate the boilerplate code necessary for Generic Programming.
+Type systems are by far the most used static verification tool. Well designed type systems allow the programmer to write code without any extra burden while providing extra safety. Type information can be used to generalize algorithms over large families of structures, this is known as Generic Programming. Generic Programming allows programmers to define functions over the structure of the data (the representation) such that the same generic functions can work on different types; additionally the compiler is able to type-check the correctness of the algorithm. This approach has matured over many years in Haskell and proven to be useful allowing the compiler to automatically derive functions such as binary serialization for a variety of data. The F\# programming language would also benefit from Generic Programming since currently the only alternative there exists is reflection. Unfortunately, it is not straightforward to translate the existing Haskell approaches to F\# since the language lacks features in its type-system, in particular higher-kind generics and implicit parameters (Type-Classes). The objective of this research is to investigate the possible approaches for generic programming in F\#, taking as inspiration what exists in Haskell, and developing a type-provider that can generate the boilerplate code necessary for Generic Programming.
 \line(1,0){520}
 \section{Introduction}
 
@@ -31,13 +30,13 @@ One would expect that the existing literature would naturally translate to the M
 \end{enumerate}
 The above indicates that if Generic Programming is desired in F\# it will have to be implemented with what .Net has to offer. On the other hand, such limitations create an extra desire to have Generic Programming in F\# since the inability to abstract over types with a higher-kind leads to boilerplate code.
 \\\\
-The present research aims to investigate what is the best approach to allow Generic Programming in the F\# language. Thanks to the years of research invested for Generic Programming in Haskell, it is possible to explore multiple alternatives without having to re-invent the wheel. The challenge lies in implementing a library that is as powerful, extensible and easy as the ones in Haskell without all the type-system luxuries of that language.
+The present research aims to investigate which is the best approach to allow Generic Programming in the F\# language. Thanks to the years of research invested for Generic Programming in Haskell, it is possible to explore multiple alternatives without having to re-invent the wheel. The challenge lies in implementing a library that is as powerful, extensible and easy to use as the ones in Haskell without all the type-system luxuries of that language.
 \section{Background}
 The following section contains a brief overview of the concepts that will be dealt with during this research. It is by no means comprehensive and the reader is advised to consult the referenced literature for more details.
 \subsection{Overview of Generic Programming}
-The term Generic Programming is very broad. In \cite{GenLangComp} the following definition is given: ``Generic programming is a sub-discipline of computer science that deals with finding abstract representations of efficient algorithms, data structures and other software concepts, with their systematic organization''. Many approaches exist that fit this definition, in particular, the most popular one is the so called ``Generics''\cite{GenLangComp} which is a mechanism that allows languages to abstract over types.
+The term Generic Programming is very broad. In \cite{GenLangComp}, the following definition is given: ``Generic programming is a sub-discipline of computer science that deals with finding abstract representations of efficient algorithms, data structures and other software concepts, with their systematic organization''. Many approaches exist that fit this definition, in particular, the most popular one is the so called ``Generics''\cite{GenLangComp} which is a mechanism that allows languages to abstract over types.
 \\\\
-The present research focuses on a different kind of Generic Programming, namely Data-Type Generic programming as it is described here\cite{CompGen}. The term Generic Programming will always refer to Data-Type Generic Programming in the present document. The idea behind Generic Programming is to define algorithms that operate on the structure of Algebraic Data Types (ADTs) and some of its variants.
+The present research focuses on a different kind of Generic Programming, namely Data-Type Generic programming as it is described in \cite{CompGen}. The term Generic Programming will always refer to Data-Type Generic Programming in the present document. The idea behind Generic Programming is to define algorithms that operate on the structure of Algebraic Data Types (ADTs) and some of its variants.
 \\\\
 Even though ADTs are a simple concept, advanced features of higher order programming languages such as parametric polymorphism and higher-kinds impose a lot of difficulties when designing a Generic Programming library. Hardly any of the existing libraries \cite{CompGen} supports all the features of the Haskell 98 standard. Based on years of experience of the top researchers of the field, \cite{CompGen} provides a list of desirable features a good generic programming library should have. No name a few:
 \begin{itemize}
@@ -133,9 +132,9 @@ Regular uses the type-class approach, so the method proceeds by defining a type-
   basicstyle=\fontfamily{lmvtt}\selectfont,
 ]
   class GMap f where
-    gmap' :: (GMap (PF r), Regular r) => (Int $\to$ Int) $\to$ f r $\to$ f r
+    gmap' :: (GMap (PF r), Regular r) $\Rightarrow$ (Int $\to$ Int) $\to$ f r $\to$ f r
 \end{lstlisting}
-The function \verb+gmap'+ of this class works on any container \verb+f+ and additionally we require that the contents of \verb+f+ are inside the universe of types representable in by Regular (ie. a \verb+PF+ representation has been defined with the \verb+to+ and \verb+from+ functions). The only reason this restriction is necessary is because lists are recursive types.
+The function \verb+gmap'+ of this class works on any container \verb+f+. Additionally, we require that the contents of \verb+f+ are inside the universe of types representable in by Regular (ie. a \verb+PF+ representation has been defined with the \verb+to+ and \verb+from+ functions). The only reason this restriction is necessary is because lists are recursive types.
 \\\\
 To proceed we need to make the containers denoted by \verb+f+ instances of \verb+GMap+. So as expected, the containers that interest us are the types used define the representations. Following are the instances defined for the \verb+GMap+ class:
 \begin{lstlisting}[

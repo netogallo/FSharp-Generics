@@ -8,3 +8,5 @@ Proposal/obj*
 *cabal.sandbox.config
 *.cabal-sandbox*
 *.aux
+*.blg
+*.odt
