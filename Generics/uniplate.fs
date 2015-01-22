@@ -72,60 +72,94 @@ module Rep =
     type Meta() =
       class
       end
-    
+
     [<AbstractClass>]
     type Constr<'t>() =
       class
         inherit Meta()
       end
     
+    type Meta with
+        member o.From<'t>() = obj() :?> 't
+        static member To<'t>(a : obj) = a :?> Constr<'t> 
+      
+    type Constr<'t> with
+        member o.Everywhere<'a when 'a :> Meta>(a : 'a, f : int -> int) = obj() :?> 'a
+
     [<AbstractClass>]
-    type SumConstr<'t>() =
+    type SumConstr<'a,'b when 'a :> Meta and 'b :> Meta>() =
         class
-            inherit Constr<'t>()
-            abstract Elem : Constr<'t> with get
+            inherit Constr<Choice<'a,'b>>()
+            // abstract Elem : Choice<'a,'b> with get
         end
 
-    type L<'t>(elem : Constr<'t>) =
+    type L<'a,'b when 'a :> Meta and 'b :> Meta>(elem : 'a) =
       class
-        inherit SumConstr<'t>()
-        override o.Elem with get() = elem
+        inherit SumConstr<'a,'b>()
+        member o.Elem with get() = elem
       end
-    
-    type R<'t>(elem : Constr<'t>) =
+
+    type L<'a,'b when 'a :> Meta and 'b :> Meta> with
+        member o.Everywhere(f) = L<'a,'b>(o.Everywhere<'a>(o.Elem,f))
+
+    // type L2<'c,'t>(elem : 't) = class end
+
+    type R<'a,'b when 'a :> Meta and 'b :> Meta>(elem : 'b) =
       class
-        inherit SumConstr<'t>()
-        override o.Elem with get() = elem
-      end
-    
-    type Prod<'t>(elem : Constr<'t>*Constr<'t>) =
-      class
-        inherit Constr<'t>()
+        inherit SumConstr<'a,'b>()
         member o.Elem with get() = elem
       end
     
+    type R<'a,'b when 'a :> Meta and 'b :> Meta> with
+        member o.Everywhere(f) = R<'a,'b>(o.Everywhere<'b>(o.Elem,f))
+
+    type Prod<'a,'b when 'a :> Meta and 'b :> Meta>(elem : 'a*'b) =
+      class
+        inherit Constr<'a*'b>()
+        member o.Elem with get() = elem
+      end
+    
+    type Prod<'a,'b> with
+        member o.Everywhere(f) =
+            let (a,b) = o.Elem
+            Prod(o.Everywhere<'a>(a,f),o.Everywhere<'b>(b,f))
+
+
     type Id<'t>(elem : 't) =
       class
-        inherit Constr<'t>()
+        // inherit Constr<'t>()
         member o.Elem with get() = elem
       end
+      
+    type Id<'t> with
+        member o.Everywhere(f) = 
+            let c = Meta.To o.Elem
+            Id(c.Everywhere(c,f).From())
     
-    type K<'v,'t>(elem : 'v) =
+    type K<'v>(elem : 'v) =
       class
-        inherit Constr<'t>()
         member o.Elem with get() = elem
       end
+
+    type K<'v> with
+        member o.Everywhere(f) = K(f o.Elem)
     
-    type U<'t>() =
+    type U() =
       class
-        inherit Constr<'t>()
+        //inherit Constr<'t>()
       end
+
+    type U with
+        member o.Everywhere(f) = U() 
     
+    (*
     type D() =
       class
         inherit Meta()
       end
-    
+    *)
+    // type 
+
     (*
     [<AbstractClass>]
     type GSumR<'t>() =
@@ -157,30 +191,33 @@ module Rep =
         abstract gSum : obj -> int
       end
     *)
+
     [<AbstractClass>]
-    type Everywhere<'c>() =
+    type Everywhere<'c,'t, 'u when 'c :> Constr<'t> and 't :> Constr<'u>>() =
     
-      member o.Everywhere(meta:L<'t>, r:obj,f:int -> int) =
-        L(o.Everywhere(r,f))
-    
+      member o.Everywhere(meta:L<'t,'u>, r:obj,f:int -> int) =
+        L(o.Everywhere(meta.Elem,f)) :> Constr<'t>
+   
+   (* 
+      member o.Everywhere<'u>(meta:R<'t>, r:obj,f:int -> int) =
+        R(o.Everywhere(r,f))
+
       member o.Everywhere(meta:K<int,'t>, i:int,f:int -> int) =
         K(f i)
     
       member o.Everywhere(meta:Prod<'t>, i:obj, r:obj,f:int -> int) =
         Prod(o.Everywhere(i,f),o.Everywhere(r,f))
     
-      member o.Everywhere(meta:R<'t>, r:obj,f:int -> int) =
-        R(o.Everywhere(r,f))
     
       member o.Everywhere(meta:U<'t>, u : unit, f:int->int) =
         meta
     
       member o.Everywhere(meta:Id<'t>, r:'t, f : int -> int) =
         Id(o.To(o.Everywhere(r,f)))
-    
-      abstract Everywhere : obj*(int -> int) -> Constr<'t>
+    *)
+      abstract Everywhere : 't*(int -> int) -> 't
       
-      abstract To : Constr<'t> -> 't
+      // abstract To : Constr<'t> -> 't
 
     type AList<'t> = Cons of 't*AList<'t> | Nil
     
