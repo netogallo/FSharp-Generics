@@ -2,12 +2,26 @@
 
 type List<'t> = Cons of 't*List<'t> | SemiCons of 't | Nil
 
+let g = Generic<List<Kaiser>>()
+
+g.To(Nil)
+
+typeof<System.Tuple<obj,obj>>.GetConstructors()
+
+let t1 = typeof<K<obj>>.GetGenericTypeDefinition().MakeGenericType([| typeof<Kaiser> |])
+let gProd = typeof<Prod<Meta,Meta>>.GetGenericTypeDefinition()
+gProd.MakeGenericType([|t1;typeof<Meta>|])
+
 type Microsoft.FSharp.Reflection.UnionCaseInfo with
     member x.Constructor with get() = 
         x.DeclaringType.GetMethods() 
         |> Array.find (fun mi -> mi.Name = sprintf "New%s" x.Name || mi.Name = sprintf "get_%s" x.Name)
     member x.Matcher with get() =
         x.DeclaringType.GetMethod(sprintf "get_Is%s" x.Name)
+
+let o = Toro 5 :> obj
+
+o.GetType() |> Microsoft.FSharp.Reflection.FSharpType.GetUnionCases
 
 let constrs = Microsoft.FSharp.Reflection.FSharpType.GetUnionCases typeof<List<Kaiser>>
 

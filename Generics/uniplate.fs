@@ -9,6 +9,7 @@ module Uniplate =
 module Reflection =
 
     [<CustomComparison>]
+    [<CustomEquality>]
     type TypeConstructor<'t> = {
 
         Info : UnionCaseInfo
@@ -17,13 +18,16 @@ module Reflection =
         Elems : 't -> (obj*System.Type) [] option
         Params : System.Type []
         }
-        with 
-            interface IComparable with
-                override o.CompareTo(o' : obj) = 
-                    match o' with
+        with
+            member o.Cmp(o' : obj) =
+                match o' with
                         | :? TypeConstructor<'t> as o'' -> 
                             compare (o.Info.Name,o.Info.Tag) (o''.Info.Name,o''.Info.Tag)
                         | _ -> 1
+            override o.Equals(o') = o.Cmp(o') = 0
+            interface IComparable with
+                override o.CompareTo(o' : obj) = o.Cmp(o') 
+                    
 
     type Microsoft.FSharp.Reflection.UnionCaseInfo with
         member x.Constructor with get() = 
@@ -65,25 +69,26 @@ module Reflection =
 
 module Rep =
 
-    type Microsoft.FSharp.Reflection.UnionCaseInfo with
-        member x.Constructor with get() = x.DeclaringType.GetMethod(sprintf "New%s" x.Name)
-
     [<AbstractClass>]
     type Meta() =
       class
       end
 
+    type Constr() =
+        class
+            inherit Meta()
+        end
+
     [<AbstractClass>]
     type Constr<'t>() =
       class
-        inherit Meta()
+        inherit Constr()
+        abstract Values : Meta [] with get
       end
-    
-    type Meta with
-        member o.From<'t>() = obj() :?> 't
-        static member To<'t>(a : obj) = a :?> Constr<'t> 
+   
+        // :?> Constr<'t> 
       
-    type Constr<'t> with
+    type Constr with
         member o.Everywhere<'a when 'a :> Meta>(a : 'a, f : int -> int) = obj() :?> 'a
 
     [<AbstractClass>]
@@ -97,6 +102,7 @@ module Rep =
       class
         inherit SumConstr<'a,'b>()
         member o.Elem with get() = elem
+        override o.Values with get() = [| elem :> Meta |]
       end
 
     type L<'a,'b when 'a :> Meta and 'b :> Meta> with
@@ -108,6 +114,7 @@ module Rep =
       class
         inherit SumConstr<'a,'b>()
         member o.Elem with get() = elem
+        override o.Values with get() = [| elem :> Meta |]
       end
     
     type R<'a,'b when 'a :> Meta and 'b :> Meta> with
@@ -117,6 +124,9 @@ module Rep =
       class
         inherit Constr<'a*'b>()
         member o.Elem with get() = elem
+        override o.Values with get() = 
+            let (a,b) = elem
+            [| a :> Meta; b :> Meta |]
       end
     
     type Prod<'a,'b> with
@@ -127,17 +137,13 @@ module Rep =
 
     type Id<'t>(elem : 't) =
       class
-        // inherit Constr<'t>()
+        inherit Meta()
         member o.Elem with get() = elem
       end
-      
-    type Id<'t> with
-        member o.Everywhere(f) = 
-            let c = Meta.To o.Elem
-            Id(c.Everywhere(c,f).From())
     
     type K<'v>(elem : 'v) =
       class
+        inherit Meta()
         member o.Elem with get() = elem
       end
 
@@ -146,12 +152,79 @@ module Rep =
     
     type U() =
       class
-        //inherit Constr<'t>()
+        inherit Meta()
       end
 
     type U with
         member o.Everywhere(f) = U() 
-    
+   
+   
+    type Generic<'t>() =
+        
+        let cases = 
+            if Reflection.FSharpType.IsUnion typeof<'t> then
+                Reflection.FSharpType.GetUnionCases typeof<'t> |> Array.map Reflection.makeTypeConstructor<'t>
+            else
+                Exception("Not an ADT") |> raise
+
+        let (_,unions,matches) = 
+            let cata (constr,unions,matchers) uc = 
+                let t = constr(U() :> Meta).GetType()
+                ((fun e -> R(constr e) :> Meta),Map.add uc constr unions,(t,uc) :: matchers)
+            cases 
+            |> Array.fold cata ((fun x -> L(x) :> Meta),Map.empty,[])
+
+
+        member o.Build(args : (obj*Type) []) =
+            let cata (e,t') prod =
+                //let t' = e.GetType()
+                let t1 = prod.GetType()
+                let gProd = typeof<Prod<Meta,Meta>>.GetGenericTypeDefinition()
+                let mkType t2 elem =
+                    let tProd = gProd.MakeGenericType([|t2;t1|])
+                    let tup = typeof<Tuple<obj,obj>>.GetGenericTypeDefinition().MakeGenericType([| t2;t1 |])
+                    let constr = tProd.GetConstructor([| tup |])
+                    constr.Invoke([| tup.GetConstructor([| t2;t1 |]).Invoke([| elem;prod |]) |]) :?> Meta
+                if typeof<'t> = t' then
+                    let t2 = typeof<Id<'t>>
+                    let v = t2.GetConstructor([| typeof<'t> |]).Invoke([| e |])
+                    v |> mkType t2
+                else
+                    let t2 = typeof<K<obj>>.GetGenericTypeDefinition().MakeGenericType([| t' |])
+                    let v = t2.GetConstructor([| t' |]).Invoke([| e |])
+                    v |> mkType t2
+            Array.foldBack cata args (U() :> Meta)
+
+        member o.Constructor(e : 't) = cases |> Array.find (fun c -> c.Matcher e)
+
+        member o.MatchRep(e : Constr) = 
+            let (_,tc) = matches |> List.find (fun (t,c) -> t.IsInstanceOfType e) 
+            tc
+
+        member o.Construct(e:Constr,tc : Reflection.TypeConstructor) =
+            let cata (args,prod) t =
+                match prod with
+                    | :?
+
+        member o.From(r : Meta) = obj() :?> 't
+        member o.To(a : 't) =  
+            let t = typeof<'t>
+            if Reflection.FSharpType.IsUnion t then
+                let c = o.Constructor a
+                let mkRep = Map.find c unions
+                match c.Elems a with
+                    | Some es -> es |> o.Build |> mkRep
+
+                // let unions = 
+                // Constr()
+            else
+                Exception("Not an ADT") |> raise
+ 
+    type Id<'t> with
+        member o.Everywhere(f) = 
+            let g = Generic<'t>()
+            let c = g.To o.Elem
+            Id(c.Everywhere(c,f) |> g.From)
     (*
     type D() =
       class
@@ -190,7 +263,7 @@ module Rep =
     
         abstract gSum : obj -> int
       end
-    *)
+    
 
     [<AbstractClass>]
     type Everywhere<'c,'t, 'u when 'c :> Constr<'t> and 't :> Constr<'u>>() =
@@ -198,7 +271,7 @@ module Rep =
       member o.Everywhere(meta:L<'t,'u>, r:obj,f:int -> int) =
         L(o.Everywhere(meta.Elem,f)) :> Constr<'t>
    
-   (* 
+    
       member o.Everywhere<'u>(meta:R<'t>, r:obj,f:int -> int) =
         R(o.Everywhere(r,f))
 
@@ -214,11 +287,11 @@ module Rep =
     
       member o.Everywhere(meta:Id<'t>, r:'t, f : int -> int) =
         Id(o.To(o.Everywhere(r,f)))
-    *)
+    
       abstract Everywhere : 't*(int -> int) -> 't
       
       // abstract To : Constr<'t> -> 't
-
+      *)
     type AList<'t> = Cons of 't*AList<'t> | Nil
     
     type AListP<'c> =
@@ -227,6 +300,7 @@ module Rep =
         meta : 'c
        }        
 
+(*
     type EverywhereImp() =
       class
         inherit Everywhere<AList<int>>()
@@ -271,7 +345,7 @@ module Rep =
           
       end
     
-    (*
+    
     type GSumImp() =
       class
         inherit GSumR<AList<int>>()
