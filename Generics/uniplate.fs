@@ -63,7 +63,7 @@ module Reflection =
             Matcher = matcher
             Invoke = invoke
             Elems = elems
-            Params = [||]    
+            Params = getters |> Array.map (fun m -> m.ReturnType)
         }
 
 
@@ -79,6 +79,7 @@ module Rep =
     type Constr() =
         class
             inherit Meta()
+            abstract Childs : Meta seq with get
         end
 
     [<AbstractClass>]
@@ -87,23 +88,34 @@ module Rep =
         inherit Constr()
       end
    
-        // :?> Constr<'t> 
-      
+        // :?> Constr<'t>
     type Constr with
         member o.Everywhere<'a when 'a :> Meta>(a : 'a, f : int -> int) = obj() :?> 'a
+
+    [<Interface>]
+    type SumConstr =
+        interface
+            abstract member SumValue : SumConstr option
+        end
 
     [<AbstractClass>]
     type SumConstr<'a,'b when 'a :> Meta and 'b :> Meta>() =
         class
             inherit Constr<Choice<'a,'b>>()
+            abstract Sum : Choice<'a,'b> with get
             // abstract Elem : Choice<'a,'b> with get
+            // interface SumConstr
         end
+
+        
 
     type L<'a,'b when 'a :> Meta and 'b :> Meta>(elem : 'a) =
       class
         inherit SumConstr<'a,'b>()
         member o.Elem with get() = elem
-        override o.Values with get() = elem.Values
+        override o.Sum with get() = elem |> Choice1Of2
+        override o.Childs with get() = seq [elem]
+        override o.Values with get() = elem.Values 
       end
 
     type L<'a,'b when 'a :> Meta and 'b :> Meta> with
@@ -115,6 +127,8 @@ module Rep =
       class
         inherit SumConstr<'a,'b>()
         member o.Elem with get() = elem
+        override o.Sum with get() = elem |> Choice2Of2
+        override o.Childs with get() = seq [elem]
         override o.Values with get() = elem.Values
       end
     
@@ -124,7 +138,9 @@ module Rep =
     type Prod<'a,'b when 'a :> Meta and 'b :> Meta>(elem : 'a*'b) =
       class
         inherit Constr<'a*'b>()
+        let (e1,e2) = elem
         member o.Elem with get() = elem
+        override o.Childs with get() = seq [e1;e2] 
         override o.Values with get() = 
             let (a,b) = elem
             Seq.concat [a.Values;b.Values]
@@ -134,7 +150,6 @@ module Rep =
         member o.Everywhere(f) =
             let (a,b) = o.Elem
             Prod(o.Everywhere<'a>(a,f),o.Everywhere<'b>(b,f))
-
 
     type Id<'t>(elem : 't) =
       class
@@ -162,18 +177,92 @@ module Rep =
     type U with
         member o.Everywhere(f) = U() 
    
+    let pmatch t' (o : Meta) =
+       try
+            let t = o.GetType().GetGenericTypeDefinition().MakeGenericType([|typeof<Meta>;typeof<Meta>|])
+            // let t' = typeof<L<U,U>>
+            if t.IsSubclassOf t' || t = t' then
+                o.GetType().GetProperty("Elem").GetValue(o) :?> Meta |> Some
+            else None
+        with
+            | :? System.InvalidOperationException -> None
+
+    let (|L|_|) (o : Meta) = pmatch typeof<L<Meta,Meta>> o
+    let (|R|_|) (o : Meta) = pmatch typeof<R<Meta,Meta>> o
+
+    let (|SUM|_|) (o : Meta) =
+        match o with
+            | L x -> Choice1Of2 x |> Some
+            | R x -> Choice2Of2 x |> Some
+            | _ -> None
+
+    let (|PROD|_|) (o : Meta) =
+        try
+            let t = o.GetType().GetGenericTypeDefinition().MakeGenericType([|typeof<Meta>;typeof<Meta>|])
+            let t' = typeof<Prod<Meta,Meta>>
+            if t.IsSubclassOf t' || t = t' then
+                let v = o.GetType().GetProperty("Elem").GetValue(o)
+                let e1 = v.GetType().GetProperty("Item1").GetValue(v)
+                let e2 = v.GetType().GetProperty("Item2").GetValue(v)
+                (e1 :?> Meta, e2 :?> Meta) |> Some
+            else
+                None
+        with
+            | :? System.InvalidOperationException -> None
+            | :? System.ArgumentException -> None
+
+    let rec expand (o : Meta) =
+        match o with
+            | PROD (e1,e2) -> e1 :: expand e2
+            | _ -> [o]
+
+    let (|ID|_|) (o : Meta) =
+        try
+            let t = o.GetType().GetGenericTypeDefinition().MakeGenericType([|typeof<obj>|])
+            let t' = typeof<Id<obj>>
+            if t.IsSubclassOf t' || t = t' then
+                o.GetType().GetProperty("Elem").GetValue(o) |> Some
+            else
+                None
+        with
+            | :? System.InvalidOperationException -> None
+            | :? System.ArgumentException -> None
+
+    let (|K|_|) (o : Meta) =
+        try
+            let t = o.GetType().GetGenericTypeDefinition().MakeGenericType([|typeof<obj>|])
+            let t' = typeof<K<obj>>
+            if t.IsSubclassOf t' || t = t' then
+                o.GetType().GetProperty("Elem").GetValue(o) |> Some
+            else
+                None
+        with
+            | :? System.InvalidOperationException -> None
+            | :? System.ArgumentException -> None
+
+    let (|U|_|) (o : Meta) =
+        try
+            let t = o.GetType()
+            let t' = typeof<U>
+            if t.IsSubclassOf t' || t = t' then
+                Some ()
+            else
+                None
+        with
+            | :? System.InvalidOperationException -> None
+
     type Generic<'t>() =
         
-        let cases = 
+        let cases =  
             if Reflection.FSharpType.IsUnion typeof<'t> then
                 Reflection.FSharpType.GetUnionCases typeof<'t> |> Array.map Reflection.makeTypeConstructor<'t>
             else
-                Exception("Not an ADT") |> raise
+                [||]
 
         let (_,unions,matches) = 
             let cata (constr,unions,matchers) uc = 
                 let t = constr(U() :> Meta).GetType()
-                ((fun e -> R(constr e) :> Meta),Map.add uc constr unions,(t,uc) :: matchers)
+                ((fun e -> R(constr e) :> Meta),Map.add uc constr unions,List.concat [matchers;[(t,uc)]])
             cases 
             |> Array.fold cata ((fun x -> L(x) :> Meta),Map.empty,[])
 
@@ -194,9 +283,15 @@ module Rep =
                     let v = t2.GetConstructor([| typeof<'t> |]).Invoke([| e |])
                     v |> mkType t2
                 else
+                    let t2 = typeof<Generic<obj>>.GetGenericTypeDefinition().MakeGenericType([| t' |])
+                    let g' = t2.GetConstructor([||]).Invoke([||])
+                    let v = g'.GetType().GetMethod("To").Invoke(g',[|e|]) :?> Meta
+                    v |> mkType (v.GetType())
+                    (*
                     let t2 = typeof<K<obj>>.GetGenericTypeDefinition().MakeGenericType([| t' |])
                     let v = t2.GetConstructor([| t' |]).Invoke([| e |])
                     v |> mkType t2
+                    *)
             Array.foldBack cata args (U() :> Meta)
 
 
@@ -204,12 +299,31 @@ module Rep =
 
 
         member o.MatchRep(e : Constr) = 
-            let (_,tc) = matches |> List.find (fun (t,c) -> t.IsInstanceOfType e) 
-            tc
+        
+            let cata (m,constr : Constr) (tc : Reflection.TypeConstructor<'t>) =
+                match (m,constr) with
+                    | (Some _,_) -> (m,constr)
+                    | (None, L v) -> (Some tc, v :?> Constr)
+                    | (None, R v) when v.GetType().IsSubclassOf(typeof<Constr>) -> (None, v :?> Constr)
+                    | _ -> Exception(sprintf "Invalid representation: The representation '%A' does not match a constructor of type %s" e (typeof<'t>.ToString())) |> raise
+
+            match matches |> Seq.map (fun (_,x) -> x) |> Seq.fold cata (None,e) with
+                | (Some c,constr) -> (c,constr)
+                | _ -> Exception(sprintf "Invalid representation: The representation '%A' does not match a constructor of type %s" e (typeof<'t>.ToString())) |> raise
 
         member o.From(r : Meta) = 
             match r with
-                :? Constr as r' -> o.MatchRep r' |> o.Construct r'
+                | :? Constr as r' -> 
+                    let (c,constr) = o.MatchRep r'
+                    let builder (t,(m : Meta)) =
+                        match m with
+                            | ID l -> l
+                            | _ -> 
+                                let b = typeof<Generic<obj>>.GetGenericTypeDefinition().MakeGenericType([| t |]).GetConstructor([||]).Invoke([||])
+                                b.GetType().GetMethod("From").Invoke(b,[|m|])
+                    expand constr |> Seq.zip c.Params |> Seq.map builder |> Seq.toArray |> c.Invoke
+                | K v -> v :?> 't
+                | _ -> Exception(sprintf "Invalid representation '%A' for '%s'" r (typeof<'t>.ToString())) |> raise
 
         member o.To(a : 't) =  
             let t = typeof<'t>
@@ -222,7 +336,8 @@ module Rep =
                 // let unions = 
                 // Constr()
             else
-                Exception("Not an ADT") |> raise
+                K<'t>(a) :> _
+                //Exception("Not an ADT") |> raise
  
     type Id<'t> with
         member o.Everywhere(f) = 
