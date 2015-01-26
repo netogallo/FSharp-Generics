@@ -6,6 +6,8 @@ let g = Generic<List<Kaiser>>()
 
 g.To(Nil)
 
+g.MatchRep(g.To(Cons(Toro 5,Nil)) :?> Constr)
+
 typeof<System.Tuple<obj,obj>>.GetConstructors()
 
 let t1 = typeof<K<obj>>.GetGenericTypeDefinition().MakeGenericType([| typeof<Kaiser> |])

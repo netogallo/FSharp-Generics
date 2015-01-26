@@ -72,8 +72,10 @@ module Rep =
     [<AbstractClass>]
     type Meta() =
       class
+        abstract Values : seq<obj> with get
       end
 
+    [<AbstractClass>]
     type Constr() =
         class
             inherit Meta()
@@ -83,7 +85,6 @@ module Rep =
     type Constr<'t>() =
       class
         inherit Constr()
-        abstract Values : Meta [] with get
       end
    
         // :?> Constr<'t> 
@@ -102,7 +103,7 @@ module Rep =
       class
         inherit SumConstr<'a,'b>()
         member o.Elem with get() = elem
-        override o.Values with get() = [| elem :> Meta |]
+        override o.Values with get() = elem.Values
       end
 
     type L<'a,'b when 'a :> Meta and 'b :> Meta> with
@@ -114,7 +115,7 @@ module Rep =
       class
         inherit SumConstr<'a,'b>()
         member o.Elem with get() = elem
-        override o.Values with get() = [| elem :> Meta |]
+        override o.Values with get() = elem.Values
       end
     
     type R<'a,'b when 'a :> Meta and 'b :> Meta> with
@@ -126,7 +127,7 @@ module Rep =
         member o.Elem with get() = elem
         override o.Values with get() = 
             let (a,b) = elem
-            [| a :> Meta; b :> Meta |]
+            Seq.concat [a.Values;b.Values]
       end
     
     type Prod<'a,'b> with
@@ -139,12 +140,14 @@ module Rep =
       class
         inherit Meta()
         member o.Elem with get() = elem
+        override o.Values with get() = [elem :> obj] |> seq
       end
     
     type K<'v>(elem : 'v) =
       class
         inherit Meta()
         member o.Elem with get() = elem
+        override o.Values with get() = [elem :> obj] |> seq
       end
 
     type K<'v> with
@@ -153,11 +156,11 @@ module Rep =
     type U() =
       class
         inherit Meta()
+        override o.Values with get() = Seq.empty
       end
 
     type U with
         member o.Everywhere(f) = U() 
-   
    
     type Generic<'t>() =
         
@@ -174,6 +177,7 @@ module Rep =
             cases 
             |> Array.fold cata ((fun x -> L(x) :> Meta),Map.empty,[])
 
+        member o.Construct (e:Constr) (tc : Reflection.TypeConstructor<'t>) = e.Values |> Seq.toArray |> tc.Invoke
 
         member o.Build(args : (obj*Type) []) =
             let cata (e,t') prod =
@@ -195,18 +199,18 @@ module Rep =
                     v |> mkType t2
             Array.foldBack cata args (U() :> Meta)
 
+
         member o.Constructor(e : 't) = cases |> Array.find (fun c -> c.Matcher e)
+
 
         member o.MatchRep(e : Constr) = 
             let (_,tc) = matches |> List.find (fun (t,c) -> t.IsInstanceOfType e) 
             tc
 
-        member o.Construct(e:Constr,tc : Reflection.TypeConstructor) =
-            let cata (args,prod) t =
-                match prod with
-                    | :?
+        member o.From(r : Meta) = 
+            match r with
+                :? Constr as r' -> o.MatchRep r' |> o.Construct r'
 
-        member o.From(r : Meta) = obj() :?> 't
         member o.To(a : 't) =  
             let t = typeof<'t>
             if Reflection.FSharpType.IsUnion t then
