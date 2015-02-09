@@ -10,3 +10,9 @@ Proposal/obj*
 *.aux
 *.blg
 *.odt
+Generics/obj
+Generics/bin
+Generics/Provider/obj
+Generics/Provider/bin
+Backend/bin
+Backend/obj

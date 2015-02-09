@@ -333,22 +333,23 @@ module Rep =
         // (System.Exception("") |> raise) : 't
 
     type L<'a,'b when 'a :> Meta and 'b :> Meta> with
-        member o.Everywhere(f : int -> int) = L<'a,'b>(o.Elem.Everywhere<'a>(f))
+        static member Everywhere(o : L<'a,'b>, f : int -> int) = L<'a,'b>(o.Elem.Everywhere<'a>(f))
 
     type R<'a,'b when 'a :> Meta and 'b :> Meta> with
-        member o.Everywhere(f : int -> int) = R<'a,'b>(o.Elem.Everywhere<'b>(f))
+        static member Everywhere(o : R<'a,'b>, f : int -> int) = R<'a,'b>(o.Elem.Everywhere<'b>(f))
 
     type K<'v> with
-        member o.Everywhere(f : int -> int) = printf "%A" o.Elem;o
+        static member Everywhere(o : K<int>, f : int -> int) = K(f o.Elem)
+        static member Everywhere(o : K<'v>, f : int -> int) = o
 
     type U with
-        member o.Everywhere(f : int -> int) = o
+        static member Everywhere(o : U, f : int -> int) = o
  
     type Id<'t> with
-        member o.Everywhere(f : int -> int) =
+        static member Everywhere(o : Id<'t>, f : int -> int) =
             let g = Generic<'t>()
             Id<'t>(g.To(o.Elem).Everywhere<Meta>(f) |> g.From)
 
     type Prod<'a,'b when 'a :> Meta and 'b :> Meta> with
-        member o.Everywhere(f : int -> int) =
+        static member Everywhere(o : Prod<'a,'b>, f : int -> int) =
             Prod<'a,'b>((o.E1.Everywhere<'a>(f),o.E2.Everywhere<'b>(f)))    
