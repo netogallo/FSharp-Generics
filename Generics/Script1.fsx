@@ -7,6 +7,8 @@ let g = Generic<List<Comp>>()
 g.To(Cons(A 4, Cons ((B "hello"), Cons((C true), Nil)))).Everywhere<Meta>(id)
 
 
+concatWith "," [||]
+
 type E() = class
     member x.Lele<'t>(a : 't) = ()
 end

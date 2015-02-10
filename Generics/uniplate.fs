@@ -74,6 +74,15 @@ module Rep =
       class
         abstract Values : seq<obj> with get
         abstract Childs : Meta seq with get
+        abstract Cast : unit -> Meta
+        member x.GenericInit types args =
+            let t = x.GetType().GetGenericTypeDefinition().MakeGenericType(types)
+            let argValues,argTypes = Array.unzip args
+            let c = t.GetConstructor(argTypes)
+            if c = null then
+                sprintf "No constructor of %s for args %A found" t.FullName args |> failwith
+            else
+                c.Invoke(argValues) :?> Meta
       end
 
     (*
@@ -108,7 +117,8 @@ module Rep =
         member o.Elem with get() = elem
         override o.Sum with get() = elem |> Choice1Of2
         override o.Childs with get() = seq [elem]
-        override o.Values with get() = elem.Values 
+        override o.Values with get() = elem.Values
+        override o.Cast() = L<Meta,Meta>(elem) :> _
       end
 
     // type L2<'c,'t>(elem : 't) = class end
@@ -120,6 +130,7 @@ module Rep =
         override o.Sum with get() = elem |> Choice2Of2
         override o.Childs with get() = seq [elem]
         override o.Values with get() = elem.Values
+        override o.Cast() = R<Meta,Meta>(elem) :> _
       end
     
 
@@ -134,6 +145,9 @@ module Rep =
         override o.Values with get() = 
             let (a,b) = elem
             Seq.concat [a.Values;b.Values]
+        override o.Cast() = 
+            let a,b = elem
+            Prod<Meta,Meta>(a :> _, b :> _) :> _
       end
 
     type Id<'t>(elem : 't) =
@@ -142,6 +156,7 @@ module Rep =
         member o.Elem with get() = elem
         override o.Values with get() = [elem :> obj] |> seq
         override o.Childs with get() = Seq.empty
+        override o.Cast() = o :> _
       end
             
     
@@ -151,6 +166,7 @@ module Rep =
         member o.Elem with get() = elem
         override o.Values with get() = [elem :> obj] |> seq
         override o.Childs with get() = Seq.empty
+        override o.Cast() = o :> _
       end
 
     type U() =
@@ -158,6 +174,7 @@ module Rep =
         inherit Constr<unit>()
         override o.Values with get() = Seq.empty
         override o.Childs with get() = Seq.empty
+        override o.Cast() = o :> _
       end
    
     let pmatch t' (o : Meta) =
@@ -169,6 +186,7 @@ module Rep =
             else None
         with
             | :? System.InvalidOperationException -> None
+            | :? System.ArgumentException -> None
 
     let (|L|_|) (o : Meta) = pmatch typeof<L<Meta,Meta>> o
     let (|R|_|) (o : Meta) = pmatch typeof<R<Meta,Meta>> o

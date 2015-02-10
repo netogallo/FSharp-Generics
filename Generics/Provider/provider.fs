@@ -13,6 +13,12 @@ do()
 
 module Provider =
    
+    let concatWith sep' vals' =
+        if Seq.length vals' = 0 then
+            ""
+        else
+            Seq.fold (fun s x -> sprintf "%s%s%s" s sep' x) (Seq.head vals') (Seq.skip 1 vals')
+
     let libAsm = @"C:\Users\N\Documents\Visual Studio 2013\FSharp-Generics\Generics\bin\Debug\Generics.dll"
 
     type GenType(t : Type, name : string) =
@@ -71,12 +77,15 @@ module Provider =
       
     type Extensible() = inherit obj()
 
-
     type Generic() = inherit obj()
 
     let ns = "Generics.Provided"
 
-    let makeClass name = 
+    let catchAll = "catchAll"
+
+    let ``c#Name`` (t : Type) = t.FullName.Replace("+",".")
+
+    let makeClass name body = 
         let decl = sprintf """
         namespace %s {
         using System.Reflection;
@@ -84,22 +93,85 @@ module Provider =
         using Generics;
 
             public class %s : Selector.Selector{
+            
+            %s
 
-                public void methods(){
-
-                    foreach(var m in this.GetType().GetMethods(BindingFlags.FlattenHierarchy | BindingFlags.Instance | BindingFlags.Public)){
-                        Console.WriteLine(m.Name);
-                    }
-                }
             }
         }
         """ 
-        decl ns name
+        decl ns name body
 
     let private AssemblyStore = Collections.Generic.Dictionary<Assembly,byte[]>()
+    
+    let pak = sprintf "Rep.%s"
 
-    let makeCompiledClass name =
-        let code = makeClass name
+    let mName = pak "Meta"
+
+    let dual n = sprintf "%s<%s,%s>" n mName mName |> pak
+
+    let rName = dual "R"
+
+    let lName = dual "L"
+
+    let pName = dual "Prod"
+
+    let kName = pak "K<System.Object>"
+
+    let uName = pak "U"
+
+    let iName = pak "Id<System.Object>"
+
+    let repConstrs = [rName;lName;pName;kName;uName;iName]
+
+    let mkMethod mods name constr (args : Type list) (ret : Type) invocation =
+        let txtArgs = args |> Seq.mapi (fun i a -> sprintf "%s x%i" (``c#Name`` a) i)
+                           |> fun xs -> Seq.concat [[constr] :> seq<_>;xs] 
+                           |> concatWith ","
+        sprintf "%s %s %s(%s){%s}" mods ret.Name name txtArgs invocation
+
+    let mkDefMethod mods name constr (args : Type list) (ret : Type) =
+        let invocation = Seq.mapi (fun i _ -> sprintf "x%i" i) args
+                            |> concatWith ","
+                            |> sprintf "return this.%s(c1,%s);" catchAll
+        mkMethod mods name (sprintf "%s c1" constr) args ret invocation
+
+    let mkDefGlob mods name (args : Type list) (ret : Type) =
+        let invocation = 
+            if List.length args = 0 then
+                failwith "Error: No Type representation within arguments"
+            else
+                let vars = Seq.mapi (fun i _ -> sprintf "x%i" i) args
+                vars
+                |> concatWith ","
+                |> sprintf "return this.SelectInvoke(\"%s\",c1,new Object[]{%s});" name 
+
+        mkMethod mods name (sprintf "%s c1" mName) args ret invocation
+
+    let mkCatchAllDef (args : Type list) (ret : Type) =
+        let txtArgs = Seq.concat [args;[ret]] |> Seq.map (fun t -> ``c#Name`` t) 
+                    |> fun x -> Seq.concat [seq [mName];x] |> concatWith ","
+        sprintf "private Func<%s> %s;" txtArgs catchAll
+
+    let mkConstr name (args : Type list) ret =
+        let txtArgs = Seq.concat [args;[ret]] |> Seq.map (fun t -> ``c#Name`` t) 
+                        |> fun x -> Seq.concat [seq [mName];x] |> concatWith ","
+        sprintf "public %s(Func<%s> f){this.%s = f;}" name txtArgs catchAll
+
+
+    let makeCompiledClass className methodName args ret =
+        let constr = mkConstr className args ret
+        let def = mkCatchAllDef args ret
+        let baseMethods = repConstrs |> List.map (fun c -> mkDefMethod "public" methodName c args ret)
+                                     |> concatWith (System.Environment.NewLine)
+        let selector = mkDefGlob "public" methodName args ret
+        let body = 
+            sprintf """
+            %s
+            %s
+            %s
+            %s
+            """ def constr baseMethods selector
+        let code = makeClass className body
         System.IO.File.WriteAllText(@"C:\Users\N\Downloads\source.c", code)
         let dll = System.IO.Path.GetTempFileName()
         let csc = new Microsoft.CSharp.CSharpCodeProvider()
@@ -117,7 +189,7 @@ module Provider =
 
         let asm = compiled.CompiledAssembly
         AssemblyStore.Add(asm,System.IO.File.ReadAllBytes dll)
-        (asm.GetType(sprintf "%s.%s" ns name), asm)
+        (asm.GetType(sprintf "%s.%s" ns className), asm)
 
     [<TypeProvider>]
     type GenericProvider() =
@@ -130,23 +202,31 @@ module Provider =
             member this.GetTypes() = [| typeof<Generic> |]
         interface ITypeProvider with
             member this.GetNamespaces() = [| this |]
-            member this.ApplyStaticArguments(noArgs,withArgs,b) = 
+            member this.ApplyStaticArguments(noArgs,withArgs,args) = 
                 match ty with
                 | Some ty' -> GenType(ty',(withArgs.[withArgs.Length - 1])) :> _
                 | None ->
-                    let (t,_) = makeCompiledClass <| withArgs.[withArgs.Length - 1]
+                    let ``method`` = args.[0] :?> string
+                    let retType = typeof<obj>
+                    let argsType = List.init (args.[1] :?> int) (fun _ -> typeof<obj>)
+                    let className = withArgs.[withArgs.Length - 1]
+
+                    let (t,_) = makeCompiledClass className ``method`` argsType retType
                     ty <- Some t 
                     t
             member this.GetStaticParameters(typeWithoutArguments) = 
-                let p = {new ParameterInfo() with
-                            override x.Name with get() = "A1"
-                            override this.ParameterType with get() = typeof<string>
+                let param ``type`` name raw def = {new ParameterInfo() with
+                            override x.Name with get() = name
+                            override this.ParameterType with get() = ``type``
                             override this.Position with get() = 0
                             override this.Attributes with get() = ParameterAttributes.Optional
-                            override this.DefaultValue with get() = "" :> _
-                            override this.RawDefaultValue with get() = "" :> _
+                            override this.DefaultValue with get() = def
+                            override this.RawDefaultValue with get() = raw
                          }
-                [| p |]
+                [|
+                    param typeof<string> "MethodName" "" ""
+                    param typeof<int> "NumArgs" 0 0
+                |]
             member this.GetGeneratedAssemblyContents(assembly:Assembly) =
                 
                 if AssemblyStore.ContainsKey assembly then
@@ -158,7 +238,8 @@ module Provider =
 
             member __.GetInvokerExpression(methodBase, parameters) = 
                 match methodBase with
-                    | :? ConstructorInfo as ctor -> let o = ctor.Invoke([||]) in Expr.NewObject(ctor,[])
+                    | :? ConstructorInfo as ctor ->
+                        Expr.NewObject(ctor,parameters |> List.ofArray)
                     | :? MethodInfo as mi -> 
                             let args = parameters |> Seq.skip 1 |> Seq.cast<Expr> |> List.ofSeq
                             Expr.Call(parameters.[0], mi, args)

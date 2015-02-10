@@ -5,19 +5,14 @@
 
     public class TheProvidedType{
 
-        private void ThePicker(Rep.Meta constr){
+        public TheProvidedType(){
+
+        }
+
+        private object TheMethod(Rep.Meta m, object o1, object o2){
 
             
-
-            if(){
-
-
-            }
-
-
-            foreach(var m in this.GetType().GetMethods(BindingFlags.FlattenHierarchy | BindingFlags.Instance | BindingFlags.Public)){
-                        Console.WriteLine(m.Name);
-            }
+            Func<Rep.Meta,object,object,object> d = (a , b , c) => new Object();
         }
     }
  }
