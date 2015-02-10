@@ -131,19 +131,17 @@ module Provider =
 
     let mkDefMethod mods name constr (args : Type list) (ret : Type) =
         let invocation = Seq.mapi (fun i _ -> sprintf "x%i" i) args
+                            |> Seq.append ["c1"]
                             |> concatWith ","
-                            |> sprintf "return this.%s(c1,%s);" catchAll
+                            |> sprintf "return this.%s(%s);" catchAll
         mkMethod mods name (sprintf "%s c1" constr) args ret invocation
 
     let mkDefGlob mods name (args : Type list) (ret : Type) =
         let invocation = 
-            if List.length args = 0 then
-                failwith "Error: No Type representation within arguments"
-            else
-                let vars = Seq.mapi (fun i _ -> sprintf "x%i" i) args
-                vars
-                |> concatWith ","
-                |> sprintf "return this.SelectInvoke(\"%s\",c1,new Object[]{%s});" name 
+            let vars = Seq.mapi (fun i _ -> sprintf "x%i" i) args
+            vars
+            |> concatWith ","
+            |> sprintf "return this.SelectInvoke(\"%s\",c1,new Object[]{%s});" name 
 
         mkMethod mods name (sprintf "%s c1" mName) args ret invocation
 
