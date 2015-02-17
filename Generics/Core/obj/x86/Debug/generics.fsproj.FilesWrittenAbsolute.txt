@@ -1,0 +1,8 @@
+/home/neto/Documents/FSharp-Generics/Generics/Core/obj/x86/Debug/.NETFramework,Version=v4.5.AssemblyAttribute.fs
+/home/neto/Documents/FSharp-Generics/Generics/Core/bin/Debug/App.config
+/home/neto/Documents/FSharp-Generics/Generics/Core/bin/Debug/Generics.dll.config
+/home/neto/Documents/FSharp-Generics/Generics/Core/bin/Debug/Generics.dll.mdb
+/home/neto/Documents/FSharp-Generics/Generics/Core/bin/Debug/Generics.dll
+/home/neto/Documents/FSharp-Generics/Generics/Core/obj/x86/Debug/Generics.dll
+/home/neto/Documents/FSharp-Generics/Generics/Core/obj/x86/Debug/Generics.dll.mdb
+/home/neto/Documents/FSharp-Generics/Generics/Core/bin/Debug/FSharp.Core.dll
