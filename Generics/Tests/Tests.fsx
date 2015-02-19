@@ -1,5 +1,5 @@
-﻿#r @"bin\Debug\Generics.dll"
-#r @"bin\Debug\Provider.dll"
+﻿#r @"../Core/bin/Debug/Generics.dll"
+#r @"../Provider/bin/Debug/Provider.dll"
 
 open Generics.Rep
 open Microsoft.FSharp.Core.CompilerServices
@@ -10,19 +10,22 @@ type Everywhere<'t,'v>(f : 'v -> 'v) =
     inherit EverywhereBase(fun m -> m :> obj)
     let g = Generic<'t>()
 
+    member x.Everywhere(c : Meta) =
+      base.Everywhere(c) :?> Meta
+
     member x.Everywhere(c : L<Meta,Meta>) =
         printf "%A\n" c
-        L<Meta,Meta>(x.Everywhere(c.Elem) :?> Meta)
+        L<Meta,Meta>(x.Everywhere(c.Elem))
 
     member x.Everywhere(c : R<Meta,Meta>) =
         printf "%A\n" c
-        R<Meta,Meta>(x.Everywhere(c.Elem) :?> Meta)
+        R<Meta,Meta>(x.Everywhere(c.Elem))
 
     member x.Everywhere(c : Prod<Meta,Meta>) =
         printf "%A\n" c
         let v1 = x.Everywhere(c.E1)
         let v2 = x.Everywhere(c.E2)
-        Prod<Meta,Meta>((v1 :?> Meta,v2 :?> Meta))
+        Prod<Meta,Meta>((v1,v2))
 
     member x.Everywhere(c : K<'v>) =
         printf "A 't %A\n" c.Elem
@@ -30,7 +33,7 @@ type Everywhere<'t,'v>(f : 'v -> 'v) =
 
     member x.Everywhere(c : Id<'t>) =
         let g = Generic<'t>()
-        Id<'t>(x.Everywhere(g.To c.Elem) :?> Meta |> g.From)
+        Id<'t>(x.Everywhere(g.To c.Elem) |> g.From)
 
 let everywhere<'t,'v> (f : 'v -> 'v) (a : 't) =
     let g = Generic<'t>()

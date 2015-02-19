@@ -19,7 +19,13 @@ module Provider =
         else
             Seq.fold (fun s x -> sprintf "%s%s%s" s sep' x) (Seq.head vals') (Seq.skip 1 vals')
 
-    let libAsm = @"C:\Users\N\Documents\Visual Studio 2013\FSharp-Generics\Generics\bin\Debug\Generics.dll"
+    let errorsLog = @"/tmp/errors.log"
+
+    let srcFile = @"/tmp/source.c"
+
+    let libAsm = @"/home/neto/Documents/FSharp-Generics/Generics/Core/bin/Debug/Generics.dll" // @"C:\Users\N\Documents\Visual Studio 2013\FSharp-Generics\Generics\bin\Debug\Generics.dll"
+
+    let fSharpCore = @"/home/neto/Documents/FSharp-Generics/Generics/bin/Debug/FSharp.Core.dll"
 
     type GenType(t : Type, name : string) =
         inherit Type()
@@ -34,7 +40,7 @@ module Provider =
                         ty.GetMethod(call, tys)
                 m.Invoke(t,args) :?> 'T
             with
-                | e -> System.IO.File.WriteAllText(@"C:\Users\N\Downloads\error.txt",sprintf "Err %A with %A %A %A" e call tys args)
+                | e -> System.IO.File.WriteAllText(errorsLog,sprintf "Err %A with %A %A %A" e call tys args)
                         |> failwith ""
         
         override this.Name with get() = name
@@ -170,20 +176,19 @@ module Provider =
             %s
             """ def constr baseMethods selector
         let code = makeClass className body
-        System.IO.File.WriteAllText(@"C:\Users\N\Downloads\source.c", code)
+        System.IO.File.WriteAllText(srcFile, code)
         let dll = System.IO.Path.GetTempFileName()
         let csc = new Microsoft.CSharp.CSharpCodeProvider()
         let args = System.CodeDom.Compiler.CompilerParameters()
         args.OutputAssembly <- dll
         args.CompilerOptions <- "/t:library"
-        args.CompilerOptions <- sprintf "/r:\"%s\"" libAsm
+        args.CompilerOptions <- sprintf "/r:\"%s,%s\"" libAsm fSharpCore
         let compiled = csc.CompileAssemblyFromSource(args, [| code |])
-        let errFile = @"C:\Users\N\Downloads\compileErrs.c"
         let errs = seq{
             for e in compiled.Errors do
             yield e
         }
-        System.IO.File.WriteAllText(errFile, errs |> Seq.fold (fun s e -> sprintf "%s%s : %i" s e.ErrorText e.Line + System.Environment.NewLine) "" )
+        System.IO.File.WriteAllText(errorsLog, errs |> Seq.fold (fun s e -> sprintf "%s%s : %i" s e.ErrorText e.Line + System.Environment.NewLine) "" )
 
         let asm = compiled.CompiledAssembly
         AssemblyStore.Add(asm,System.IO.File.ReadAllBytes dll)
@@ -241,7 +246,7 @@ module Provider =
                     | :? MethodInfo as mi -> 
                             let args = parameters |> Seq.skip 1 |> Seq.cast<Expr> |> List.ofSeq
                             Expr.Call(parameters.[0], mi, args)
-                    | _ ->  System.IO.File.WriteAllText(@"C:\Users\N\Downloads\error.txt",sprintf "Not supported %A" methodBase)
+                    | _ ->  System.IO.File.WriteAllText(errorsLog,sprintf "Not supported %A" methodBase)
                             failwith ""
                 
             member this.Dispose() = ()
