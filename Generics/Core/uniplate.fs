@@ -280,9 +280,15 @@ module Rep =
 
 
     type GTree<'t> =
-      | Prim of (obj -> Meta)
-      | Self of ('t -> Meta)
-      | UC of ((GTree<'t> [])*UnionCaseInfo*(Meta[] -> Meta)) []
+      | Prim of Type*(obj -> Meta)
+      | Self of Type*('t -> Meta)
+      | UC of Type*(((GTree<'t> [])*UnionCaseInfo*(Meta[] -> Meta)) [])
+      with
+        member o.RepType with get() =
+          match o with
+          | Prim (t,_) -> t
+          | Self (t,_) -> t
+          | UC (t,_) -> t 
 
     [<AbstractClass>]
     type ValAlg<'t,'s>() =
@@ -311,7 +317,7 @@ module Rep =
     type RepTypeAlg<'t>() =
       inherit Reflection.TyAlg<'t,GTree<'t>>()
 
-      override this.Id(i,ty) = Self(fun v -> Id<'t>(v) :> _)
+      override this.Id(i,ty) = Self(typeof<Id<'t>>,fun v -> Id<'t>(v) :> _)
 
       override this.Case(i,cases) =
 
@@ -331,20 +337,20 @@ module Rep =
                             c.Invoke [|v;s|]) (Array.zip constrs ms) (U() :> obj) :?> Meta
           (tf, mk)
 
-        let sTy = typeof<SumConstr<Meta,Meta>>.GetGenericTypeDefinition()           
-        let caseCata (uc : UnionCaseInfo,vals) ((ty,tf,c)::xs) =
-          let (tf',c') = uc.GetFields()
-                       |> Array.map (fun pi -> pi.PropertyType)
+        let sTy = typeof<SumConstr<Meta,Meta>>.GetGenericTypeDefinition()
+        let caseCata ((ty,tf,c)::xs) (uc : UnionCaseInfo,vals : GTree<'t> []) =
+          let (tf',c') = vals
+                       |> Array.map (fun pi -> pi.RepType)
                        |> mkCase
           let ty' = sTy.MakeGenericType [| tf';ty |]
           (ty',tf',c') :: (ty,tf,c) :: xs
-        let ((c0,_)::cases') = List.ofArray cases
+        let ((c0,t0)::cases') = List.ofArray cases |> List.rev
         
         let constrsAndTypes =
-          c0.GetFields()
-          |> Array.map (fun pi -> pi.PropertyType)
+          t0 
+          |> Array.map (fun t -> t.RepType)
           |> mkCase
-          |> fun (tf,mk) -> List.foldBack caseCata cases' [(tf,tf,mk)]
+          |> fun (tf,mk) -> List.fold caseCata [(tf,tf,mk)] cases'
           |> Array.ofList
 
         let lty = typeof<L<Meta,Meta>>.GetGenericTypeDefinition()
@@ -369,11 +375,13 @@ module Rep =
                   rty'.GetConstructor([|ty0|]).Invoke [| c' vals |] :?> Meta
             (gts,uc,c)
 
-        UC(cases |> Array.mapi mappings)
+        let (ty,_,_) = constrsAndTypes.[0]
+        UC(ty,cases |> Array.mapi mappings)
 
       override this.Prim(i,ty) =
-        let kty = typeof<K<obj>>.GetGenericTypeDefinition().MakeGenericType([|ty|]).GetConstructor([|ty|])
-        Prim (fun o -> kty.Invoke([|o|]) :?> Meta)
+        let kty = typeof<K<obj>>.GetGenericTypeDefinition().MakeGenericType([|ty|])
+        let ckty = kty.GetConstructor([|ty|])
+        Prim (kty,fun o -> ckty.Invoke([|o|]) :?> Meta)
 
     let repType<'t> = Reflection.foldType<'t,_> (RepTypeAlg<'t>())
 

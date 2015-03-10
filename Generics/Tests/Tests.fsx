@@ -56,7 +56,7 @@ open Generics.Rep
 open Generics.Reflection
 
 type Emp = Full of string*int | Part of string*int*int
-type List<'t> = Cons of 't*List<'t> | Nel
+type List<'t> = Cons of 't*List<'t> | Nel | Tip of 't
 
 let t = repType<List<Emp>>
 
