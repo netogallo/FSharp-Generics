@@ -17,3 +17,5 @@ Generics/Provider/bin
 Backend/bin
 Backend/obj
 Generics/Tests/Generics.dll
+Generics/Core/obj
+Generics/Core/bin

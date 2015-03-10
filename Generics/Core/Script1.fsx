@@ -49,3 +49,13 @@ args.OutputAssembly <- dll
 args.CompilerOptions <- "/t:library"
 let compiled = csc.CompileAssemblyFromSource(args, [| code |])
 compiled.Errors
+
+type A() =
+  member o.X() = printf "pepe"
+
+type B() =
+  inherit A()
+  member o.X() = printf "papa"
+
+
+let fn<'t when 't :> A> (x : 't) = x.X()

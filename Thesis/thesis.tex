@@ -135,6 +135,12 @@ type GMap() =
     //Corresponds to K
     member this.gmap'<'t> : (K<'t> * (int $\to$ int)) $\to$ K<'t>
     
+    //Corresponds to U
+    member this.gmap' : (U * (int $\to$ int)) $\to$ U
+
+    //Corresponds to I
+    member this.gmap'<'t> : (Id<'t> * (int $\to$ int)) $\to$ Id<'t>
+
     //Corresponds to $\otimes$
     member this.gmap'<'a,'b> : (Prod<'a,'b> * (int $\to$ int)) $\to$ Prod<'a,'b>
 
@@ -143,7 +149,9 @@ type GMap() =
 
   end
 \end{lstlisting}
-The definition complies with what F\# allows but it can't do much as it is. The implementation of \verb+Sum+ and \verb+Prod+ variants have no knowlege on what the type arguments are so no recursive calls would be possible to \verb+gmap'+ on their contents. At a glance, that should be easy to fix. One only needs to add some constraints to the generic arguments, but which? One solution is to define an overload for every possible combination of type arguments (they are finite though) but would not yield a convenient library. A more practical solution is to introduce some base type from which all generics are a sub-class of. The class shall be called \verb+Meta+ in other words:
+This definition provides an overload of the \verb+gmap+ function for each of the constituents that define a type representation. It is important to note that each of the overloads must {\it somehow} be able to recursively\footnote{It is not strictly speaking recursion since a different method with the same name is being invoked} invoke the appropiate overload depending on what type arguments are used to call the \verb+gmap+ function.
+\\\\Speaking concretely, suppose one has the representations $\tau_1$ and $\tau_2$ defined as \verb+Prod<K<int>,Prod<K<string>,U>>+ and \verb+Prod<K<int>,U>+ respectively. Suppose \verb+gmap+ is invoked with $\tau_1$ as argument. Here the type parameters \verb+'a+ and \verb+'b+ get instantiated to \verb+K<int>+ and \verb+Prod<K<string>,U>+ respectively. When the time comes to invoke \verb+gmap+ with the value corresponding to \verb+'b+, the correct overload (the one for the \verb+K+ case) must be selected. Now consider invoking \verb+gmap+ with $\tau_2$ as argument. When \verb+gmap+ gets invoked with the value corresponding to the type parameter \verb+'b+, a {\it different} overload (the case for \verb+U+) is selected. This subtle difference makes use of one of Haskell's type system luxuries which selects a different overload depending on how the types variables get instantiated. However, this is not possible in F\#. The overload to be invoked must be known soley from the definition of the method.
+\\\\This imposes the restriction that all the type variables must be instantiated to some {\it common} type that rules them all. For that purpose, the class \verb+Meta+ is defined. This allows all {\it recursive} calls to refer to a unique overload. In other words, the class hierarchy now looks like:
 \begin{lstlisting}[
   mathescape,
   columns=fullflexible,
@@ -159,7 +167,8 @@ U :> Meta
 
 Id<'t> :> Meta
 \end{lstlisting}
-The ordering \verb+:>+ corresponds to the sub-class relation. This provides a common ground from which constraints can be specified. The second version of \verb+GMap+ now looks like:
+where \verb+:>+ corresponds to the sub-class relation.
+\\\\With this adjustment in plae, the definition of \verb+gmap+ could be the following:
 \begin{lstlisting}[
   mathescape,
   columns=fullflexible,
@@ -170,29 +179,22 @@ type GMap() =
 
     //Corresponds to K
     member this.gmap'<'t> : (K<'t> * (int $\to$ int)) $\to$ K<'t>
+
+    //Corresponds to U
+    member this.gmap' : (U * (int $\to$ int)) $\to$ U
+
+    //Corresponds to I
+    member this.gmap'<'t> : (Id<'t> * (int $\to$ int)) $\to$ Id<'t>
     
     //Corresponds to $\otimes$
-    member this.gmap'<'a,'b when 'a :> Meta and 'b :> Meta> : (Prod<'a,'b> * (int $\to$ int)) $\to$ Prod<'a,'b>
+    member this.gmap' : (Prod<Meta,Meta> * (int $\to$ int)) $\to$ Prod<Meta,Meta>
 
     //Corresponds to $\oplus$
-    member this.gmap'<'a,'b when 'a :> Meta and 'b :> Meta> : (Sum<'a,'b> * (int $\to$ int)) $\to$ Sum<'a,'b>
+    member this.gmap'(Sum<Meta,Meta> * (int $\to$ int)) $\to$ Sum<Meta,Meta>
 
   end
 \end{lstlisting}
-There is still a significant problem with the approach. Consider the case when:
-\begin{lstlisting}[
-  mathescape,
-  columns=fullflexible,
-  basicstyle=\fontfamily{lmvtt}\selectfont,
-]
-this.gmap'<'a,'b when 'a :> Meta and 'b :> Meta> : (Sum<'a,'b> * (int $\to$ int)) $\to$ Sum<'a,'b>
-\end{lstlisting}
-wishes to invoke \verb+gmap'+ with one of its type arguments. How can it know what is the overload it must invoke? There are at least two limitations that make it impossible to determine in F\#:
-\begin{enumerate}
-\item Contrary to Haskell, F\# lacks the type level programming necessary to determine the overload that must be invoked until the function is applied. Which means that \verb+this.gmap<'a>+ in this case will result in a compiler error.
-\item The type parameters must be available to select the overload. In other words, if one wishes to recursively invoke \verb+this.gmap<'a,'b>+, the \verb+'a+ type would somehow have to be split up into it's constituents $\mathtt{a_1}$ and $\mathtt{a_2}$ but F\# lacks the necessary polymorphism to allow this.
-\end{enumerate}
-Such limitations leave no option but to eliminate type arguments and replace them with \verb+Meta+ and \verb+obj+ (for the case of \verb+K+):
+This approach solves ambiguity of deciding which is the overload that should be invoked. Nevertheless, it is now required to have an overload to handle the case for \verb+Meta+ since that is the overload that will be selected when performing recursive calls. It looks as follows:
 \begin{lstlisting}[
   mathescape,
   columns=fullflexible,
@@ -200,27 +202,14 @@ Such limitations leave no option but to eliminate type arguments and replace the
 ]
 type GMap() =
   class
-
+    //Corresponds to Meta
     member this.gmap' : (Meta * (int $\to$ int)) $\to$ Meta
-
-    //Corresponds to K
-    member this.gmap' : (K<obj> * (int $\to$ int)) $\to$ K<obj>
-    
-    //Corresponds to $\otimes$
-    member this.gmap' : (Prod<Meta,Meta> * (int $\to$ int)) $\to$ Prod<Meta,Meta>
-
-    //Corresponds to $\oplus$
-    member this.gmap' : (Sum<Meta,Meta> * (int $\to$ int)) $\to$ Sum<Meta,Meta>
-
+    ...
   end
 \end{lstlisting}
-To do so, a method that takes as argument the \verb+Meta+ constructor must be defined. This method needs to select (at runtime) which is the overload that matches the provided argument. Such a method can be generically defined but the following limitations are still present:
-\begin{itemize}
-\item The approach is no longer elegant since the user must explicitly specify what the implementation for the \verb+Meta+ variant of \verb+gmap'+ is
-\item There is no way to statically enforce that all the overloads are defined nor a mechanism to statically require the user to provide a default branch \footnote{In Haskell this is not a problem because the type level computations carried out by the compiler determine wether or not all overloads are defined}.
-\end{itemize}
+What should be the implementation of this method. Recall that the reason this method is required is because F\# dosen't have a mechanism to select the right overload according to the instantiation of the type variables. This means that the {\bf sole} purpose of this method is selecting the overload that must be called. This mechanism will be described in-depth in the next sections.
 \subsection{Type-Representations in F\#}
-Before exploring solutions to the problems mentioned above, this section explains in depth how the ADTs will be precisely represented in F\#. A class hierarchy is used to achieve it. On the top of the hierarch is a class called \verb+Meta+ with no type arguments. This class is the mother of all representations. There are 6 sub-classes of this class:
+Before exploring solutions to the problems mentioned above, this section explains in depth how the ADTs will be precisely represented in F\#. A class hierarchy is used to achieve it. On the top of the hierarchy is a class called \verb+Meta+ with no type arguments. This class is the mother of all representations. There are 6 sub-classes of this class:
 \begin{itemize}
   \item \verb+U+ with no type arguments which is analogous to the \verb+Unit+ in regular.
   \item \verb+K<'t>+ with the type argument \verb+'t+ which is analogous to \verb+K+ in regular. The type argument denotes the type of its contents.
@@ -228,6 +217,8 @@ Before exploring solutions to the problems mentioned above, this section explain
   \item \verb+SumConstr<'a,'b>+ wich is analogous to $\oplus$ in regular. From this class, the subclasses \verb+L<'a,'b>+ and \verb+R<'a,'b>+ are defined (corresponding to the left and right branches) which are the ones actually used to create the representation.
   \item \verb+I<'t>+ wich is analogous to \verb+I+ in regular. This class is used to represent recursion within a type.
 \end{itemize}
+\[
+\]
 The encoding process is very straightforward, below each of the cases is described. The algorithm is described in reference to the input type which is denoted by \verb+T+:
 \\\\{\bf Values:}
 \begin{itemize}

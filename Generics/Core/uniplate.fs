@@ -36,6 +36,35 @@ module Reflection =
         member x.Matcher with get() =
             x.DeclaringType.GetMethod(sprintf "get_Is%s" x.Name)
 
+        member x.Matches(o) =
+          x.Matcher.Invoke(o,[||])
+          
+    [<AbstractClass>]
+    type TyAlg<'t,'s>() =
+      abstract Id : int*Type -> 's
+      abstract Case : int*(UnionCaseInfo*'s[])[] -> 's
+      abstract Prim : int*Type -> 's
+      
+    let foldType<'t,'s> (alg : TyAlg<'t,'s>) =
+      let count = ref 0
+      let inc() = count := !count + 1;!count
+      let rec fold ty =
+        let i = inc()
+        if ty = typeof<'t> then
+          alg.Id(i,ty)
+        elif Reflection.FSharpType.IsUnion ty then
+          unions i ty
+        else
+          alg.Prim(i,ty)
+      and unions i ty =
+        let uns =
+            Reflection.FSharpType.GetUnionCases ty
+            |> Array.map (fun uc -> (uc,uc.GetFields()
+                                    |> Array.map (fun pi -> pi.PropertyType)
+                                    |> Array.map fold))
+        alg.Case(i,uns)
+      unions (inc()) typeof<'t>
+          
     let makeTypeConstructor<'t> (c : UnionCaseInfo) =
         let constr = c.Constructor
         let invoke args = constr.Invoke(null,args) :?> 't
@@ -134,20 +163,17 @@ module Rep =
       end
     
 
-    type Prod<'a,'b when 'a :> Meta and 'b :> Meta>(elem : 'a*'b) =
+    type Prod<'a,'b when 'a :> Meta and 'b :> Meta>(e1:'a, e2:'b) =
       class
         inherit Constr<'a*'b>()
-        let (e1,e2) = elem
-        member o.Elem with get() = elem
+        member o.Elem with get() = e1,e2
         member o.E1 with get() = e1
         member o.E2 with get() = e2
         override o.Childs with get() = seq [e1;e2] 
         override o.Values with get() = 
-            let (a,b) = elem
-            Seq.concat [a.Values;b.Values]
+            Seq.concat [e1.Values;e2.Values]
         override o.Cast() = 
-            let a,b = elem
-            Prod<Meta,Meta>(a :> _, b :> _) :> _
+            Prod<Meta,Meta>(e1 :> Meta, e2 :> Meta) :> _
       end
 
     type Id<'t>(elem : 't) =
@@ -252,6 +278,130 @@ module Rep =
         with
             | :? System.InvalidOperationException -> None
 
+
+    type GTree<'t> =
+      | Prim of (obj -> Meta)
+      | Self of ('t -> Meta)
+      | UC of ((GTree<'t> [])*UnionCaseInfo*(Meta[] -> Meta)) []
+
+    [<AbstractClass>]
+    type ValAlg<'t,'s>() =
+      abstract Id : int*('t -> Meta)*'t -> 's
+      abstract Case : int*Reflection.UnionCaseInfo*(Meta[] -> Meta)*('s[]) -> 's
+      abstract Prim : int*(obj -> Meta)*obj -> 's
+
+(*
+    let foldVal<'t,'s> (t' : GTree<'t>) (alg : ValAlg<'t,'s>) (x : 't) =
+      let count = ref 0
+      let inc() = count := !count + 1;!count
+      let rec fold' (t : GTree<'t>) (v : obj) =
+        let i = inc()
+        match t with
+        | Prim c -> alg.Prim(i,c,v)
+        | Self c -> alg.Id(i,c,v :?> 't)
+        | UC ucs ->
+          let ty = v.GetType()
+          let (gts,uc,c) = ucs |> Array.find (fun (_,uc,_) -> u.Matches v)
+          let prev = Reflection.FSharpValue.GetUnionFields(v,ty)
+                     |> (fun (_,objs) -> Array.zip gts objs)
+                     |> Array.map (fun (gt,(_,o)) -> fold' gt o)
+          alg.Case(i,uc,c,prev)
+      fold' t' x
+*)
+    type RepTypeAlg<'t>() =
+      inherit Reflection.TyAlg<'t,GTree<'t>>()
+
+      override this.Id(i,ty) = Self(fun v -> Id<'t>(v) :> _)
+
+      override this.Case(i,cases) =
+
+        let pTy = typeof<Prod<Meta,Meta>>.GetGenericTypeDefinition()
+
+        // Function to pack the constituents of a type constructor into a
+        // sequential application of the Prod constructor
+        let mkCase tys =
+          let (tf,constrs) =
+            Array.foldBack (fun ty (t,s) ->
+              let t' = pTy.MakeGenericType [| ty;t |]
+              let c = t'.GetConstructor [| ty;t |]
+              (t', c::s)) tys (typeof<U>,[])
+            |> fun (tf,cs) -> (tf,Array.ofList cs)
+          let mk (ms : Meta []) =
+            Array.foldBack (fun (c : Reflection.ConstructorInfo,v) s ->
+                            c.Invoke [|v;s|]) (Array.zip constrs ms) (U() :> obj) :?> Meta
+          (tf, mk)
+
+        let sTy = typeof<SumConstr<Meta,Meta>>.GetGenericTypeDefinition()           
+        let caseCata (uc : UnionCaseInfo,vals) ((ty,tf,c)::xs) =
+          let (tf',c') = uc.GetFields()
+                       |> Array.map (fun pi -> pi.PropertyType)
+                       |> mkCase
+          let ty' = sTy.MakeGenericType [| tf';ty |]
+          (ty',tf',c') :: (ty,tf,c) :: xs
+        let ((c0,_)::cases') = List.ofArray cases
+        
+        let constrsAndTypes =
+          c0.GetFields()
+          |> Array.map (fun pi -> pi.PropertyType)
+          |> mkCase
+          |> fun (tf,mk) -> List.foldBack caseCata cases' [(tf,tf,mk)]
+          |> Array.ofList
+
+        let lty = typeof<L<Meta,Meta>>.GetGenericTypeDefinition()
+        let rty = typeof<R<Meta,Meta>>.GetGenericTypeDefinition()
+
+        let mappings i (uc,gts) =
+          let (ty,tf,constr) = constrsAndTypes.[i]
+          if i = cases.Length - 1 then
+            (gts,uc,constr)
+          else
+            let mutable c = fun (vals : Meta []) -> U() :> Meta
+            for ix in 0 .. i do
+              let (_,tf0,_) = constrsAndTypes.[ix]
+              let (ty0,_,_)= constrsAndTypes.[ix + 1]
+              if ix = 0 then
+                let lty' = lty.MakeGenericType [| tf0;ty0 |]
+                c <- fun (vals : Meta []) ->
+                  lty'.GetConstructor([|tf0|]).Invoke [| constr vals |] :?> Meta
+              else
+                let rty' = rty.MakeGenericType [| tf0;ty0 |]
+                c  <- c |> fun c' (vals : Meta[]) ->
+                  rty'.GetConstructor([|ty0|]).Invoke [| c' vals |] :?> Meta
+            (gts,uc,c)
+
+        UC(cases |> Array.mapi mappings)
+
+      override this.Prim(i,ty) =
+        let kty = typeof<K<obj>>.GetGenericTypeDefinition().MakeGenericType([|ty|]).GetConstructor([|ty|])
+        Prim (fun o -> kty.Invoke([|o|]) :?> Meta)
+
+    let repType<'t> = Reflection.foldType<'t,_> (RepTypeAlg<'t>())
+
+    (*
+    type CalcTypeAlg<'t>() =
+      inherit Reflection.ValAlg<'t,Meta>()
+
+      override this.Id(i,t) = Id<'t>(t) :> _
+
+      override this.Case(i,case,tys') =
+        let (Some ucs,t') = case.DeclaringType |> repType
+        let ix = ucs |> Array.findIndex (fun uc -> uc = case)
+        let sumType = typeof<SumConstr<Meta,Meta>>.GetGenericTypeDefinition()
+        let v = sumType.
+                                  
+        let ty =
+          match tys' |> List.ofArray with
+          | ty::tys -> List.foldBack (fun ty s -> sumType.MakeGenericType [|ty;s|]) tys ty
+          | [] -> typeof<U>
+        extend i ty
+        ty
+
+      override this.Prim(i,obj) =
+        let kTy = typeof<K<obj>>.GetGenericTypeDefinition()
+        let ty = kTy.MakeGenericType [|obj.GetType()|]
+        extend i ty
+        ty
+    *)
     type Generic<'t>() =
         
         let cases =  
@@ -339,26 +489,28 @@ module Rep =
             else
                 K<'t>(a) :> _
                 //Exception("Not an ADT") |> raise
-
+(*
     type Meta with
-        member o.Everywhere<'t>(f : int -> int) = 
-            let t = o.GetType()
-            let m = t.GetMethod("Everywhere", [|f.GetType()|])
-            if m.ContainsGenericParameters then
-                m.MakeGenericMethod([|typeof<'t>|]).Invoke(o,[|f|]) :?> 't
-            else
-                m.Invoke(o,[|f|]) :?> 't
+      member o.Everywhere<'t>(f : int -> int) = (failwith "" : 't)
+        // member o.Everywhere<'t>(f : int -> int) = 
+        //     let t = o.GetType()
+        //     let m = t.GetMethod("Everywhere", [|f.GetType()|])
+        //     if m.ContainsGenericParameters then
+        //         m.MakeGenericMethod([|typeof<'t>|]).Invoke(o,[|f|]) :?> 't
+        //     else
+        //         m.Invoke(o,[|f|]) :?> 't
         // (System.Exception("") |> raise) : 't
 
     type L<'a,'b when 'a :> Meta and 'b :> Meta> with
-        static member Everywhere(o : L<'a,'b>, f : int -> int) = L<'a,'b>(o.Elem.Everywhere<'a>(f))
+        member o.Everywhere(f : int -> int) =
+          L<'a,'b>(o.Elem.Everywhere<'a>(f))
 
     type R<'a,'b when 'a :> Meta and 'b :> Meta> with
-        static member Everywhere(o : R<'a,'b>, f : int -> int) = R<'a,'b>(o.Elem.Everywhere<'b>(f))
+        member o.Everywhere(f : int -> int) = R<'a,'b>(o.Elem.Everywhere<'b>(f))
 
-    type K<'v> with
-        static member Everywhere(o : K<int>, f : int -> int) = K(f o.Elem)
-        static member Everywhere(o : K<'v>, f : int -> int) = o
+    type K<'t> with
+        static member Everywhere(f : int -> int) = K(f o.Elem)
+//        static member Everywhere(o : K<'v>, f : int -> int) = o
 
     type U with
         static member Everywhere(o : U, f : int -> int) = o
@@ -371,3 +523,4 @@ module Rep =
     type Prod<'a,'b when 'a :> Meta and 'b :> Meta> with
         static member Everywhere(o : Prod<'a,'b>, f : int -> int) =
             Prod<'a,'b>((o.E1.Everywhere<'a>(f),o.E2.Everywhere<'b>(f)))    
+*)

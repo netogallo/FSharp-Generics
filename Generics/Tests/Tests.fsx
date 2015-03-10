@@ -51,3 +51,50 @@ everywhere (fun (s : string) -> s.ToUpper()) l1
 everywhere (fun i -> i + i) l1
 |> everywhere (fun (s : string) -> s.ToUpper())
 
+#r @"../Core/bin/Debug/Generics.dll"
+open Generics.Rep
+open Generics.Reflection
+
+type Emp = Full of string*int | Part of string*int*int
+type List<'t> = Cons of 't*List<'t> | Nel
+
+let t = repType<List<Emp>>
+
+let uc = Reflection.FSharpType.GetUnionCases typeof<List<Emp>>;;
+
+let u = uc.[0]
+
+u.GetFields() |> Seq.cast<System.Type> |> Array.ofSeq
+
+let l1 = Cons(Full("pepe",2),Cons(Part("victor",8,4),Nel))
+
+u.Matcher.Invoke((Nel : List<Emp>),[||])
+
+let a = CalcTypeAlg<List<Emp>>()
+
+foldType a l1
+
+type A() =
+  class
+  end
+
+let (x : System.Reflection.PropertyInfo) = failwith ""
+
+x.
+
+type B() =
+  inherit A()
+
+
+[| B() |] :> obj :?> (A[])
+
+[| B() :> A |] :> obj :?> (A[])
+kk
+
+let mutable count = fun () -> printfn "Hay"
+
+for ix in 0 .. 0 do
+  printfn "haja"
+
+for ix in 1 .. 5 do
+  count <- count |> fun count' () -> count' ();printfn "Hay"
