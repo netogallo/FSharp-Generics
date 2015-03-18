@@ -68,6 +68,13 @@ u.GetFields() |> Seq.cast<System.Type> |> Array.ofSeq
 
 let l1 = Cons(Full("pepe",2),Cons(Part("victor",8,4),Nel))
 
+let r = toRep<List<Emp>>(l1)
+
+fromRep<List<Emp>> r
+
+match r with
+  | L(v) -> v
+
 u.Matcher.Invoke((Nel : List<Emp>),[||])
 
 let a = CalcTypeAlg<List<Emp>>()
