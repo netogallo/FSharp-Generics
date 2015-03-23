@@ -4,6 +4,8 @@
 open Generics.Rep
 open Microsoft.FSharp.Core.CompilerServices
 
+Prod<Meta,Meta>(U(),U()) |> ignore
+
 type EverywhereBase = Generics.Provided.Generic<"Everywhere",0>
 
 type Everywhere<'t,'v>(f : 'v -> 'v) =
@@ -25,7 +27,7 @@ type Everywhere<'t,'v>(f : 'v -> 'v) =
         printf "%A\n" c
         let v1 = x.Everywhere(c.E1)
         let v2 = x.Everywhere(c.E2)
-        Prod<Meta,Meta>((v1,v2))
+        Prod<Meta,Meta>(v1,v2)
 
     member x.Everywhere(c : K<'v>) =
         printf "A 't %A\n" c.Elem
@@ -38,12 +40,16 @@ type Everywhere<'t,'v>(f : 'v -> 'v) =
 let everywhere<'t,'v> (f : 'v -> 'v) (a : 't) =
     let g = Generic<'t>()
     let e = Everywhere<'t,'v>(f)
-    g.To a |> e.Everywhere :?> Meta |> g.From
+    g.To a |> e.Everywhere |> g.From
 
 type Emp = Full of string*int | Part of string*int*int
 type List<'t> = Cons of 't*List<'t> | Nel
 
 let l1 = Cons(Full("pepe",2),Cons(Part("victor",8,4),Nel))
+
+everywhere (fun e -> match e with
+            | Full (n,v) -> Full ("juan",v - 1)
+            | _ -> e) l1
 
 everywhere (fun i -> i + i) l1
 everywhere (fun (s : string) -> s.ToUpper()) l1
@@ -105,3 +111,10 @@ for ix in 0 .. 0 do
 
 for ix in 1 .. 5 do
   count <- count |> fun count' () -> count' ();printfn "Hay"
+
+type M private () =
+  class
+    static member Mk() = M()
+  end
+
+M.Mk()

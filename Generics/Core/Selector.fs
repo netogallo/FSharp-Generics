@@ -63,7 +63,10 @@ module Selector =
                 | Rep.R m ->
                     x.GenericInit typeArgs [|(op(m,typeArgs.[1]) :> _,typeArgs.[1])|]
                 | Rep.PROD (a,b) ->
-                    x.GenericInit typeArgs [| (op(a,typeArgs.[0]),op(b,typeArgs.[1])) :> obj, mkTup (typeArgs.[0],typeArgs.[1]) |]
+                    x.GenericInit typeArgs [|
+                      op(a,typeArgs.[0]) :> obj, typeArgs.[0]
+                      op(b,typeArgs.[1]) :> obj, typeArgs.[1]
+                      |]
                 | Rep.ID i ->
                     x.GenericInit typeArgs [| i,typeArgs.[0] |]
                 | Rep.K v ->
