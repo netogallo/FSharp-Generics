@@ -106,7 +106,8 @@ module Rep =
       abstract Values : seq<obj> with get
       abstract Childs : Meta seq with get
       abstract Cast : unit -> Meta
-      member x.GenericInit types args =
+      abstract GenericInit : Type [] -> (obj * Type) [] -> Meta
+      default x.GenericInit types args =
         let t = x.GetType().GetGenericTypeDefinition().MakeGenericType(types)
         let argValues,argTypes = Array.unzip args
         let c = t.GetConstructor(argTypes)
@@ -124,37 +125,21 @@ module Rep =
 
       // :?> Constr<'t>
 
-  [<AbstractClass>]
-  type SumConstr<'a,'b when 'a :> Meta and 'b :> Meta>() =
+  type SumConstr<'a,'b when 'a :> Meta and 'b :> Meta>(elem : Choice<'a,'b>) =
     class
       inherit Constr<Choice<'a,'b>>()
-      abstract Sum : Choice<'a,'b> with get
-      // abstract Elem : Choice<'a,'b> with get
-      // interface SumConstr
-    end
-
-  type L<'a,'b when 'a :> Meta and 'b :> Meta>(elem : 'a) =
-    class
-      inherit SumConstr<'a,'b>()
+      let elem' = match elem with
+                  | Choice1Of2 e -> e :> Meta
+                  | Choice2Of2 e -> e :> Meta
       member o.Elem with get() = elem
-      override o.Sum with get() = elem |> Choice1Of2
-      override o.Childs with get() = seq [elem]
-      override o.Values with get() = elem.Values
-      override o.Cast() = L<Meta,Meta>(elem) :> _
+      override o.Childs with get() = seq [elem']
+      override o.Values with get() = elem'.Values
+      override o.Cast() = 
+        let e = match elem with
+                | Choice1Of2 e -> e :> Meta |> Choice1Of2
+                | Choice2Of2 e -> e :> Meta |> Choice2Of2
+        SumConstr<Meta,Meta>(e) :> _
     end
-
-  // type L2<'c,'t>(elem : 't) = class end
-
-  type R<'a,'b when 'a :> Meta and 'b :> Meta>(elem : 'b) =
-    class
-      inherit SumConstr<'a,'b>()
-      member o.Elem with get() = elem
-      override o.Sum with get() = elem |> Choice2Of2
-      override o.Childs with get() = seq [elem]
-      override o.Values with get() = elem.Values
-      override o.Cast() = R<Meta,Meta>(elem) :> _
-    end
-
 
   type Prod<'a,'b when 'a :> Meta and 'b :> Meta>(e1:'a, e2:'b) =
     class
@@ -179,18 +164,38 @@ module Rep =
     end
 
 
-  type K<'v when 'v :> obj>(elem : 'v) =
+  
+  [<AbstractClass>]
+  type K<'v when 'v :> obj> (elem : 'v) =
     class
       inherit Constr<'v>()
       member o.Elem with get() = elem
       override o.Values with get() = [elem :> obj] |> seq
       override o.Childs with get() = Seq.empty
       override o.Cast() = o :> _
+      abstract K : 'v -> K<'v>
     end
 
-  type K<'v,'r when 'v :> obj and 'r :> Meta>(elem : 'v, r : Meta) =
+  type K1<'v when 'v :> obj>(elem : 'v) =
+    class
+      inherit K<'v>(elem)
+      override x.K(v) = K1(v) :> _
+    end
+
+  type K2<'v,'r when 'v :> obj and 'r :> Meta>(elem : 'v, r : 'r) =
     inherit K<'v>(elem)
     member this.Rep with get() = r
+    override x.K(v) = K2(v,r) :> _
+    override x.GenericInit types' args' =
+      let types = [| types'.[0]; typeof<'r> |]
+      let args = [| args'.[0]; r :> obj,typeof<'r> |] 
+      let t = typeof<K2<obj,Meta>>.GetGenericTypeDefinition().MakeGenericType types
+      let argValues,argTypes = Array.unzip args
+      let c = t.GetConstructor(argTypes)
+      if c = null then
+        sprintf "No constructor of %s for args %A found" t.FullName args |> failwith
+      else
+        c.Invoke(argValues) :?> Meta
 
   type U() =
     class
@@ -200,25 +205,28 @@ module Rep =
       override o.Cast() = o :> _
     end
    
-  let pmatch t' (o : Meta) =
+  let (|SUM|_|) (o : Meta) = 
     try
+      let t' = typeof<SumConstr<Meta,Meta>>
       let t = o.GetType().GetGenericTypeDefinition().MakeGenericType([|typeof<Meta>;typeof<Meta>|])
       // let t' = typeof<L<U,U>>
       if t.IsSubclassOf t' || t = t' then
-        o.GetType().GetProperty("Elem").GetValue(o) :?> Meta |> Some
+        let r' = o.Cast()
+        r'.GetType().GetProperty("Elem").GetValue(r') :?> Choice<Meta,Meta> |> Some
       else None
     with
       | :? System.InvalidOperationException -> None
       | :? System.ArgumentException -> None
-
-  let (|L|_|) (o : Meta) = pmatch typeof<L<Meta,Meta>> o
-  let (|R|_|) (o : Meta) = pmatch typeof<R<Meta,Meta>> o
-
-  let (|SUM|_|) (o : Meta) =
+  
+  let (|L|_|) (o : Meta) = 
     match o with
-      | L x -> Choice1Of2 x |> Some
-      | R x -> Choice2Of2 x |> Some
-      | _ -> None
+    | SUM (Choice1Of2 v) -> Some v
+    | _ -> None
+
+  let (|R|_|) (o : Meta) = 
+    match o with
+    | SUM (Choice2Of2 v) -> Some v
+    | _ -> None
 
   let (|PROD|_|) (o : Meta) =
     try
@@ -254,7 +262,12 @@ module Rep =
 
   let (|K|_|) (o : Meta) =
     try
-      let t = o.GetType().GetGenericTypeDefinition().MakeGenericType([|typeof<obj>|])
+      let t = 
+        let t = o.GetType()
+        if t.GetGenericArguments().Length = 1 then
+          t.GetGenericTypeDefinition().MakeGenericType([|typeof<obj>|])
+        else
+          t.GetGenericTypeDefinition().MakeGenericType([|typeof<obj>; typeof<Meta>|])
       let t' = typeof<K<obj>>
       if t.IsSubclassOf t' || t = t' then
         o.GetType().GetProperty("Elem").GetValue(o) |> Some
@@ -267,7 +280,7 @@ module Rep =
   let (|K2|_|) (o : Meta) =
     try
       let t = o.GetType().GetGenericTypeDefinition().MakeGenericType([|typeof<obj>;typeof<Meta>|])
-      let t' = typeof<K<obj,Meta>>
+      let t' = typeof<K2<obj,Meta>>
       if t.IsSubclassOf t' || t = t' then
         (o.GetType().GetProperty("Elem").GetValue(o),
          o.GetType().GetProperty("Rep").GetValue(o) :?> Meta) |> Some
@@ -372,9 +385,8 @@ module Rep =
         |> fun (tf,mk) -> List.fold caseCata [(tf,tf,mk)] cases'
         |> Array.ofList
 
-      let lty = typeof<L<Meta,Meta>>.GetGenericTypeDefinition()
-      let rty = typeof<R<Meta,Meta>>.GetGenericTypeDefinition()
-      let kTy2 = typeof<K<obj,Meta>>.GetGenericTypeDefinition()
+      let sty = typeof<SumConstr<Meta,Meta>>.GetGenericTypeDefinition()
+      let kTy2 = typeof<K2<obj,Meta>>.GetGenericTypeDefinition()
       let (oTy,_) = cases.[0]
 
       let mkK2 rTy c' =
@@ -393,15 +405,18 @@ module Rep =
           for ix in 0 .. i do
             let (_,tf0,_) = constrsAndTypes.[ix]
             let (ty0,_,_)= constrsAndTypes.[ix + 1]
+            let argTy = typeof<Choice<obj,obj>>.GetGenericTypeDefinition().MakeGenericType [|tf0;ty0|]
+            let choice1Of2 o = argTy.GetMethod("NewChoice1Of2").Invoke(null, [| o |])
+            let choice2Of2 o = argTy.GetMethod("NewChoice2Of2").Invoke(null, [| o |])
             if ix = 0 then
-              let lty' = lty.MakeGenericType [| tf0;ty0 |]
+              let lty' = sty.MakeGenericType [| tf0;ty0 |]
               rTy <- lty'
               c <- fun (vals : Meta []) ->
-                lty'.GetConstructor([|tf0|]).Invoke [| constr vals |] :?> Meta
+                lty'.GetConstructor([|argTy|]).Invoke [| choice1Of2 (constr vals) |] :?> Meta
             else
-              let rty' = rty.MakeGenericType [| tf0;ty0 |]
+              let rty' = sty.MakeGenericType [| tf0;ty0 |]
               c  <- c |> fun c' (vals : Meta[]) ->
-                rty'.GetConstructor([|ty0|]).Invoke [| c' vals |] :?> Meta
+                rty'.GetConstructor([|argTy|]).Invoke [| choice2Of2(c' vals) |] :?> Meta
           (gts,uc,mkK2 rTy c)
 
       let ty = kTy2.MakeGenericType [|
@@ -411,7 +426,7 @@ module Rep =
       UC(ty,cases |> Array.mapi mappings)
 
     override this.Prim(i,ty) =
-      let kty = typeof<K<obj>>.GetGenericTypeDefinition().MakeGenericType([|ty|])
+      let kty = typeof<K1<obj>>.GetGenericTypeDefinition().MakeGenericType([|ty|])
       let ckty = kty.GetConstructor([|ty|])
       Prim (kty,fun o -> ckty.Invoke([|o|]) :?> Meta)
 

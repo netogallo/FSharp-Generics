@@ -5,23 +5,41 @@ open System.Reflection
 
 module Selector =
 
-    let Lg = typeof<Rep.L<Rep.Meta,Rep.Meta>>.GetGenericTypeDefinition()
-    let Rg = typeof<Rep.R<Rep.Meta,Rep.Meta>>.GetGenericTypeDefinition()
+    let Sg = typeof<Rep.SumConstr<Rep.Meta,Rep.Meta>>.GetGenericTypeDefinition()
     let Prodg = typeof<Rep.Prod<Rep.Meta,Rep.Meta>>.GetGenericTypeDefinition()
     let Idg = typeof<Rep.Id<obj>>.GetGenericTypeDefinition()
     let Kg = typeof<Rep.K<obj>>.GetGenericTypeDefinition()
 
+    let private (|KSYM|_|) ((ty1 : System.Type),(ty2 : System.Type)) =
+      if ty1.IsGenericType && ty2.IsGenericType then
+        let ty1' = ty1.GetGenericTypeDefinition()
+        let ty2' = ty2.GetGenericTypeDefinition()
+        let args1 = ty1.GetGenericArguments()
+        let args2 = ty2.GetGenericArguments() 
+        if args1.Length > 0 && args2.Length > 0 then
+          let k1 = Kg.MakeGenericType [|args1.[0]|]
+          let k2 = Kg.MakeGenericType [|args2.[0]|]
+          if (ty1 = k1 || ty1.IsSubclassOf k1) && (ty2 = k2 || ty2.IsSubclassOf k2) then
+            Some (args1.[0],args2.[0])     
+          else
+            None
+        else
+          None
+      else
+        None
 
     let (?=) m1' m2' =
         let rec op =
             function 
                 | (m1 : Type, m2 : Type) when m2.IsSubclassOf m1 -> true
-                | (m1, m2) when m1.IsGenericType && m2.IsGenericType && m1.GetGenericTypeDefinition() = m2.GetGenericTypeDefinition() ->
+                | (m1, m2) when m1.IsGenericType && m2.IsGenericType 
+                                && m1.GetGenericTypeDefinition() = m2.GetGenericTypeDefinition() ->
                     let args1,args2 = m1.GetGenericArguments(), m2.GetGenericArguments()
                     if args1 = args2 then
                         true
                     else
                         Array.zip args1 args2 |> Array.forall op
+                | KSYM (m1,m2) -> op (m1,m2)
                 | (m1,m2) -> m1 = m2
 
 
@@ -34,12 +52,7 @@ module Selector =
                 | (m1,m2) when m1.IsGenericType && m2.IsGenericType && m1.GetGenericTypeDefinition() = m2.GetGenericTypeDefinition() ->
                     let gt = m1.GetGenericTypeDefinition()
                     let args1,args2 = m1.GetGenericArguments(), m2.GetGenericArguments()
-                    if gt = Lg then
-                        op(args1.[0],args2.[0])
-                    elif gt = Rg then
-                        op(args1.[1],args2.[1])
-                    else
-                        Array.zip args1 args2 |> Array.forall op
+                    Array.zip args1 args2 |> Array.forall op
                 | (m1,m2) -> m1 = m2
         op (m1',m2')
                     
@@ -59,9 +72,14 @@ module Selector =
                 match x with
                 | Rep.L m -> 
                     let e = op(m,typeArgs.[0])
-                    x.GenericInit typeArgs [|(e :> _, typeArgs.[0])|]
+                    let cTy = typeof<Choice<obj,obj>>.GetGenericTypeDefinition().MakeGenericType([| typeof<Rep.Meta>;typeof<Rep.Meta> |])
+                    let choice x = cTy.GetMethod("NewChoice1Of2").Invoke(null,[| x |])
+                    x.GenericInit typeArgs [|choice e, typeArgs.[0]|]
                 | Rep.R m ->
-                    x.GenericInit typeArgs [|(op(m,typeArgs.[1]) :> _,typeArgs.[1])|]
+                    let e = op(m,typeArgs.[1])
+                    let cTy = typeof<Choice<obj,obj>>.GetGenericTypeDefinition().MakeGenericType([| typeof<Rep.Meta>;typeof<Rep.Meta> |])
+                    let choice x = cTy.GetMethod("NewChoice2Of2").Invoke(null,[| x |])
+                    x.GenericInit typeArgs [|choice e,typeArgs.[1]|]
                 | Rep.PROD (a,b) ->
                     x.GenericInit typeArgs [|
                       op(a,typeArgs.[0]) :> obj, typeArgs.[0]

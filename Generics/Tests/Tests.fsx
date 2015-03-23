@@ -15,13 +15,11 @@ type Everywhere<'t,'v>(f : 'v -> 'v) =
     member x.Everywhere(c : Meta) =
       base.Everywhere(c) :?> Meta
 
-    member x.Everywhere(c : L<Meta,Meta>) =
+    member x.Everywhere(c : SumConstr<Meta,Meta>) =
         printf "%A\n" c
-        L<Meta,Meta>(x.Everywhere(c.Elem))
-
-    member x.Everywhere(c : R<Meta,Meta>) =
-        printf "%A\n" c
-        R<Meta,Meta>(x.Everywhere(c.Elem))
+        match c.Elem with
+        | Choice1Of2 e -> SumConstr<Meta,Meta>(x.Everywhere e |> Choice1Of2)
+        | Choice2Of2 e -> SumConstr<Meta,Meta>(x.Everywhere e |> Choice2Of2)
 
     member x.Everywhere(c : Prod<Meta,Meta>) =
         printf "%A\n" c
@@ -31,7 +29,11 @@ type Everywhere<'t,'v>(f : 'v -> 'v) =
 
     member x.Everywhere(c : K<'v>) =
         printf "A 't %A\n" c.Elem
-        K<'v>(f c.Elem)
+        c.K(f c.Elem)
+
+    member x.Everywhere(c : K<obj>) =
+      printf "%A" c
+      c.K(c.Elem)
 
     member x.Everywhere(c : Id<'t>) =
         let g = Generic<'t>()
@@ -51,7 +53,7 @@ everywhere (fun e -> match e with
             | Full (n,v) -> Full ("juan",v - 1)
             | _ -> e) l1
 
-everywhere (fun i -> i + i) l1
+everywhere (fun i -> i + i) (Full("",4))
 everywhere (fun (s : string) -> s.ToUpper()) l1
 
 everywhere (fun i -> i + i) l1
@@ -112,9 +114,19 @@ for ix in 0 .. 0 do
 for ix in 1 .. 5 do
   count <- count |> fun count' () -> count' ();printfn "Hay"
 
-type M private () =
-  class
-    static member Mk() = M()
-  end
+let cty = typeof<Choice<int,string>>
 
-M.Mk()
+cty.GetMethod("NewChoice1Of2").Invoke(null,[| 8 :> obj |])
+
+type A<'t>() = class end
+type B<'t>() = inherit A<'t>()
+
+typeof<B<obj>>.GetGenericTypeDefinition().MakeGenericType( [|typeof<obj>|] ).IsSubclassOf(typeof<A<obj>>.GetGenericTypeDefinition().MakeGenericType([| typeof<obj> |]))
+
+open Generics.Selector
+open Generics.Rep
+
+let ky = typeof<K2<int,Meta>>
+let ky2 = typeof<K<obj>>
+
+ky2 ?= ky
