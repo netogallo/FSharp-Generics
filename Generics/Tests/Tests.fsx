@@ -30,11 +30,11 @@ type Everywhere<'t,'v>(f : 'v -> 'v) =
     member x.Everywhere(c : K<'v>) =
         printf "A 't %A\n" c.Elem
         c.K(f c.Elem)
-
+(*
     member x.Everywhere(c : K<obj>) =
       printf "%A" c
       c.K(c.Elem)
-
+*)
     member x.Everywhere(c : Id<'t>) =
         let g = Generic<'t>()
         Id<'t>(x.Everywhere(g.To c.Elem) |> g.From)
@@ -53,7 +53,7 @@ everywhere (fun e -> match e with
             | Full (n,v) -> Full ("juan",v - 1)
             | _ -> e) l1
 
-everywhere (fun i -> i + i) (Full("",4))
+everywhere (fun i -> i + i) l1
 everywhere (fun (s : string) -> s.ToUpper()) l1
 
 everywhere (fun i -> i + i) l1
