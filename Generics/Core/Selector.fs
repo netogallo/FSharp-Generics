@@ -111,12 +111,18 @@ module Selector =
                     m1
                 else
                     m2
-
             let methods = methodFinder m c
-            if methods.Length > 0 then
-                methods |> Array.fold darwin (methods.[0])
-            else
-                failwith <| sprintf "Method with name '%s' could not be found for type %A." m c
+
+            match c with
+            // If there is more than one match, it means that there is a user defined
+            // override that matches the arguments
+            | _ when methods.Length > 1 -> methods |> Array.fold darwin (methods.[0])
+            // If there is less than two matches, it means the user has not provided an override
+            // Check if the representation is a K2 because in such case the method that needs to be
+            // selected is the one corresponding to the contents of K2
+            | Rep.K2TY c' -> x.SelectMethod(m,c',args)
+            | _ when methods.Length = 1 -> methods.[0]
+            | _ -> failwith <| sprintf "Method with name '%s' could not be found for type %A." m c                 
 
         member x.SelectInvoke(m : string, c : Rep.Meta, args : obj []) =
             let m = x.SelectMethod(m, c, args)

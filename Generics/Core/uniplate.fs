@@ -205,6 +205,19 @@ module Rep =
       override o.Cast() = o :> _
     end
    
+  let private k2ty = typeof<K2<obj,Meta>>.GetGenericTypeDefinition()
+
+  let (|K2TY|_|) (ty : Meta) =
+    try
+      let ty' = ty.GetType().GetGenericTypeDefinition()
+      if ty' = k2ty then
+        ty.GetType().GetProperty("Rep").GetValue(ty) :?> Meta |> Some
+      else
+        None
+    with
+      | :? System.InvalidOperationException -> None
+      | :? System.ArgumentException -> None
+
   let (|SUM|_|) (o : Meta) = 
     try
       let t' = typeof<SumConstr<Meta,Meta>>
