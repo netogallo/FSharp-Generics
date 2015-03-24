@@ -5,8 +5,7 @@ open System.Reflection
 
 module Selector =
 
-    let Lg = typeof<Rep.L<Rep.Meta,Rep.Meta>>.GetGenericTypeDefinition()
-    let Rg = typeof<Rep.R<Rep.Meta,Rep.Meta>>.GetGenericTypeDefinition()
+    let Sg = typeof<Rep.SumConstr<Rep.Meta,Rep.Meta>>.GetGenericTypeDefinition()
     let Prodg = typeof<Rep.Prod<Rep.Meta,Rep.Meta>>.GetGenericTypeDefinition()
     let Idg = typeof<Rep.Id<obj>>.GetGenericTypeDefinition()
     let Kg = typeof<Rep.K<obj>>.GetGenericTypeDefinition()
@@ -32,14 +31,11 @@ module Selector =
             function 
                 | (m1 : Type, m2 : Type) when m1.IsSubclassOf m2 -> true
                 | (m1,m2) when m1.IsGenericType && m2.IsGenericType && m1.GetGenericTypeDefinition() = m2.GetGenericTypeDefinition() ->
-                    let gt = m1.GetGenericTypeDefinition()
                     let args1,args2 = m1.GetGenericArguments(), m2.GetGenericArguments()
-                    if gt = Lg then
-                        op(args1.[0],args2.[0])
-                    elif gt = Rg then
-                        op(args1.[1],args2.[1])
+                    if args1 = args2 then
+                      true
                     else
-                        Array.zip args1 args2 |> Array.forall op
+                      Array.zip args1 args2 |> Array.forall op
                 | (m1,m2) -> m1 = m2
         op (m1',m2')
                     
@@ -57,13 +53,21 @@ module Selector =
                         sprintf "Failed to convert %A to type %s" x t.FullName |> failwith
                 let typeArgs = genericsOrFail t
                 match x with
-                | Rep.L m -> 
-                    let e = op(m,typeArgs.[0])
-                    x.GenericInit typeArgs [|(e :> _, typeArgs.[0])|]
+                | Rep.L m ->
+                  let e = op(m,typeArgs.[0])
+                  let cTy = typeof<Choice<obj,obj>>.GetGenericTypeDefinition().MakeGenericType(typeArgs)
+                  let choice x = cTy.GetMethod("NewChoice1Of2").Invoke(null,[| x |])
+                  x.GenericInit typeArgs [|choice e, cTy |]
                 | Rep.R m ->
-                    x.GenericInit typeArgs [|(op(m,typeArgs.[1]) :> _,typeArgs.[1])|]
+                  let e = op(m,typeArgs.[1])
+                  let cTy = typeof<Choice<obj,obj>>.GetGenericTypeDefinition().MakeGenericType(typeArgs)
+                  let choice x = cTy.GetMethod("NewChoice2Of2").Invoke(null,[| x |])
+                  x.GenericInit typeArgs [|choice e,cTy |]
                 | Rep.PROD (a,b) ->
-                    x.GenericInit typeArgs [| (op(a,typeArgs.[0]),op(b,typeArgs.[1])) :> obj, mkTup (typeArgs.[0],typeArgs.[1]) |]
+                    x.GenericInit typeArgs [|
+                      op(a,typeArgs.[0]) :> obj, typeArgs.[0]
+                      op(b,typeArgs.[1]) :> obj, typeArgs.[1]
+                    |]
                 | Rep.ID i ->
                     x.GenericInit typeArgs [| i,typeArgs.[0] |]
                 | Rep.K v ->

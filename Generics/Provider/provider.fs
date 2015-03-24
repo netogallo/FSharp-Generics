@@ -23,9 +23,12 @@ module Provider =
 
     let srcFile = @"/tmp/source.c"
 
-    let libAsm = @"/home/neto/Documents/FSharp-Generics/Generics/Core/bin/Debug/Generics.dll" // @"C:\Users\N\Documents\Visual Studio 2013\FSharp-Generics\Generics\bin\Debug\Generics.dll"
+    //let libAsm = @"/home/neto/Documents/FSharp-Generics/Generics/Core/bin/Debug/Generics.dll"
+    let libAsm = @"X:\Documents\FSharp-Generics\Generics\bin\Debug\Generics.dll"
+    
+    //let fSharpCore = @"/home/neto/Documents/FSharp-Generics/Generics/bin/Debug/FSharp.Core.dll"
+    let fSharpCore = @"C:\Program Files\Reference Assemblies\Microsoft\FSharp\.NETFramework\v4.0\4.3.1.0\FSharp.Core.dll"
 
-    let fSharpCore = @"/home/neto/Documents/FSharp-Generics/Generics/bin/Debug/FSharp.Core.dll"
 
     type GenType(t : Type, name : string) =
         inherit Type()
@@ -115,9 +118,7 @@ module Provider =
 
     let dual n = sprintf "%s<%s,%s>" n mName mName |> pak
 
-    let rName = dual "R"
-
-    let lName = dual "L"
+    let sName = dual "SumConstr"
 
     let pName = dual "Prod"
 
@@ -127,7 +128,7 @@ module Provider =
 
     let iName = pak "Id<System.Object>"
 
-    let repConstrs = [rName;lName;pName;kName;uName;iName]
+    let repConstrs = [sName;pName;kName;uName;iName]
 
     let mkMethod mods name constr (args : Type list) (ret : Type) invocation =
         let txtArgs = args |> Seq.mapi (fun i a -> sprintf "%s x%i" (``c#Name`` a) i)
@@ -182,7 +183,7 @@ module Provider =
         let args = System.CodeDom.Compiler.CompilerParameters()
         args.OutputAssembly <- dll
         args.CompilerOptions <- "/t:library"
-        args.CompilerOptions <- sprintf "/r:\"%s,%s\"" libAsm fSharpCore
+        args.CompilerOptions <- sprintf "/r:\"%s\" /r:\"%s\"" libAsm fSharpCore
         let compiled = csc.CompileAssemblyFromSource(args, [| code |])
         let errs = seq{
             for e in compiled.Errors do

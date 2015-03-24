@@ -4,6 +4,9 @@
 open Generics.Rep
 open Microsoft.FSharp.Core.CompilerServices
 
+
+Prod<Meta,Meta>(U(),U()) |> ignore
+
 type EverywhereBase = Generics.Provided.Generic<"Everywhere",0>
 
 type Everywhere<'t,'v>(f : 'v -> 'v) =
@@ -13,13 +16,11 @@ type Everywhere<'t,'v>(f : 'v -> 'v) =
     member x.Everywhere(c : Meta) =
       base.Everywhere(c) :?> Meta
 
-    member x.Everywhere(c : L<Meta,Meta>) =
+    member x.Everywhere(c : SumConstr<Meta,Meta>) =
         printf "%A\n" c
-        L<Meta,Meta>(x.Everywhere(c.Elem))
-
-    member x.Everywhere(c : R<Meta,Meta>) =
-        printf "%A\n" c
-        R<Meta,Meta>(x.Everywhere(c.Elem))
+        match c with
+        | L m -> SumConstr<Meta,Meta>(x.Everywhere(m) |> Choice1Of2)
+        | R m -> SumConstr<Meta,Meta>(x.Everywhere(m) |> Choice2Of2)
 
     member x.Everywhere(c : Prod<Meta,Meta>) =
         printf "%A\n" c

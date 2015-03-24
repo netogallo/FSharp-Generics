@@ -124,36 +124,22 @@ module Rep =
 
       // :?> Constr<'t>
 
-  [<AbstractClass>]
-  type SumConstr<'a,'b when 'a :> Meta and 'b :> Meta>() =
-    class
-      inherit Constr<Choice<'a,'b>>()
-      abstract Sum : Choice<'a,'b> with get
-      // abstract Elem : Choice<'a,'b> with get
-      // interface SumConstr
-    end
-
-  type L<'a,'b when 'a :> Meta and 'b :> Meta>(elem : 'a) =
-    class
-      inherit SumConstr<'a,'b>()
-      member o.Elem with get() = elem
-      override o.Sum with get() = elem |> Choice1Of2
-      override o.Childs with get() = seq [elem]
-      override o.Values with get() = elem.Values
-      override o.Cast() = L<Meta,Meta>(elem) :> _
-    end
-
-  // type L2<'c,'t>(elem : 't) = class end
-
-  type R<'a,'b when 'a :> Meta and 'b :> Meta>(elem : 'b) =
-    class
-      inherit SumConstr<'a,'b>()
-      member o.Elem with get() = elem
-      override o.Sum with get() = elem |> Choice2Of2
-      override o.Childs with get() = seq [elem]
-      override o.Values with get() = elem.Values
-      override o.Cast() = R<Meta,Meta>(elem) :> _
-    end
+  type SumConstr<'a,'b when 'a :> Meta and 'b :> Meta>(elem : Choice<'a,'b>) =
+   class
+     inherit Constr<Choice<'a,'b>>()
+     let elem' = match elem with
+                 | Choice1Of2 e -> e :> Meta
+                 | Choice2Of2 e -> e :> Meta
+     
+     member o.Elem with get() = elem
+     override o.Childs with get() = seq [elem']
+     override o.Values with get() = elem'.Values
+     override o.Cast() =
+     let e = match elem with
+             | Choice1Of2 e -> e :> Meta |> Choice1Of2
+             | Choice2Of2 e -> e :> Meta |> Choice2Of2
+     SumConstr<Meta,Meta>(e) :> _
+  end
 
 
   type Prod<'a,'b when 'a :> Meta and 'b :> Meta>(e1:'a, e2:'b) =
@@ -196,26 +182,37 @@ module Rep =
       override o.Cast() = o :> _
     end
    
-  let pmatch t' (o : Meta) =
+  let (|SUMTY|_|) (x : Type) =
+    if x.IsGenericType then
+      if x.GetGenericTypeDefinition() = typeof<SumConstr<Meta,Meta>>.GetGenericTypeDefinition() then
+        let args = x.GetGenericArguments()
+        Some (args.[0],args.[1])
+      else
+        None
+    else
+      None
+
+  let (|SUM|_|) (o : Meta) =
     try
+      let t' = typeof<SumConstr<Meta,Meta>>
       let t = o.GetType().GetGenericTypeDefinition().MakeGenericType([|typeof<Meta>;typeof<Meta>|])
-      // let t' = typeof<L<U,U>>
       if t.IsSubclassOf t' || t = t' then
-        o.GetType().GetProperty("Elem").GetValue(o) :?> Meta |> Some
+        let r' = o.Cast()
+        r'.GetType().GetProperty("Elem").GetValue(r') :?> Choice<Meta,Meta> |> Some
       else None
     with
       | :? System.InvalidOperationException -> None
       | :? System.ArgumentException -> None
-
-  let (|L|_|) (o : Meta) = pmatch typeof<L<Meta,Meta>> o
-  let (|R|_|) (o : Meta) = pmatch typeof<R<Meta,Meta>> o
-
-  let (|SUM|_|) (o : Meta) =
-    match o with
-      | L x -> Choice1Of2 x |> Some
-      | R x -> Choice2Of2 x |> Some
+    
+  let (|L|_|) (o : Meta) =
+      match o with
+      | SUM (Choice1Of2 v) -> Some v
       | _ -> None
-
+  let (|R|_|) (o : Meta) =
+      match o with
+      | SUM (Choice2Of2 v) -> Some v
+      | _ -> None
+      
   let (|PROD|_|) (o : Meta) =
     try
       let t = o.GetType().GetGenericTypeDefinition().MakeGenericType([|typeof<Meta>;typeof<Meta>|])
@@ -323,6 +320,7 @@ module Rep =
 
       // Function to pack the constituents of a type constructor into a
       // sequential application of the Prod constructor
+      // [t1,t2,t3] -> Prod<t1,Prod<t2,Prod<t3,U>>>
       let mkCase tys =
         let (tf,constrs) =
           Array.foldBack (fun ty (t,s) ->
@@ -336,6 +334,13 @@ module Rep =
         (tf, mk)
 
       let sTy = typeof<SumConstr<Meta,Meta>>.GetGenericTypeDefinition()
+
+      // Given a list of union cases (type constructors) it constructs a list where
+      // each of the union cases is given a new representation type based on the ammount of
+      // cases the type has and the number of argumetns of that case.
+      // [UC1 of t1*t2, UC2 of t3] -> [Sum<Prod<t1,Prod<t2,U>>,Prod<t3,U>>;Prod<t3,U>]
+      // Each of the elements in the list is a triple where:
+      // (Representation with the Sum constructors for that particular union case)*(Representation of the value contained by the union case)*(constructor that builds the value of that union case)
       let caseCata ((ty,tf,c)::xs) (uc : UnionCaseInfo,vals : GTree<'t> []) =
         let (tf',c') =
           vals
@@ -343,6 +348,7 @@ module Rep =
           |> mkCase
         let ty' = sTy.MakeGenericType [| tf';ty |]
         (ty',tf',c') :: (ty,tf,c) :: xs
+
       let ((c0,t0)::cases') = List.ofArray cases |> List.rev
 
       let constrsAndTypes =
@@ -352,30 +358,57 @@ module Rep =
         |> fun (tf,mk) -> List.fold caseCata [(tf,tf,mk)] cases'
         |> Array.ofList
 
-      let lty = typeof<L<Meta,Meta>>.GetGenericTypeDefinition()
-      let rty = typeof<R<Meta,Meta>>.GetGenericTypeDefinition()
+      let sty = typeof<SumConstr<Meta,Meta>>.GetGenericTypeDefinition()
 
       let mappings i (uc,gts) =
-        let (ty,tf,constr) = constrsAndTypes.[i]
-        if i = cases.Length - 1 then
-          (gts,uc,constr)
-        else
-          let mutable c = fun (vals : Meta []) -> U() :> Meta
-          for ix in 0 .. i do
-            let (_,tf0,_) = constrsAndTypes.[ix]
-            let (ty0,_,_)= constrsAndTypes.[ix + 1]
-            if ix = 0 then
-              let lty' = lty.MakeGenericType [| tf0;ty0 |]
-              c <- fun (vals : Meta []) ->
-                lty'.GetConstructor([|tf0|]).Invoke [| constr vals |] :?> Meta
-            else
-              let rty' = rty.MakeGenericType [| tf0;ty0 |]
-              c  <- c |> fun c' (vals : Meta[]) ->
-                rty'.GetConstructor([|ty0|]).Invoke [| c' vals |] :?> Meta
-          (gts,uc,c)
+        let choices tf0 ty0 =
+          let sty2 = sty.MakeGenericType [|tf0;ty0|] 
+          let argTy = typeof<Choice<obj,obj>>.GetGenericTypeDefinition().MakeGenericType [|tf0;ty0|]
+          let choice1Of2 o = argTy.GetMethod("NewChoice1Of2").Invoke(null, [| o |])
+          let choice2Of2 o = argTy.GetMethod("NewChoice2Of2").Invoke(null, [| o |])
+          (sty2,argTy,choice1Of2,choice2Of2)
 
-      let (ty,_,_) = constrsAndTypes.[0]
-      UC(ty,cases |> Array.mapi mappings)
+        let (tC,tR,constr) = constrsAndTypes.[i]
+        
+        // Case when ix corresponds to the last union case
+        // In such case, the representation type is that of
+        // the union case before the last case since the inital
+        // case of the fold dosen't include any sum constructors 
+        let mutable c = 
+          if i = constrsAndTypes.Length - 1 then
+            let (tC,tR',_) = constrsAndTypes.[i-1]
+            let (sty2,argTy,choice1Of2,choice2Of2) = choices tR' tR
+            let init = sty2.GetConstructor [| argTy |]
+            fun v -> init.Invoke [| choice2Of2 (constr v) |] :?> Meta
+          else
+            let (tR',_,_) = constrsAndTypes.[i+1]
+            let (sty2,argTy,choice1Of2,choice2Of2) = choices tR tR'
+            let init = sty2.GetConstructor [| argTy |]
+            fun v -> init.Invoke [| choice1Of2 (constr v) |] :?> Meta
+
+        // The type of the last two cases is identical. This is because they simply
+        // correspond to different branch of the same choice. So if the last case
+        // is being considered, one before the last is skipped
+        let iN = if i = constrsAndTypes.Length - 1 then i - 2 else i - 1
+
+        for ix in 0 .. iN do
+            let (_,tf0,_) = constrsAndTypes.[ix]
+            let (ty0,_,_) = constrsAndTypes.[ix + 1]
+            let (sty2,argTy,choice1Of2,choice2Of2) = choices tf0 ty0
+            let init = sty2.GetConstructor [| argTy |]
+            c <- c |> fun c2 v ->
+              let ix = ix
+              let i = i
+              let elem = c2 v
+              let choices = constrsAndTypes
+              let elem' = choice2Of2 elem
+              init.Invoke [| elem' |] :?> Meta
+        (gts,uc,c)
+                      
+      let (ty,tf,constr) = constrsAndTypes.[0]
+      match cases with
+      | [| (gts,uc) |] -> UC(ty,[|uc,gts,constr|])
+      | _ -> UC(ty,cases |> Array.mapi mappings)
 
     override this.Prim(i,ty) =
       let kty = typeof<K<obj>>.GetGenericTypeDefinition().MakeGenericType([|ty|])
