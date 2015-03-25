@@ -16,11 +16,11 @@ type Everywhere<'t,'v>(f : 'v -> 'v) =
     member x.Everywhere(c : Meta) =
       base.Everywhere(c) :?> Meta
 
-    member x.Everywhere(c : SumConstr<Meta,Meta>) =
+    member x.Everywhere<'t>(c : SumConstr<'t,Meta,Meta>) =
         printf "%A\n" c
         match c with
-        | L m -> SumConstr<Meta,Meta>(x.Everywhere(m) |> Choice1Of2)
-        | R m -> SumConstr<Meta,Meta>(x.Everywhere(m) |> Choice2Of2)
+        | L m -> SumConstr<'t,Meta,Meta>(x.Everywhere(m) |> Choice1Of2)
+        | R m -> SumConstr<'t,Meta,Meta>(x.Everywhere(m) |> Choice2Of2)
 
     member x.Everywhere(c : Prod<Meta,Meta>) =
         printf "%A\n" c
@@ -82,9 +82,20 @@ let a = CalcTypeAlg<List<Emp>>()
 
 foldType a l1
 
+type X() = class end
+
 type A() =
   class
+    member x.X<'t when 't :> X>(a :'t) = sprintf "A: %A" a
   end
+
+let [| x  |] =  typeof<A>.GetMethods() |> Array.filter (fun m -> m.Name = "X")
+
+let [| c |] = x.GetGenericArguments() |> Array.map (fun ti -> ti.GetGenericParameterConstraints())
+
+c
+
+x.MakeGenericMethod([| typeof<int> |]).Invoke(A(),[| 5 |])
 
 let (x : System.Reflection.PropertyInfo) = failwith ""
 

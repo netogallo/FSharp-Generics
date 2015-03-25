@@ -5,7 +5,7 @@ open System.Reflection
 
 module Selector =
 
-    let Sg = typeof<Rep.SumConstr<Rep.Meta,Rep.Meta>>.GetGenericTypeDefinition()
+    let Sg = typeof<Rep.SumConstr<obj,Rep.Meta,Rep.Meta>>.GetGenericTypeDefinition()
     let Prodg = typeof<Rep.Prod<Rep.Meta,Rep.Meta>>.GetGenericTypeDefinition()
     let Idg = typeof<Rep.Id<obj>>.GetGenericTypeDefinition()
     let Kg = typeof<Rep.K<obj>>.GetGenericTypeDefinition()
@@ -54,13 +54,13 @@ module Selector =
                 let typeArgs = genericsOrFail t
                 match x with
                 | Rep.L m ->
-                  let e = op(m,typeArgs.[0])
-                  let cTy = typeof<Choice<obj,obj>>.GetGenericTypeDefinition().MakeGenericType(typeArgs)
+                  let e = op(m,typeArgs.[1])
+                  let cTy = typeof<Choice<obj,obj>>.GetGenericTypeDefinition().MakeGenericType [| typeArgs.[1];typeArgs.[2] |]
                   let choice x = cTy.GetMethod("NewChoice1Of2").Invoke(null,[| x |])
                   x.GenericInit typeArgs [|choice e, cTy |]
                 | Rep.R m ->
-                  let e = op(m,typeArgs.[1])
-                  let cTy = typeof<Choice<obj,obj>>.GetGenericTypeDefinition().MakeGenericType(typeArgs)
+                  let e = op(m,typeArgs.[2])
+                  let cTy = typeof<Choice<obj,obj>>.GetGenericTypeDefinition().MakeGenericType [| typeArgs.[1];typeArgs.[2] |]
                   let choice x = cTy.GetMethod("NewChoice2Of2").Invoke(null,[| x |])
                   x.GenericInit typeArgs [|choice e,cTy |]
                 | Rep.PROD (a,b) ->

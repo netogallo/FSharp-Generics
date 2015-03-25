@@ -24,7 +24,7 @@ module Provider =
     let srcFile = @"/tmp/source.c"
 
     //let libAsm = @"/home/neto/Documents/FSharp-Generics/Generics/Core/bin/Debug/Generics.dll"
-    let libAsm = @"X:\Documents\FSharp-Generics\Generics\bin\Debug\Generics.dll"
+    let libAsm = @"X:\Documents\FSharp-Generics\Generics\Core\bin\Debug\Generics.dll"
     
     //let fSharpCore = @"/home/neto/Documents/FSharp-Generics/Generics/bin/Debug/FSharp.Core.dll"
     let fSharpCore = @"C:\Program Files\Reference Assemblies\Microsoft\FSharp\.NETFramework\v4.0\4.3.1.0\FSharp.Core.dll"
@@ -118,7 +118,7 @@ module Provider =
 
     let dual n = sprintf "%s<%s,%s>" n mName mName |> pak
 
-    let sName = dual "SumConstr"
+    let sName = sprintf "SumConstr<System.Object,%s,%s>" mName mName |> pak
 
     let pName = dual "Prod"
 
