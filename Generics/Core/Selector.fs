@@ -75,37 +75,71 @@ module Selector =
         
         op (x',y')
 
+    let basePrefix = "__BASE"
+    let mkBaseName n = sprintf "%s%s" n basePrefix
+
     type Selector() as this =    
 
-        member x.SelectMethod(m : string, c : Rep.Meta, args : obj []) =
+      member x.SelectMethod(m : string, c : Rep.Meta, args : obj []) =
 
-            let mt = c.GetType()
+        let mt = c.GetType()
 
-            let methodFinder name (constr : Rep.Meta) =
-                let gt = constr.GetType()
-                let select = function 
-                    | (m : MethodInfo) when m.GetParameters().Length = 0 -> false
-                    | m when m.GetParameters().[0].ParameterType.IsSubclassOf typeof<Rep.Meta> -> m.GetParameters().[0].ParameterType ?= mt
-                    | _ -> false
-                x.GetType().GetMethods(BindingFlags.FlattenHierarchy ||| BindingFlags.Instance ||| BindingFlags.Public) |> Array.filter (fun m -> select m)
-            
-            let darwin (m1 : MethodInfo) (m2 : MethodInfo) = 
-                if m1.GetParameters().[0].ParameterType >~ m2.GetParameters().[0].ParameterType then
-                    m1
+        let methodFinder name (constr : Rep.Meta) =
+          let gt = constr.GetType()
+          let select = function 
+            | (m : MethodInfo) when m.GetParameters().Length = 0 -> false
+            | m when m.GetParameters().[0].ParameterType.IsSubclassOf typeof<Rep.Meta> -> 
+              let pTy = 
+                let tmp = m.GetParameters().[0].ParameterType
+                if tmp.IsGenericType then
+                  tmp.GetGenericTypeDefinition()
                 else
-                    m2
+                  tmp
+              mt.GetGenericTypeDefinition() = pTy
+            | _ -> false
+          x.GetType().GetMethods(BindingFlags.FlattenHierarchy ||| BindingFlags.Instance ||| BindingFlags.Public) |> Array.filter (fun m -> select m)
 
-            let methods = methodFinder m c
-            if methods.Length > 0 then
-                methods |> Array.fold darwin (methods.[0])
-            else
-                failwith <| sprintf "Method with name '%s' could not be found for type %A." m c
+        let (gMethods,ordMethods) = methodFinder m c |> Array.partition (fun m -> m.IsGenericMethod)
+        
+        let baseMethod = x.GetType().GetMethod(mkBaseName m)
 
-        member x.SelectInvoke(m : string, c : Rep.Meta, args : obj []) =
-            let m = x.SelectMethod(m, c, args)
-            let arg = m.GetParameters().[0].ParameterType
-            let allArgs = Array.append [|c >! arg :> obj |] args
-            try
-                m.Invoke(x, allArgs)
-            with
-                | :? System.Reflection.TargetParameterCountException as e -> sprintf "Could not invoke %A with %A" m args |> failwith
+        let methodMatcher (m : MethodInfo) = m.GetParameters().[0].ParameterType = mt
+
+        let initGMethod = 
+          match mt with
+          | Rep.GTYPE valueType ->
+            function (m : MethodInfo) ->
+              if m.GetGenericArguments().Length = 1 then
+                m.MakeGenericMethod [| valueType |]
+              else
+                m
+          | _ -> id
+
+        match ordMethods |> Array.tryFind methodMatcher with
+        | Some m -> m
+        | None -> match gMethods |> Array.map initGMethod |> Array.tryFind methodMatcher with
+                  | Some m -> m
+                  | None -> baseMethod
+
+        (*
+          let darwin (m1 : MethodInfo) (m2 : MethodInfo) = 
+              if m1.GetParameters().[0].ParameterType >~ m2.GetParameters().[0].ParameterType then
+                  m1
+              else
+                  m2
+
+          let methods = methodFinder m c
+          if methods.Length > 0 then
+              methods |> Array.fold darwin (methods.[0])
+          else
+              failwith <| sprintf "Method with name '%s' could not be found for type %A." m c
+          *)
+
+      member x.SelectInvoke(m : string, c : Rep.Meta, args : obj []) =
+          let m = x.SelectMethod(m, c, args)
+          let arg = m.GetParameters().[0].ParameterType
+          let allArgs = Array.append [|c >! arg :> obj |] args
+          try
+              m.Invoke(x, allArgs)
+          with
+              | :? System.Reflection.TargetParameterCountException as e -> sprintf "Could not invoke %A with %A" m args |> failwith

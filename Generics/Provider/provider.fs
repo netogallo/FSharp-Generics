@@ -83,7 +83,73 @@ module Provider =
         override this.GetCustomAttributes(a) = this.Invoker "GetCustomAttributes" [|typeof<Boolean>|] [|a|]
         override this.GetCustomAttributes(a,b) = this.Invoker "GetCustomAttributes" [|typeof<Type>;typeof<Boolean>|] [|a;b|]
         override this.IsDefined(a,b) = this.Invoker "IsDefined" [|typeof<Type>;typeof<Boolean>|] [|a;b|]
+    
+    let ``c#Name`` (t : Type) = t.FullName.Replace("+",".")
       
+    type GenericClassBuilder = {
+      methodArgs : Type []
+      methodName : string
+      retType : Type
+      ``namespace`` : string
+      ``class`` : string
+    } with
+      member x.MethodArgs = Array.map ``c#Name`` x.methodArgs
+      member x.RetType = ``c#Name`` x.retType
+      member x.ArgsValuesName with get () = x.MethodArgs |> Array.mapi (fun i _ -> sprintf "arg_%i" i)
+      member x.Args with get () = 
+        if x.methodArgs.Length = 0 then
+          ""
+        else
+          Array.zip x.MethodArgs x.ArgsValuesName |> Array.fold (fun s (v,ty) -> sprintf "%s,%s %s" s ty v) ","
+      member x.ArgsValueFlat = Array.fold (fun s v -> sprintf "%s,%s" s v) "" x.ArgsValuesName
+      member x.ArgsValues = if x.methodArgs.Length = 0 then "" else "," + x.ArgsValueFlat
+      member x.ArgTypes =
+        if x.MethodArgs.Length = 0 then
+          ""
+        else
+          x.MethodArgs |> Array.fold (sprintf "%s,%s") ","
+      member x.Elements = [
+        "{{retType}}", x.RetType
+        "{{method}}", x.methodName
+        "{{methodArgs}}",x.Args
+        "{{methodArgsValues}}",x.ArgsValues
+        "{{className}}",x.``class``
+        "{{namespace}}",x.``namespace`` 
+        "{{typeArgs}}",x.ArgTypes
+        "{{methodArgsValuesFlat}}",x.ArgsValueFlat
+        "{{basePrefix}}",Generics.Selector.basePrefix
+        ]
+      member x.MakeClass = 
+        let v0 = """
+          namespace {{namespace}} {
+          using System.Reflection;
+          using System;
+          using Generics;
+
+
+              public class {{className}} : Selector.Selector{
+              
+              private class T{}
+              
+              private Func<Rep.Meta {{typeArgs}}, {{retType}}> catchAll;
+              public {{className}}(Func<Rep.Meta {{typeArgs}}, {{retType}} > f){this.catchAll = f;}
+              public {{retType}} {{method}}{{basePrefix}} (Rep.Meta m {{methodArgs}}) {return this.catchAll(m {{methodArgsValues}});}
+
+              
+              public {{retType}} {{method}} (Rep.Meta m {{methodArgs}}){return this.SelectInvoke( "{{method}}" ,m,new Object[]{ {{methodArgsValuesFlat}} });}
+              /*
+              public {{retType}} {{method}} <T> (Rep.K<T> k {{methodArgs}} ){ return this.catchAll(k {{methodArgsValues}} );}
+              public {{retType}} {{method}} <T> (Rep.SumConstr<T,Rep.Meta,Rep.Meta> s {{methodArgs}}){ return this.catchAll( s {{methodArgsValues}} );}
+              public {{retType}} {{method}} <T> (Rep.Id<T> i {{methodArgs}} ){ return this.catchAll(i {{methodArgsValues}} );}
+              public {{retType}} {{method}} (Rep.U u {{methodArgs}} ){ return this.catchAll(u {{methodArgsValues}} );}
+              public {{retType}} {{method}} (Rep.Prod<Rep.Meta,Rep.Meta> p {{methodArgs}}){ return this.catchAll(p {{methodArgsValues}});}
+              */
+              }
+          }
+          """
+        x.Elements |> List.fold (fun (s : string) (m,r) -> s.Replace(m,r)) v0
+
+
     type Extensible() = inherit obj()
 
     type Generic() = inherit obj()
@@ -92,23 +158,6 @@ module Provider =
 
     let catchAll = "catchAll"
 
-    let ``c#Name`` (t : Type) = t.FullName.Replace("+",".")
-
-    let makeClass name body = 
-        let decl = sprintf """
-        namespace %s {
-        using System.Reflection;
-        using System;
-        using Generics;
-
-            public class %s : Selector.Selector{
-            
-            %s
-
-            }
-        }
-        """ 
-        decl ns name body
 
     let private AssemblyStore = Collections.Generic.Dictionary<Assembly,byte[]>()
     
@@ -164,19 +213,12 @@ module Provider =
 
 
     let makeCompiledClass className methodName args ret =
-        let constr = mkConstr className args ret
-        let def = mkCatchAllDef args ret
-        let baseMethods = repConstrs |> List.map (fun c -> mkDefMethod "public" methodName c args ret)
-                                     |> concatWith (System.Environment.NewLine)
-        let selector = mkDefGlob "public" methodName args ret
-        let body = 
-            sprintf """
-            %s
-            %s
-            %s
-            %s
-            """ def constr baseMethods selector
-        let code = makeClass className body
+        let code =  ({
+          methodArgs = args |> Array.ofList
+          methodName = methodName
+          retType = ret
+          ``namespace`` = ns
+          ``class`` = className}).MakeClass
         System.IO.File.WriteAllText(srcFile, code)
         let dll = System.IO.Path.GetTempFileName()
         let csc = new Microsoft.CSharp.CSharpCodeProvider()

@@ -89,11 +89,21 @@ type A() =
     member x.X<'t when 't :> X>(a :'t) = sprintf "A: %A" a
   end
 
+type B() =
+  class
+    inherit A()
+    member x.X<'t>(a : 't) = sprintf "B: %A" a
+  end
+
+B().X<X>(X())
+
 let [| x  |] =  typeof<A>.GetMethods() |> Array.filter (fun m -> m.Name = "X")
 
 let [| c |] = x.GetGenericArguments() |> Array.map (fun ti -> ti.GetGenericParameterConstraints())
 
-c
+x.GetParameters().[0].ParameterType.GetGenericTypeDefinition()
+
+x.IsGenericMethod
 
 x.MakeGenericMethod([| typeof<int> |]).Invoke(A(),[| 5 |])
 

@@ -192,6 +192,16 @@ module Rep =
     else
       None
 
+  let (|GTYPE|_|) (t : Type) =
+    if t.IsGenericType then
+      let t' = t.GetGenericTypeDefinition()
+      match t with
+      | _ when t' = typeof<SumConstr<obj,Meta,Meta>>.GetGenericTypeDefinition()
+               || t' = typeof<K<obj>>.GetGenericTypeDefinition() 
+               || t' = typeof<Id<obj>>.GetGenericTypeDefinition() -> t.GenericTypeArguments.[0] |> Some
+      | _ -> None
+    else None
+
   let (|SUM|_|) (o : Meta) =
     try
       let t' = typeof<SumConstr<obj,Meta,Meta>>
@@ -415,7 +425,11 @@ module Rep =
               init.Invoke [| elem' |] :?> Meta
         (gts,uc,c)
                       
-      let (ty,tf,constr) = constrsAndTypes.[0]
+      let (ty',_,constr) = constrsAndTypes.[0]
+      let ty = 
+        let [| _;tya;tyb |] = ty'.GetGenericArguments()
+        ty'.GetGenericTypeDefinition().MakeGenericType [| baseType.DeclaringType;tya;tyb |]
+
       match cases with
       | [| (gts,uc) |] -> UC(ty,[|uc,gts,constr|])
       | _ -> UC(ty,cases |> Array.mapi mappings)
