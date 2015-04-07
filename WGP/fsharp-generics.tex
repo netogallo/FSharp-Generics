@@ -85,9 +85,17 @@ keyword1, keyword2
 \section{Introduction}
 
 \section{The F\# Language}
-The F\# programming language is a functional language of the ML family. It focuses on being a productive language by levering on functional programming and at the same time easy to adopt by programmers of other .Net hosted languages. As a result, the lenguage has a much simpler type system than Haskell or Scala. Most of the development effort in the language has focused on features to work with data (like type-providers) and to be compatible with the .Net type system.
+The F\# programming language is a functional language of the ML family. It focuses on being a productive language by levering on functional programming and at the same time easy to adopt by programmers of other .Net hosted languages. As a result, the lenguage has a much simpler type system than Haskell or Scala. Most of the development effort in the language has focused on features to work with data (like type-providers) and to be compatible with the .Net type system. Unlike Scala, F\# performs no type errasure when compiled to the .Net platform.
 \\\\
-The F\# language does not support generics of higher kind. This means that generic types in F\# cannot be applied to other types.
+There are several mechanism to define new types in F\#: classes, records and algebraic data types. Classes correspond to the traditional object oriented paradigm and are allowed to inherit fields and functions from another type as long as the type is not sealed (which is a .Net attribute for types). Records and algebraic datatypes correspond to the functional approach of defining types. Records and ADTs are always sealed and can be pattern matched. All types in F\# can define member functions (methods) and can implement any number of interfaces. Types can also have generic type arguments but they are required to be of kind $*$ (star).
+\section{The .Net platform}
+The .Net platform is a common runtime environment to allow the execution of a family of languages. It implements a very rich type system which includes support for generics. Many type operations that happen in F\# (such as sub-typeing) are handled by the .Net platform. The sub-typeing relation will be denoted by $\tau_a :> \tau_b$ which means $\tau_a$ is a sub-type of $\tau_b$ and consequently a value of type $\tau_a$ can be automatically converted to a value of type $\tau_b$.
+\\\\
+Like most object oriented langagues, .Net sub-typeing mechanism that allows types to be automatically converted to types which are higher in the class hierarchy. A well known restriction of this mechanism is that sub-typeing rules cannot automatically be applied to generic type arguments. In other words $\tau_a :> \tau_b\ \not\Rightarrow\ T<\tau_a> \ :> \ T<\tau_b>$.
+\\\\
+The .Net platform internally uses an abstract class \verb+Type+ to represent any of the types that are available. This class allows operations such as casting or instantiating the generic type arguments of a type.
+
+The F\# language does not support generics of higher kind. This means that generic types in F\# cannot be applied to other types. This feature is used by other DGP \cite{Regular,MultiRec,GenericDeriving,RepLib} to enforce type safety and allow the compiler to select  
 
 \appendix
 \section{Appendix Title}
