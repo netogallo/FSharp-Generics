@@ -124,8 +124,24 @@ type GenericClass =
 \end{lstlisting}
 and this indicates that \verb+'a+ and \verb+'b+ must be a type representation. Later one will see that the constraints not need to appear in the signature of \verb+genericFunction+ because they are added to the \verb+Prod+ class itself (which is also shown later).
 \\\\
-The first sub-class of \verb+Meta+ is \verb+SumConstr+. This is used to represent the possible type constructors that an algebraic data type has. This type takes three type arguments: \verb+t+,\verb+a+ and \verb+b+. The first one indicates the type that this representation encodes (or \verb+unit+ when it is an intermediate representation). The \verb+'a+ argument corresponds to the type representation of values created by one of the type constructors. The \verb+b+ argument contains the representation of the remaining type constructors or serves the same role as \verb+'a+ to represent values created with the last type constructor. Both \verb+'a+ and \verb+'b+ have the constraint $\mathtt{'a},\mathtt{'b} :> \mathtt{Meta}$. For instance suppose one has a type \verb+type Elems<'a> = Cons of a*Elems<'a> | Val of 'a | Nil+ its representation would look like: \verb+type ElemsRep<'a> = SumConstr<Elem<'a>,_,SumConstr<_,_>>+.
-\\\\
+The first sub-class of \verb+Meta+ is \verb+SumConstr+. This is used to represent the possible type constructors that an algebraic data type has. This type takes three type arguments: \verb+t+,\verb+a+ and \verb+b+. The first one indicates the type that this representation encodes (or \verb+unit+ when it is an intermediate representation). The \verb+'a+ argument corresponds to the type representation of values created by one of the type constructors. The \verb+b+ argument contains the representation of the remaining type constructors or serves the same role as \verb+'a+ to represent values created with the last type constructor. Both \verb+'a+ and \verb+'b+ have the constraint $\mathtt{'a},\mathtt{'b} :> \mathtt{Meta}$. For instance suppose one has a type:
+\begin{lstlisting}[
+  mathescape,
+  columns=fullflexible,
+  basicstyle=\fontfamily{lmvtt}\selectfont,
+]
+type Elems<'a> = Cons of 'a*Elems<'a> 
+                 | Val of 'a 
+                 | Nil 
+\end{lstlisting}
+its representation would look like:
+\begin{lstlisting}[
+  mathescape,
+  columns=fullflexible,
+  basicstyle=\fontfamily{lmvtt}\selectfont,
+]
+type ElemsRep<'a> = SumConstr<Elem<'a>,_,SumConstr<_,_>>
+\end{lstlisting}
 The second sub-class of \verb+Meta+ is \verb+Prod+. This type is used to represent cases in which a type constructor accepts more than one argument. The \verb+Prod+ type accepts two type arguments: \verb+'a+ and \verb+'b+. The first argument contains the type representation of one of the constructor's parameters. The second argument contains the representation of the remaining constructor's arguments or the type \verb+U+ which is used to denote emptyness. Both \verb+'a+ and \verb+'b+ have the constraint $\mathtt{'a},\mathtt{'b} :> \mathtt{Meta}$. With this constructor it is possible to fill the blanks of \verb+ElemsRep+ as follows:
 \begin{lstlisting}[
   mathescape,
@@ -171,6 +187,71 @@ type ElemsRep = SumConstr<
 The last sub-class of \verb+Meta+ is \verb+U+. This type is used to represent an empty argument in a type constructor. That is the reason the \verb+Nil+ constructor is represented as \verb+U+ and ocurrences of \verb+Prod+ will always have \verb+U+ as the second argument of the innermost \verb+Prod+.
 \section{Generic Functions}
 The purpose of type representations is to provide an interface that the programmer can use to define generic functions. In other words is a language to define what the semantics of such functions are. The library will then be provided with a generic function definition and will apply it as appropiate to the values it is provided with.
+\\\\
+To show how generic definitions look like, the generic function \verb+gmap+ will be defined. This function accepts as an argument a function of type $\tau\to\tau$ and applies the function to every value of type $\tau$ in a ADT. In Regular, a generic function is defined as a typeclass. In this implementation, they are defined as an ordinary .Net class:
+\begin{lstlisting}[
+  mathescape,
+  columns=fullflexible,
+  basicstyle=\fontfamily{lmvtt}\selectfont,
+]
+type GMap<'t>(f : 't $\rightarrow$ 't) = class end
+\end{lstlisting}
+The class has a constructor that takes as argument the function that will be applied. The first step is dealing with the sum of type constructors. As explained in the previous section, they are represented by \verb+SumConstr+:
+\begin{lstlisting}[
+  mathescape,
+  columns=fullflexible,
+  basicstyle=\fontfamily{lmvtt}\selectfont,
+]
+member x.gmap<'x>(v : SumConstr<'t,Meta,Meta>) =
+  match v with
+  | L m $\rightarrow$ SumConstr<'x,Meta,Meta>(
+             x.gmap m |> Choice1Of2)
+  | R m $\rightarrow$ SumConstr<'x,Meta,Meta>(
+             x.gmap m |> Choice2Of2)
+\end{lstlisting}
+Here the active patterns \verb+L+ and \verb+R+ are used to distinguish the two possible cases. Nevertheless, \verb+gmap+ is simply invoked recursively and the result is packed inside the same constructor. The next step is to deal with products. This is handled with the \verb+Prod+ constructor:
+\begin{lstlisting}[
+  mathescape,
+  columns=fullflexible,
+  basicstyle=\fontfamily{lmvtt}\selectfont,
+]
+member x.gmap(v : Prod<Meta,Meta>) =
+  Prod<Meta,Meta>(
+    x.gmap(v.E1),
+    x.gmap(v.E2))
+\end{lstlisting}
+The type \verb+Prod+ contains the properties \verb+E1+ and \verb+E2+ that access each of the elements of the product. Once again, \verb+gmap+ is invoked recursively on those values. Next is the case for the \verb+K+ constructor which contains values. Here is where the function gets applied:
+\begin{lstlisting}[
+  mathescape,
+  columns=fullflexible,
+  basicstyle=\fontfamily{lmvtt}\selectfont,
+]
+member x.gmap(v : K<'t>) = K(f v.Elem)
+\end{lstlisting}
+The property \verb+Elem+ of the \verb+K+ constructor returns the value that is being represented by \verb+K+. Note that this member only works for fundamental values that have a type that matches the argument function. Later it will be explained how other instances of \verb+K+ work.
+\\\\
+The case for the \verb+Id+ constructor is a bit more involved because \verb+Id+ contains a property called \verb+Elem+ but the property contains a value, not a representation. In order to obtain the representation, the type \verb+Generic<'t>+ is provided. This type contains the members:
+\begin{lstlisting}[
+  mathescape,
+  columns=fullflexible,
+  basicstyle=\fontfamily{lmvtt}\selectfont,
+]
+member x.To : 't $\rightarrow$ Meta
+member x.From : Meta $\rightarrow$ 't
+\end{lstlisting}
+With that class it is now possible to extract the contents of \verb+Id+, call the \verb+gmap+ function and convert the result back to the original type. This results in:
+\begin{lstlisting}[
+  mathescape,
+  columns=fullflexible,
+  basicstyle=\fontfamily{lmvtt}\selectfont,
+]
+member x.gmap(v : Id<'t>) =
+  let g = Generic<'t>()
+  Id<'t>(x.Everywhere(
+    g.To c.Elem) |> g.From)
+\end{lstlisting}
+There are still two pices missing in this generic function. First of all, the recursive calls are invoking \verb+gmap+ with an argument of type \verb+Meta+ and there is no overload that matches that type. Secondly, not all cases are covered. Addressing both of theese problems requires some boilerplate code and validations that cannot be checked by the compiler. To make matters simple, a type provider is used.
+\section{The Generic Type Provider}
 The F\# language does not support generics of higher kind. This means that generic types in F\# cannot be applied to other types. This feature is used by other DGP \cite{Regular,MultiRec,GenericDeriving,RepLib} to enforce type safety and allow the compiler to select  
 
 \appendix
