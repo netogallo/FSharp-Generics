@@ -124,8 +124,53 @@ type GenericClass =
 \end{lstlisting}
 and this indicates that \verb+'a+ and \verb+'b+ must be a type representation. Later one will see that the constraints not need to appear in the signature of \verb+genericFunction+ because they are added to the \verb+Prod+ class itself (which is also shown later).
 \\\\
-The first sub-class of \verb+Meta+ is \verb+SumConstr+. This is used to represent the possible type constructors that an algebraic data type has. This type takes three type arguments: \verb+t+,\verb+a+ and \verb+b+. The first one indicates the type that this representation encodes (or \verb+unit+ when it is an intermediate representation). The \verb+a+ argument corresponds to the type representation of values created by one of the type constructors. The \verb+b+ argument contains the representation of the remaining type constructors or serves the same role as \verb+a+ to represent values created with the last type constructor. Both \verb+'a+ and \verb+'b+ have the constraint $\mathtt{'a},\mathtt{'b} :> \mathtt{Meta}$For instance suppose one has a type \verb+type Elems<'a> = Cons of a*Elems<'a> | Val of 'a | Nil+ its representation would look like: \verb+type ElemsRep<'a> = SumConstr<Elem<'a>,ConsRep,SumConstr<ValRep,NilRep>>+ where \verb+ConsRep+, \verb+ValRep+ and \verb+NilRep+ are the representations of each of the type constructors.
-
+The first sub-class of \verb+Meta+ is \verb+SumConstr+. This is used to represent the possible type constructors that an algebraic data type has. This type takes three type arguments: \verb+t+,\verb+a+ and \verb+b+. The first one indicates the type that this representation encodes (or \verb+unit+ when it is an intermediate representation). The \verb+'a+ argument corresponds to the type representation of values created by one of the type constructors. The \verb+b+ argument contains the representation of the remaining type constructors or serves the same role as \verb+'a+ to represent values created with the last type constructor. Both \verb+'a+ and \verb+'b+ have the constraint $\mathtt{'a},\mathtt{'b} :> \mathtt{Meta}$. For instance suppose one has a type \verb+type Elems<'a> = Cons of a*Elems<'a> | Val of 'a | Nil+ its representation would look like: \verb+type ElemsRep<'a> = SumConstr<Elem<'a>,_,SumConstr<_,_>>+.
+\\\\
+The second sub-class of \verb+Meta+ is \verb+Prod+. This type is used to represent cases in which a type constructor accepts more than one argument. The \verb+Prod+ type accepts two type arguments: \verb+'a+ and \verb+'b+. The first argument contains the type representation of one of the constructor's parameters. The second argument contains the representation of the remaining constructor's arguments or the type \verb+U+ which is used to denote emptyness. Both \verb+'a+ and \verb+'b+ have the constraint $\mathtt{'a},\mathtt{'b} :> \mathtt{Meta}$. With this constructor it is possible to fill the blanks of \verb+ElemsRep+ as follows:
+\begin{lstlisting}[
+  mathescape,
+  columns=fullflexible,
+  basicstyle=\fontfamily{lmvtt}\selectfont,
+]
+type ElemsRep<'a> = SumConstr<
+  Elem<'a>,
+  SumConstr<
+    Prod<_,Prod<_,U>>,
+    SumConstr<
+      Prod<_,U>,
+      U>>>
+\end{lstlisting}
+The third sub-class of \verb+Meta+ is \verb+K+. This type is used to represent a type that is not an ADT. Such types cannot be generically manipulated with DGP, nevertheless it is possible to write algorithms that operate on ocurrences of a particular type(s) inside a ADT. The \verb+K+ constructor takes a single type argument \verb+'a+ which corresponds to the type of its content. Since F\# cannot statically constrain a type to be or not to be an ADT, \verb+'a+ has no constraints. To continue with the example above, the type \verb+Elem<int>+ would be represented as:
+\begin{lstlisting}[
+  mathescape,
+  columns=fullflexible,
+  basicstyle=\fontfamily{lmvtt}\selectfont,
+]
+type ElemsRep = SumConstr<
+  Elem<int>,
+  SumConstr<
+    Prod<K<int>,Prod<_,U>>,
+    SumConstr<
+      Prod<K<int>,U>,
+      U>>>
+\end{lstlisting}
+The fourth sub-class of \verb+Meta+ is \verb+Id+. This type is used to represent recursion within a type. This is necessary otherwise a type representation would be infinite for recursive ADTs. This type takes a single type argument which is the which is the same type being represented. With this addition, \verb+Elem<int>+ is now represented as follows:
+\begin{lstlisting}[
+  mathescape,
+  columns=fullflexible,
+  basicstyle=\fontfamily{lmvtt}\selectfont,
+]
+type ElemsRep = SumConstr<
+  Elem<int>,
+  SumConstr<
+    Prod<K<int>,Prod<Id<Elem<int>>,U>>,
+    SumConstr<
+      Prod<K<int>,U>,
+      U>>>
+\end{lstlisting}
+The last sub-class of \verb+Meta+ is \verb+U+. This type is used to represent an empty argument in a type constructor. That is the reason the \verb+Nil+ constructor is represented as \verb+U+ and ocurrences of \verb+Prod+ will always have \verb+U+ as the second argument of the innermost \verb+Prod+.
+\section{Generic Functions}
+The purpose of type representations is to provide an interface that the programmer can use to define generic functions. In other words is a language to define what the semantics of such functions are. The library will then be provided with a generic function definition and will apply it as appropiate to the values it is provided with.
 The F\# language does not support generics of higher kind. This means that generic types in F\# cannot be applied to other types. This feature is used by other DGP \cite{Regular,MultiRec,GenericDeriving,RepLib} to enforce type safety and allow the compiler to select  
 
 \appendix
