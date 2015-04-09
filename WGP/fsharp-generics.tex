@@ -87,15 +87,15 @@ keyword1, keyword2
 \section{Background}
 \subsection{The F\# Language}
 The F\# programming language is a functional language of the ML family. It focuses on being a productive language by levering on functional programming and at the same time easy to adopt by programmers of other .Net hosted languages. As a result, the lenguage has a much simpler type system than Haskell or Scala. Most of the development effort in the language has focused on features to work with data (like type-providers) and to be compatible with the .Net type system. Unlike Scala, F\# performs no type errasure when compiled to the .Net platform.
-\\\\
+
 There are several mechanism to define new types in F\#: classes, records and algebraic data types. Classes correspond to the traditional object oriented paradigm and are allowed to inherit fields and functions from another type as long as the type is not sealed (which is a .Net attribute for types). Records and algebraic datatypes correspond to the functional approach of defining types. Records and ADTs are always sealed and can be pattern matched. All types in F\# can define member functions (methods) and can implement any number of interfaces. Types can also have generic type arguments but they are required to be of kind $*$ (star).
 \subsection{The .Net platform}
-The .Net platform is a common runtime environment to allow the execution of a family of languages. It implements a very rich type system which includes support for generics. Many type operations that happen in F\# (such as sub-typeing) are handled by the .Net platform. The sub-typeing relation will be denoted by $\tau_a :> \tau_b$ which means $\tau_a$ is a sub-type of $\tau_b$ and consequently a value of type $\tau_a$ can be automatically converted to a value of type $\tau_b$.
-\\\\
-Like most object oriented langagues, .Net sub-typeing mechanism that allows types to be automatically converted to types which are higher in the class hierarchy. The F\# language uses the keyword \verb+inherit+ to denote that a type inherits from another type. A well known restriction of this mechanism is that sub-typeing rules cannot automatically be applied to generic type arguments. In other words $\tau_a :> \tau_b\ \not\Rightarrow\ T<\tau_a> \ :> \ T<\tau_b>$.
-\\\\
+The .Net platform is a common runtime environment to allow the execution of a family of languages. It implements a very rich type system which includes support for generics. Many type operations that happen in F\# (such as sub-typing) are handled by the .Net platform. The sub-typing relation will be denoted by $\tau_a :> \tau_b$ which means $\tau_a$ is a sub-type of $\tau_b$ and consequently a value of type $\tau_a$ can be automatically converted to a value of type $\tau_b$.
+
+Like most object oriented langagues, .Net sub-typing mechanism that allows types to be automatically converted to types which are higher in the class hierarchy. The F\# language uses the keyword \verb+inherit+ to denote that a type inherits from another type. A well known restriction of this mechanism is that sub-typing rules cannot automatically be applied to generic type arguments. In other words $\tau_a :> \tau_b\ \not\Rightarrow\ T<\tau_a> \ :> \ T<\tau_b>$.
+
 The .Net platform internally uses an abstract class \verb+Type+ to represent any of the types that are available. This class implements operations such as casting or instantiating the generic type arguments of a type. At runtime, any value can be queried for it's type and the program under execution can use this information and even produce new types while running. This collection of mechanisms is know nas reflection.
-\\\\
+
 Since the \verb+Type+ class is not sealed. Languages can extend it with any information they want. This allows F\# to include metadata specific for functional programming. Using this metadata, it is possible to determine at runtime what are the type constructors of an ADT and even pattern match the type on those constructors. It is also possible to invoke the constructor with the appropiate values to produce new values. It should be noted that doing so is not type safe since the compiler cannot check that the operations being preformed are safe and type errors will lead to runtime exceptions. Nevertheless, this mechanism is actively used in libraries such as FsPickler \cite{FsPickler} which is a general purpose .Net serializer.
 
 \section{Type Representations in F\#}
@@ -127,7 +127,7 @@ type GenericClass =
     (x : Prod<'a,'b>) = ...
 \end{lstlisting}
 and this indicates that \verb+'a+ and \verb+'b+ must be a type representation. Later one will see that the constraints not need to appear in the signature of \verb+genericFunction+ because they are added to the \verb+Prod+ class itself (which is also shown later).
-\\\\
+
 The first sub-class of \verb+Meta+ is \verb+SumConstr+. This is used to represent the possible type constructors that an algebraic data type has. This type takes three type arguments: \verb+t+,\verb+a+ and \verb+b+. The first one indicates the type that this representation encodes (or \verb+unit+ when it is an intermediate representation). The \verb+'a+ argument corresponds to the type representation of values created by one of the type constructors. The \verb+b+ argument contains the representation of the remaining type constructors or serves the same role as \verb+'a+ to represent values created with the last type constructor. Both \verb+'a+ and \verb+'b+ have the constraint $\mathtt{'a},\mathtt{'b} :> \mathtt{Meta}$. For instance suppose one has a type:
 \begin{lstlisting}[
   mathescape,
@@ -193,7 +193,7 @@ type ElemsRep = SumConstr<
 The last sub-class of \verb+Meta+ is \verb+U+. This type is used to represent an empty argument in a type constructor. That is the reason the \verb+Nil+ constructor is represented as \verb+U+ and ocurrences of \verb+Prod+ will always have \verb+U+ as the second argument of the innermost \verb+Prod+.
 \section{Generic Functions}
 The purpose of type representations is to provide an interface that the programmer can use to define generic functions. In other words is a language to define what the semantics of such functions are. The library will then be provided with a generic function definition and will apply it as appropiate to the values it is provided with.
-\\\\
+
 To show how generic definitions look like, the generic function \verb+gmap+ will be defined. This function accepts as an argument a function of type $\tau\to\tau$ and applies the function to every value of type $\tau$ in a ADT. In Regular, a generic function is defined as a typeclass. In this implementation, they are defined as an ordinary .Net class:
 \begin{lstlisting}[
   mathescape,
@@ -235,7 +235,7 @@ The type \verb+Prod+ contains the properties \verb+E1+ and \verb+E2+ that access
 member x.gmap(v : K<'t>) = K(f v.Elem)
 \end{lstlisting}
 The property \verb+Elem+ of the \verb+K+ constructor returns the value that is being represented by \verb+K+. Note that this member only works for fundamental values that have a type that matches the argument function. Later it will be explained how other instances of \verb+K+ work.
-\\\\
+
 The case for the \verb+Id+ constructor is a bit more involved because \verb+Id+ contains a property called \verb+Elem+ but the property contains a value, not a representation. In order to obtain the representation, the type \verb+Generic<'t>+ is provided. This type contains the members:
 \begin{lstlisting}[
   mathescape,
