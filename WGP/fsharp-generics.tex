@@ -110,8 +110,9 @@ All type representations are a sub-class of the \verb+Meta+ abstract class. It's
   columns=fullflexible,
   basicstyle=\fontfamily{lmvtt}\selectfont,
 ]
-instance (GenericClass a,GenericClass b) => GenericClass (a :*: b) where
-  genericFunction x = ...
+instance (GenericClass a,GenericClass b) $\Rightarrow$
+  GenericClass (a :*: b) where
+    genericFunction x = ...
 \end{lstlisting}
 which in F\# would translate to a class:
 \begin{lstlisting}[
@@ -120,7 +121,10 @@ which in F\# would translate to a class:
   basicstyle=\fontfamily{lmvtt}\selectfont,
 ]
 type GenericClass =
-  member genericFunction<'a,'b when 'a :> Meta and 'b :> Meta> (x : Prod<'a,'b>) = ...
+  member genericFunction<
+    'a,'b when 'a :> Meta 
+          and 'b :> Meta> 
+    (x : Prod<'a,'b>) = ...
 \end{lstlisting}
 and this indicates that \verb+'a+ and \verb+'b+ must be a type representation. Later one will see that the constraints not need to appear in the signature of \verb+genericFunction+ because they are added to the \verb+Prod+ class itself (which is also shown later).
 \\\\
@@ -131,8 +135,8 @@ The first sub-class of \verb+Meta+ is \verb+SumConstr+. This is used to represen
   basicstyle=\fontfamily{lmvtt}\selectfont,
 ]
 type Elems<'a> = Cons of 'a*Elems<'a> 
-                 | Val of 'a 
-                 | Nil 
+                   | Val of 'a 
+                   | Nil 
 \end{lstlisting}
 its representation would look like:
 \begin{lstlisting}[
@@ -140,7 +144,9 @@ its representation would look like:
   columns=fullflexible,
   basicstyle=\fontfamily{lmvtt}\selectfont,
 ]
-type ElemsRep<'a> = SumConstr<Elem<'a>,_,SumConstr<_,_>>
+type ElemsRep<'a> = SumConstr<
+                     Elem<'a>,
+                     _,SumConstr<_,_,_>>
 \end{lstlisting}
 The second sub-class of \verb+Meta+ is \verb+Prod+. This type is used to represent cases in which a type constructor accepts more than one argument. The \verb+Prod+ type accepts two type arguments: \verb+'a+ and \verb+'b+. The first argument contains the type representation of one of the constructor's parameters. The second argument contains the representation of the remaining constructor's arguments or the type \verb+U+ which is used to denote emptyness. Both \verb+'a+ and \verb+'b+ have the constraint $\mathtt{'a},\mathtt{'b} :> \mathtt{Meta}$. With this constructor it is possible to fill the blanks of \verb+ElemsRep+ as follows:
 \begin{lstlisting}[
@@ -252,6 +258,14 @@ member x.gmap(v : Id<'t>) =
 \end{lstlisting}
 There are still two pices missing in this generic function. First of all, the recursive calls are invoking \verb+gmap+ with an argument of type \verb+Meta+ and there is no overload that matches that type. Secondly, not all cases are covered. Addressing both of theese problems requires some boilerplate code and validations that cannot be checked by the compiler. To make matters simple, a type provider is used.
 \section{The Generic Type Provider}
+In the previous section, the existence of a \verb+gmap+ function with type \verb+Meta+$\to$\verb+Meta+ was assumed. Since \verb+Meta+ is an abstract class, the actual role of the function is to select the \verb+gmap+ overload that corresponds to the argument provided. The typeclasses mechanism in Haskell selects the overload by type-level computations that ocurr during the type-checking process. However, F\# lacks such mechanism. To achieve this, reflection is used with the help of a type provider to provide some static safety checks. The generic type provider is used as follows:
+\begin{lstlisting}[
+  mathescape,
+  columns=fullflexible,
+  basicstyle=\fontfamily{lmvtt}\selectfont,
+]
+\end{lstlisting}
+
 The F\# language does not support generics of higher kind. This means that generic types in F\# cannot be applied to other types. This feature is used by other DGP \cite{Regular,MultiRec,GenericDeriving,RepLib} to enforce type safety and allow the compiler to select  
 
 \appendix
