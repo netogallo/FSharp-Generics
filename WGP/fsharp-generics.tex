@@ -85,16 +85,93 @@ keyword1, keyword2
 \section{Introduction}
 
 \section{Background}
+To introduce the F\# language and the .Net platform, the classic Haskell function \verb+LaunchTheMissiles+ will be used as example. This function is given the ammount of missiles to launch, traverses the fleet of vehicles and lanuches at most the specified ammount of missiles and returns the number of missiles launched.
 \subsection{The F\# Language}
 The F\# programming language is a functional language of the ML family. It focuses on being a productive language by levering on functional programming and at the same time easy to adopt by programmers of other .Net hosted languages. As a result, the lenguage has a much simpler type system than Haskell or Scala. Most of the development effort in the language has focused on features to work with data (like type-providers) and to be compatible with the .Net type system. Unlike Scala, F\# performs no type errasure when compiled to the .Net platform.
 
-There are several mechanism to define new types in F\#: classes, records and algebraic data types. Classes correspond to the traditional object oriented paradigm and are allowed to inherit fields and functions from another type as long as the type is not sealed (which is a .Net attribute for types). Records and algebraic datatypes correspond to the functional approach of defining types. Records and ADTs are always sealed and can be pattern matched. All types in F\# can define member functions (methods) and can implement any number of interfaces. Types can also have generic type arguments but they are required to be of kind $*$ (star).
+To begin with the example, the types required for the algorithm will be defined:
+\begin{lstlisting}[
+  mathescape,
+  columns=fullflexible,
+  basicstyle=\fontfamily{lmvtt}\selectfont,
+]
+[<AbstractClass>]
+type Missile() = class
+    member self.Launch() = 
+      printf ``Swoosh!''
+      for _ in 0 .. self.Fuel do
+        printf ``...''
+      self.Detonate()
+    abstract Fuel with get() : int
+    abstract Detonate : unit $\rightarrow$ unit
+  end
+
+type Driver = 
+  {name : string; age : int}
+
+type Cannon<'t when 't :> Missile> =
+  | Empty
+  | Loaded of 't*Cannon<'t>
+
+type Vehicle<'t when 't :> Missile> =
+  | Tank of Driver*Canon<'t>
+  | Artillery of Driver*Cannon<'t>*Cannon<'t>
+
+type Fleet<'t when 't :> Missile> =
+  | Empty
+  | Member of Vehicle*Fleet<'t>
+
+type Tomahawk(fuel : int) = class
+    inherit Missile()
+    override self.Detonate() = printf ``Boooooooooom!''
+    override self.Fuel with get() = fuel
+  end
+\end{lstlisting}
+
+Several different type declarations are used in this example. \verb+Driver+ is a record type. \verb+Vehicle+, \verb+Cannon+ and \verb+Fleet+ are algebraic data types (ADTs) similar to those in other functional languages. \verb+Missile+ and \verb+Tomahawk+ are classes. Records and ADTs behave in many ways like types in functional languages since they can be pattern matched and can't inherit from other types nor types can inherit from them. In .Net slang, they are sealed. Classes behave as the types of an object oriented language. They can inherit from other types (as the case of \verb+Tomahawk+) and contain member functions declared with the \verb+member+ keyword. Member functions always take as an argument the object from which it is invoked which is represented by the \verb+self+ before the dot (note that \verb+self+ is an identifier not a keyword).
+
+Another F\# feature used are generic types and type constraints. Generic types are type arguments that are accepted by other types. In this case \verb+Fleet+, \verb+Cannon+ and \verb+Vehicle+ accept a single type as argument. This argument has the type constraint that it must be a sub-class of the \verb+Missile+ class. The type constraints are declared using the \verb+when+ keyword.
+
+Next, the implementation of the \verb+LaunchTheMissiles+ function is provided:
+\begin{lstlisting}[
+  mathescape,
+  columns=fullflexible,
+  basicstyle=\fontfamily{lmvtt}\selectfont,
+]
+type Cannon<'t> with
+  member self.LaunchTheMissiles(n) = 
+    match self.with
+    | Empty $\rightarrow$ 0
+    | Loaded m,c when n $>$ 0 $\rightarrow$ 
+      m.Launch(); 1 + c.LaunchTheMissiles(n-1)
+    | Loaded m,_ $\rightarrow$ 0
+
+type Vehicle<'t> with
+  member self.LaunchTheMissiles(n) =
+    match self.with
+    | Tank _,c $\rightarrow$ c.LaunchTheMissiles(n)
+    | Artillery _,c1,c2 $\rightarrow$
+      let l1 = c1.LaunchTheMissiles(n)
+      let l2 = c2.LaunchTheMissiles(n-l1)
+      l1 + l2
+
+type Fleet<'t> with
+  member self.LaunchTheMissiles(n) =
+    match self.with
+    | Empty $\rightarrow$ 0
+    | Member v,f $\rightarrow$ 
+      v.LaunchTheMissiles + f.LaunchTheMissiles
+\end{lstlisting}
+Since the function \verb+LaunchTheMissiles+ is supposed to work with many different types, it is defined as a member function of those types. Member functions can be defined for any type and they can be defined in any part of the code (not only at the type definition). For the case of \verb+Canon+ the function simpy calls the \verb+Launch+ method on every \verb+Missile+ and counts the number of calls it made. For the other types, the function is recursively called for the inner types.
+
+As final remarks it is important to point out some of the limitations of F\#. Firstly, the generic type arguments are constraint to be of kind \verb+*+ (star). This is an important limitation since many DGP libraries (like Regular) rely on that feature.
+
 \subsection{The .Net platform}
 The .Net platform is a common runtime environment to allow the execution of a family of languages. It implements a very rich type system which includes support for generics. Many type operations that happen in F\# (such as sub-typing) are handled by the .Net platform. The sub-typing relation will be denoted by $\tau_a :> \tau_b$ which means $\tau_a$ is a sub-type of $\tau_b$ and consequently a value of type $\tau_a$ can be automatically converted to a value of type $\tau_b$.
 
 Like most object oriented langagues, .Net sub-typing mechanism that allows types to be automatically converted to types which are higher in the class hierarchy. The F\# language uses the keyword \verb+inherit+ to denote that a type inherits from another type. A well known restriction of this mechanism is that sub-typing rules cannot automatically be applied to generic type arguments. In other words $\tau_a :> \tau_b\ \not\Rightarrow\ T<\tau_a> \ :> \ T<\tau_b>$.
 
-The .Net platform internally uses an abstract class \verb+Type+ to represent any of the types that are available. This class implements operations such as casting or instantiating the generic type arguments of a type. At runtime, any value can be queried for it's type and the program under execution can use this information and even produce new types while running. This collection of mechanisms is know nas reflection.
+The .Net platform internally uses an abstract class \verb+Type+ to represent any of the types that are available. This class implements operations such as casting or instantiating the generic type arguments of a type. At runtime, any value can be queried for it's type and the program under execution can use this information and even produce new types while running. This collection of mechanisms to manipulate .Net types at runtime is called reflection.
 
 Since the \verb+Type+ class is not sealed. Languages can extend it with any information they want. This allows F\# to include metadata specific for functional programming. Using this metadata, it is possible to determine at runtime what are the type constructors of an ADT and even pattern match the type on those constructors. It is also possible to invoke the constructor with the appropiate values to produce new values. It should be noted that doing so is not type safe since the compiler cannot check that the operations being preformed are safe and type errors will lead to runtime exceptions. Nevertheless, this mechanism is actively used in libraries such as FsPickler \cite{FsPickler} which is a general purpose .Net serializer.
 
