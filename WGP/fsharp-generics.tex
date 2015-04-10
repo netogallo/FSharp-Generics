@@ -160,7 +160,7 @@ type Fleet<'t> with
     match self.with
     | Empty $\rightarrow$ 0
     | Member v,f $\rightarrow$ 
-      v.LaunchTheMissiles + f.LaunchTheMissiles
+      v.LaunchTheMissiles() + f.LaunchTheMissiles()
 \end{lstlisting}
 Since the function \verb+LaunchTheMissiles+ is supposed to work with many different types, it is defined as a member function of those types. Member functions can be defined for any type and they can be defined in any part of the code (not only at the type definition). For the case of \verb+Canon+ the function simpy calls the \verb+Launch+ method on every \verb+Missile+ and counts the number of calls it made. For the other types, the function is recursively called for the inner types.
 
@@ -198,7 +198,7 @@ which in F\# would translate to a class:
   basicstyle=\fontfamily{lmvtt}\selectfont,
 ]
 type GenericClass =
-  member genericFunction<
+  member self.genericFunction<
     'a,'b when 'a :> Meta 
           and 'b :> Meta> 
     (x : Prod<'a,'b>) = ...
@@ -341,7 +341,10 @@ In the previous section, the existence of a \verb+gmap+ function with type \verb
   columns=fullflexible,
   basicstyle=\fontfamily{lmvtt}\selectfont,
 ]
+type GMapBase = Generic<''GMap'',1>
 \end{lstlisting}
+The type provider accepts two static arguments. The first one denotes the name of the generic function and the second one the number of arguments the generic function accepts. This produces a type with a method \verb+GMap+ of type $\mathtt{Meta} \to \mathtt{Meta}$. The method when invoked will use reflection to invoke the appropiate overload using the following selection criteria:
+
 
 The F\# language does not support generics of higher kind. This means that generic types in F\# cannot be applied to other types. This feature is used by other DGP \cite{Regular,MultiRec,GenericDeriving,RepLib} to enforce type safety and allow the compiler to select  
 
