@@ -254,7 +254,7 @@ type Company<'t> with
 
 In the later sections we will show how the \verb+GMap+ function may be
 derived automatically from the type definitions we saw
-previously. Befor doing so, however, we would like to give a brief
+previously. Before doing so, however, we would like to give a brief
 overview of some of the relevant features of F\# and the .NET
 platform.
 
@@ -270,11 +270,11 @@ Similarly, the subtyping relation in F\# is also based on the
 implementation in .NET.  We write $\tau_a :> \tau_b$ to denote that
 $\tau_a$ is a subtype of $\tau_b$. The subtyping relation can be
 checked statically or dynamically. The notation $\tau_a :> \tau_b$
-will be used for static checks wheras the notation $\tau_a :? \tau_b$
+will be used for static checks whereas the notation $\tau_a :? \tau_b$
 will be used for dynamic checks. \todo{Say something about when checks
   are dynamic vs static?}
 
-As in most object oriented langagues, the .NET subtyping mechanism
+As in most object oriented languages, the .NET subtyping mechanism
 allows values to be cast implicitly to any supertype.  The F\#
 language uses the keyword \verb+inherit+ to denote that a type
 inherits from another type. A well-known restriction of this mechanism
@@ -308,7 +308,7 @@ purpose .NET serializer.
 
 \paragraph{Type Providers}
 One language feature particular to F\# is \emph{type
-  providers}~\cite{typeProviders}. Typ providers in F\# define a
+  providers}~\cite{typeProviders}. Type providers in F\# define a
 mechanism that allows types to be defined by running code at compile
 time. They where designed to provide typed access to external data
 sources. For example, a type provider could parse the header of a
@@ -427,7 +427,7 @@ type ElemsRep<'a> = SumConstr<
 The third sub-class of \verb+Meta+ is \verb+K+. This type is used to
 represent a type that is not an ADT. Such types cannot be generically
 manipulated with DGP, nevertheless it is possible to write algorithms
-that operate on ocurrences of a particular type(s) inside a ADT. The
+that operate on occurrences of a particular type(s) inside a ADT. The
 \verb+K+ constructor takes a single type argument \verb+'a+ which
 corresponds to the type of its content. Since F\# cannot statically
 constrain a type to be or not to be an ADT, \verb+'a+ has no
@@ -467,7 +467,7 @@ type ElemsRep = SumConstr<
 \end{lstlisting}
 The last sub-class of \verb+Meta+ is \verb+U+. This type is used to
 represent an empty argument in a type constructor. That is the reason
-the \verb+Nil+ constructor is represented as \verb+U+ and ocurrences
+the \verb+Nil+ constructor is represented as \verb+U+ and occurrences
 of \verb+Prod+ will always have \verb+U+ as the second argument of the
 innermost \verb+Prod+.
 \section{Generic Functions}
@@ -475,7 +475,7 @@ The purpose of type representations is to provide an interface that
 the programmer can use to define generic functions. In other words is
 a language to define what the semantics of such functions are. The
 library will then be provided with a generic function definition and
-will apply it as appropiate to the values it is provided with.
+will apply it as appropriate to the values it is provided with.
 
 To show how generic definitions look like, the generic function
 \verb+gmap+ will be defined. This function accepts as an argument a
@@ -568,11 +568,11 @@ member x.gmap(v : Id<'t>
   Id<'t>(x.gmap(
     g.To c.Elem,f) |> g.From)
 \end{lstlisting}
-There are still two pices missing in this generic function. First of
+There are still two pieces missing in this generic function. First of
 all, the recursive calls are invoking \verb+gmap+ of type
 $\Meta*\mathtt{Employee}\rightarrow\mathtt{Employee}$ and there is no
 overload that matches that type. Secondly, not all cases are
-covered. Addressing both of theese problems requires some boilerplate
+covered. Addressing both of these problems requires some boilerplate
 code and validations that cannot be checked by the compiler. To
 automate some checks and generate the boilerplate code, a type
 provider will be used.
@@ -582,7 +582,7 @@ type \verb+Meta+$\to$\verb+Meta+ was assumed. Since \verb+Meta+ is an
 abstract class, the actual role of the function is to select the
 \verb+gmap+ overload that corresponds to the argument provided. The
 typeclasses mechanism in Haskell selects the overload by type-level
-computations that ocurr during the type-checking process. However, F\#
+computations that occur during the type-checking process. However, F\#
 lacks such mechanism. To achieve this, reflection is used with the
 help of a type provider to make the library easier to use and to
 provide some extra static checks. The generic type provider is used as
@@ -599,7 +599,7 @@ the name of the generic function and the second one the number of
 arguments (besides the type representation) that the generic function
 accepts. This produces a type with a method \verb+GMap+ of type
 $\mathtt{Meta} \to \mathtt{obj}$. This method will be in-charge of
-selecting the apropiate overload for the multiple representation
+selecting the appropriate overload for the multiple representation
 types.
 \begin{figure*}
 \[
@@ -634,14 +634,14 @@ generic method created with the generic provider) is described in
   concrete type. Such replacement is represented by the notation
   $[\tau/\mathtt{`t}]$ meaning replace \verb=`t= with $\tau$.
 \item \verb+x+ denotes the object on which the methods are being invoked.
-\item $\mathtt{v}\ :\ \tau$ denotes the typeing relation $\mathtt{v}$ is of type $\tau$.
+\item $\mathtt{v}\ :\ \tau$ denotes the typing relation $\mathtt{v}$ is of type $\tau$.
 \item $\mathtt{m}\in\mathtt{x}$ denotes a method \verb+m+ of object \verb+x+.
 \end{itemize}
 This selection mechanism selects a method based on the type of the
 representation provided to the generic function (\verb+gmap+ in the
 running example). The selection mechanism matches methods by type in
 order to select the correct overload. The whole process can be
-sumarized as follows:
+summarized as follows:
 \begin{itemize}
 \item There exists an overload whose type exactly matches the
   arguments given to the generic function. For example: \verb+gmap+ is
@@ -671,14 +671,14 @@ type GMap<'t>() = class
   inherit GMapBase(defaultAction)
 end
 \end{lstlisting}
-This definition (although correct) contains type information whoose
+This definition (although correct) contains type information whose
 origin has still not been explained. Recall that the second static
 parameter of the type provider is the number of extra arguments of the
 generic function. But how does the type provider know what is the type
 of the extra arguments? Unfortunately, currently there is no way to
 know so all extra arguments will be of type \verb+obj+. The next
 sections will discuss more in depth the problem and possible
-solutions. Neverhteless, due to this limitation it is more convenient
+solutions. Nevertheless, due to this limitation it is more convenient
 to include the function arguments of \verb+gmap+ at the class level
 for more type safety and define a \verb+gmap+ overload of type
 $\Meta\rightarrow\Meta$ and use it for recursive calls:
@@ -703,7 +703,7 @@ apply is provided when the class is instantiated and can now have an
 explicit type.
 \section{A ``better'' Generic Provider}
 In principle, what is wrong with the current generic provider is that
-it lacks type information of some types. Theese types are:
+it lacks type information of some types. These types are:
 \begin{enumerate}
 \item The type of each of the extra arguments accepted by the generic function.
 \item The return type of the generic function.
@@ -722,7 +722,7 @@ to the implementation of type providers because a \verb+Type+ object
 would need to be constructed to run the type provider's code. Option 2
 which is more feasible has been requested at \cite{genericTypeArgs}
 would also benefit type providers in large. For example, one could
-modify the SQLProvider \cite{SQLProvider} such that one can speficy
+modify the SQLProvider \cite{SQLProvider} such that one can specify
 how to map database types to .NET types. With such feature in place,
 the implementation would look similar to:
 \begin{lstlisting}[
