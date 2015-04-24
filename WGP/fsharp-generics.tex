@@ -264,6 +264,8 @@ a family of languages. It implements a very rich type
 system, including support for generics. Many operations on types
 in F\#, such as casting, are handled by the .NET platform. 
 
+\paragraph{Generics and subtyping}
+
 Similarly, the subtyping relation in F\# is also based on the
 implementation in .NET.  We write $\tau_a :> \tau_b$ to denote that
 $\tau_a$ is a subtype of $\tau_b$. The subtyping relation can be
@@ -280,6 +282,8 @@ is that this cast cannot automatically be applied to generic type
 arguments. Put differently, $\tau_a :> \tau_b\ \not\Rightarrow\
 T<\tau_a> \ :> \ T<\tau_b>$. \todo{Fix formatting of angle brackets
   here}
+
+\paragraph{Reflection}
 
 The .NET platform uses an abstract class, \verb+Type+, to represent
 all the types that are available. This class is used to define
@@ -302,15 +306,15 @@ runtime exception. Nevertheless, the reflection mechanism is actively
 used in libraries such as FsPickler \cite{FsPickler}, a general
 purpose .NET serializer.
 
-\subsection{Type Providers}
-A type provider\cite{typeProviders} in F\# is a mechanism that allows
-types to be defined by running code at compile time. They where
-designed for the purpose of provdiding typed access to external data
-sources. For example, a type provider could parse a configuration file
-and generate an type that contains as its fields the configuration
-options and as values for those fields the value of those options
-(with the value of the option of the corresponding type). A type
-provider is used as follows:
+\paragraph{Type Providers}
+One language feature particular to F\# is \emph{type
+  providers}~\cite{typeProviders}. Typ providers in F\# define a
+mechanism that allows types to be defined by running code at compile
+time. They where designed to provide typed access to external data
+sources. For example, a type provider could parse the header of a
+files containing comma separated values and generate an type
+describing the columns of the data stored in the file. A type provider
+is invoked as follows:
 \begin{lstlisting}[
   mathescape,
   columns=fullflexible,
@@ -318,8 +322,11 @@ provider is used as follows:
 ]
 type T = Provider<arg_1,..,arg_n>
 \end{lstlisting}
-This code triggers the invokation of the type provider \verb+Provider+
-which generates a type that is assigned the alias \verb+T+.
+This code calls the type provider \verb+Provider+ which generates a
+type that is assigned the type synonym \verb+T+.
+
+\todo{Is there a HelloWorld type provider that we can give here? I
+  expect this is the feature least familiar to the intended audience}
 
 \section{Type Representations in F\#}
 The essence of DGP is to provide an abstraction that is able to treat
