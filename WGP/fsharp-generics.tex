@@ -259,46 +259,48 @@ overview of some of the relevant features of F\# and the .NET
 platform.
 
 \subsection{The .NET platform}
-The .NET platform is a common runtime environment to allow the
-execution of a family of languages. It implements a very rich type
-system which includes support for generics. Many type operations that
-happen in F\# (such as casting) are handled by the .NET platform. The
-sub-typing relation will be denoted by $\tau_a :> \tau_b$ which means
-$\tau_a$ is a sub-type of $\tau_b$ and consequently a value of type
-$\tau_a$ can be automatically converted to a value of type
-$\tau_b$. The sub-typeing relation can be checked statically or
-dynamically. The notation $\tau_a :> \tau_b$ will be used for static
-checks wheras the notation $\tau_a :? \tau_b$ will be used for dynamic
-checks.
+The .NET platform is a common runtime environment, supporting
+a family of languages. It implements a very rich type
+system, including support for generics. Many operations on types
+in F\#, such as casting, are handled by the .NET platform. 
 
-Like most object oriented langagues, .NET sub-typing mechanism that
-allows types to be automatically converted to types which are higher
-in the class hierarchy. The F\# language uses the keyword
-\verb+inherit+ to denote that a type inherits from another type. A
-well known restriction of this mechanism is that sub-typing rules
-cannot automatically be applied to generic type arguments. In other
-words $\tau_a :> \tau_b\ \not\Rightarrow\ T<\tau_a> \ :> \ T<\tau_b>$.
+Similarly, the subtyping relation in F\# is also based on the
+implementation in .NET.  We write $\tau_a :> \tau_b$ to denote that
+$\tau_a$ is a subtype of $\tau_b$. The subtyping relation can be
+checked statically or dynamically. The notation $\tau_a :> \tau_b$
+will be used for static checks wheras the notation $\tau_a :? \tau_b$
+will be used for dynamic checks. \todo{Say something about when checks
+  are dynamic vs static?}
 
-The .NET platform internally uses an abstract class \verb+Type+ to
-represent any of the types that are available. This class implements
+As in most object oriented langagues, the .NET subtyping mechanism
+allows values to be cast implicitly to any supertype.  The F\#
+language uses the keyword \verb+inherit+ to denote that a type
+inherits from another type. A well-known restriction of this mechanism
+is that this cast cannot automatically be applied to generic type
+arguments. Put differently, $\tau_a :> \tau_b\ \not\Rightarrow\
+T<\tau_a> \ :> \ T<\tau_b>$. \todo{Fix formatting of angle brackets
+  here}
+
+The .NET platform uses an abstract class, \verb+Type+, to represent
+all the types that are available. This class is used to define
 operations such as casting or instantiating the generic type arguments
-of a type. At runtime, any value can be queried for it's type and the
-program under execution can use this information and even produce new
-types while running. This collection of mechanisms to manipulate .NET
-types at runtime is called reflection.
+of a type. Using the .NET reflection mechanism any value can be
+queried for its type dynamically. This information can even be used to
+compute new types dynamically.
 
-Since the \verb+Type+ class is not sealed. Languages can extend it
-with any information they want. This allows F\# to include metadata
-specific for functional programming. Using this metadata, it is
-possible to determine at runtime what are the type constructors of an
-ADT and even pattern match the type on those constructors. It is also
-possible to invoke the constructor with the appropiate values to
-produce new values. It should be noted that doing so is not type safe
-since the compiler cannot check that the operations being preformed
-are safe and type errors will lead to runtime
-exceptions. Nevertheless, this mechanism is actively used in libraries
-such as FsPickler \cite{FsPickler} which is a general purpose .NET
-serializer.
+The \verb+Type+ class is not sealed. Languages can extend it with any
+information they want. This allows F\# to include specific metadata
+about algebraic data types and other F\# specific types in the
+\verb+Type+ class.  We can use this metadata to query the constructors
+of algebraic data type, or even pattern match on the type of those
+constructors. It is also possible to invoke the constructor with the
+appropriate values to produce new values\todo{What do you mean here?
+  Create new values of an ADT using the reflection mechanism?}. Doing
+so is not type-safe in general, since the information gained through
+reflection is only available at run-time. Any errors will cause a
+runtime exception. Nevertheless, the reflection mechanism is actively
+used in libraries such as FsPickler \cite{FsPickler}, a general
+purpose .NET serializer.
 
 \subsection{Type Providers}
 A type provider\cite{typeProviders} in F\# is a mechanism that allows
@@ -754,10 +756,5 @@ P. Q. Smith, and X. Y. Jones. ...reference text...
 
 \end{document}
 
-%                       Revision History
-%                       -------- -------
-%  Date         Person  Ver.    Change
-%  ----         ------  ----    ------
-
-%  2013.06.29   TU      0.1--4  comments on permission/copyright notices
-
+% Subtyping rather than sub-typing
+% data type vs data types
