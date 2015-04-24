@@ -75,7 +75,18 @@
 \maketitle
 
 \begin{abstract}
-The introduction of Datatype Generic programming (DGP) *revolutionized* functional programming by allowing numerous algorithms to be defined by induction over the structure of types while still providing type safety. Due to the advanced type system requirements for DGP, only a handful of functional languages can define generic functions making it inaccessible to most programmers. Ordinary languages provide reflection and duck typing as a mechanism to specify generic algorithms. These mechanisms are usually error prone and verbose. By combining ideas from DGP and implementing them through reflection, a type-safe interface to DGP has been built for the F\# language. These generic algorithms can be accessed by any language running in the .Net platform.
+  The introduction of Datatype Generic programming (DGP)
+  *revolutionized* functional programming by allowing numerous
+  algorithms to be defined by induction over the structure of types
+  while still providing type safety. Due to the advanced type system
+  requirements for DGP, only a handful of functional languages can
+  define generic functions making it inaccessible to most
+  programmers. Ordinary languages provide reflection and duck typing
+  as a mechanism to specify generic algorithms. These mechanisms are
+  usually error prone and verbose. By combining ideas from DGP and
+  implementing them through reflection, a type-safe interface to DGP
+  has been built for the F\# language. These generic algorithms can be
+  accessed by any language running in the .Net platform.
 \end{abstract}
 
 \category{CR-number}{subcategory}{third-level}
@@ -91,9 +102,20 @@ keyword1, keyword2
 \section{Introduction}
 
 \section{Background}
-To introduce the F\# language and the .Net platform, a function called \verb+IncreaseSalary+ will be used as example. This function is provided with a company and increases the salary of every employee in the company.
+To introduce the F\# language and the .Net platform, a function called
+\verb+IncreaseSalary+ will be used as example. This function is
+provided with a company and increases the salary of every employee in
+the company.
 \subsection{The F\# Language}
-The F\# programming language is a functional language of the ML family. It focuses on being a productive language by levering on functional programming and at the same time easy to adopt by programmers of other .Net hosted languages. As a result, the lenguage has a much simpler type system than Haskell or Scala. Most of the development effort in the language has focused on features to work with data (like type-providers) and to be compatible with the .Net type system. Unlike Scala, F\# performs no type errasure when compiled to the .Net platform.
+The F\# programming language is a functional language of the ML
+family. It focuses on being a productive language by levering on
+functional programming and at the same time easy to adopt by
+programmers of other .Net hosted languages. As a result, the lenguage
+has a much simpler type system than Haskell or Scala. Most of the
+development effort in the language has focused on features to work
+with data (like type-providers) and to be compatible with the .Net
+type system. Unlike Scala, F\# performs no type errasure when compiled
+to the .Net platform.
 
 To begin with the example, the types required for the algorithm will be defined:
 \begin{lstlisting}[
@@ -131,11 +153,32 @@ type GuatemalanEmployee(salary' : int) = class
   end
 \end{lstlisting}
 
-Several different type declarations are used in this example. \verb+Metadata+ is a record type. \verb+Company+, \verb+Department+ and \verb+Staff+ are algebraic data types (ADTs) like those in other functional languages. \verb+Employee+ and \verb+GuatemalanEmployee+ are classes. Records and ADTs behave in many ways like types in functional languages since they can be pattern matched, are immutable and can't inherit from other types nor types can inherit from them. In .Net slang, they are sealed. Classes behave as the types of an object oriented language. They can inherit from other types (as the case of \verb+GuatemalanEmployee+) and contain member functions declared with the \verb+member+ keyword. Member functions always take as an argument the object from which it is invoked which is represented by the \verb+self+ before the dot (note that \verb+self+ is an identifier not a keyword).
+Several different type declarations are used in this
+example. \verb+Metadata+ is a record type. \verb+Company+,
+\verb+Department+ and \verb+Staff+ are algebraic data types (ADTs)
+like those in other functional languages. \verb+Employee+ and
+\verb+GuatemalanEmployee+ are classes. Records and ADTs behave in many
+ways like types in functional languages since they can be pattern
+matched, are immutable and can't inherit from other types nor types
+can inherit from them. In .Net slang, they are sealed. Classes behave
+as the types of an object oriented language. They can inherit from
+other types (as the case of \verb+GuatemalanEmployee+) and contain
+member functions declared with the \verb+member+ keyword. Member
+functions always take as an argument the object from which it is
+invoked which is represented by the \verb+self+ before the dot (note
+that \verb+self+ is an identifier not a keyword).
 
-Another F\# features used are generic types and type constraints. Generic types are type arguments that are accepted by other types. In this case \verb+Company+, \verb+Department+ and \verb+Staff+ accept a single type as argument. This argument has the type constraint that it must be a sub-class of the \verb+Missile+ class. The type constraints are declared using the \verb+when+ keyword.
+Another F\# features used are generic types and type
+constraints. Generic types are type arguments that are accepted by
+other types. In this case \verb+Company+, \verb+Department+ and
+\verb+Staff+ accept a single type as argument. This argument has the
+type constraint that it must be a sub-class of the \verb+Missile+
+class. The type constraints are declared using the \verb+when+
+keyword.
 
-Next step is to implement the \verb+IncreaseSalary+ function. To do so, an auxiliary function called \verb+GMap+ will be defined which applies another function to every \verb+Employee+ of the company:
+Next step is to implement the \verb+IncreaseSalary+ function. To do
+so, an auxiliary function called \verb+GMap+ will be defined which
+applies another function to every \verb+Employee+ of the company:
 \begin{lstlisting}[
   mathescape,
   columns=fullflexible,
@@ -170,21 +213,71 @@ type Company<'t> with
     self.GMap (fun e $\rightarrow$ e.Salary $\leftarrow$ e.Salary + v;e)
 \end{lstlisting}
 
-Since the function \verb+GMap+ is supposed to work with many different types, it is defined as a member function of those types. Member functions can be defined for any type and they can be defined in any part of the code (not only at the type definition). For the case of \verb+Staff+ the function simpy applies its argument to the \verb+Employee+ component of the value and packs the result back into the same constructor. For the other types, the function is recursively called for the inner types.
+Since the function \verb+GMap+ is supposed to work with many different
+types, it is defined as a member function of those types. Member
+functions can be defined for any type and they can be defined in any
+part of the code (not only at the type definition). For the case of
+\verb+Staff+ the function simpy applies its argument to the
+\verb+Employee+ component of the value and packs the result back into
+the same constructor. For the other types, the function is recursively
+called for the inner types.
 
-As final remarks it is important to point out some of the limitations of F\#. Firstly, the generic type arguments are constraint to be of kind \verb+*+ (star). This is an important limitation since many DGP libraries (like Regular) rely on that feature.
+As final remarks it is important to point out some of the limitations
+of F\#. Firstly, the generic type arguments are constraint to be of
+kind \verb+*+ (star). This is an important limitation since many DGP
+libraries (like Regular) rely on that feature.
 
 \subsection{The .Net platform}
-The .Net platform is a common runtime environment to allow the execution of a family of languages. It implements a very rich type system which includes support for generics. Many type operations that happen in F\# (such as casting) are handled by the .Net platform. The sub-typing relation will be denoted by $\tau_a :> \tau_b$ which means $\tau_a$ is a sub-type of $\tau_b$ and consequently a value of type $\tau_a$ can be automatically converted to a value of type $\tau_b$. The sub-typeing relation can be checked statically or dynamically. The notation $\tau_a :> \tau_b$ will be used for static checks wheras the notation $\tau_a :? \tau_b$ will be used for dynamic checks.
+The .Net platform is a common runtime environment to allow the
+execution of a family of languages. It implements a very rich type
+system which includes support for generics. Many type operations that
+happen in F\# (such as casting) are handled by the .Net platform. The
+sub-typing relation will be denoted by $\tau_a :> \tau_b$ which means
+$\tau_a$ is a sub-type of $\tau_b$ and consequently a value of type
+$\tau_a$ can be automatically converted to a value of type
+$\tau_b$. The sub-typeing relation can be checked statically or
+dynamically. The notation $\tau_a :> \tau_b$ will be used for static
+checks wheras the notation $\tau_a :? \tau_b$ will be used for dynamic
+checks.
 
-Like most object oriented langagues, .Net sub-typing mechanism that allows types to be automatically converted to types which are higher in the class hierarchy. The F\# language uses the keyword \verb+inherit+ to denote that a type inherits from another type. A well known restriction of this mechanism is that sub-typing rules cannot automatically be applied to generic type arguments. In other words $\tau_a :> \tau_b\ \not\Rightarrow\ T<\tau_a> \ :> \ T<\tau_b>$.
+Like most object oriented langagues, .Net sub-typing mechanism that
+allows types to be automatically converted to types which are higher
+in the class hierarchy. The F\# language uses the keyword
+\verb+inherit+ to denote that a type inherits from another type. A
+well known restriction of this mechanism is that sub-typing rules
+cannot automatically be applied to generic type arguments. In other
+words $\tau_a :> \tau_b\ \not\Rightarrow\ T<\tau_a> \ :> \ T<\tau_b>$.
 
-The .Net platform internally uses an abstract class \verb+Type+ to represent any of the types that are available. This class implements operations such as casting or instantiating the generic type arguments of a type. At runtime, any value can be queried for it's type and the program under execution can use this information and even produce new types while running. This collection of mechanisms to manipulate .Net types at runtime is called reflection.
+The .Net platform internally uses an abstract class \verb+Type+ to
+represent any of the types that are available. This class implements
+operations such as casting or instantiating the generic type arguments
+of a type. At runtime, any value can be queried for it's type and the
+program under execution can use this information and even produce new
+types while running. This collection of mechanisms to manipulate .Net
+types at runtime is called reflection.
 
-Since the \verb+Type+ class is not sealed. Languages can extend it with any information they want. This allows F\# to include metadata specific for functional programming. Using this metadata, it is possible to determine at runtime what are the type constructors of an ADT and even pattern match the type on those constructors. It is also possible to invoke the constructor with the appropiate values to produce new values. It should be noted that doing so is not type safe since the compiler cannot check that the operations being preformed are safe and type errors will lead to runtime exceptions. Nevertheless, this mechanism is actively used in libraries such as FsPickler \cite{FsPickler} which is a general purpose .Net serializer.
+Since the \verb+Type+ class is not sealed. Languages can extend it
+with any information they want. This allows F\# to include metadata
+specific for functional programming. Using this metadata, it is
+possible to determine at runtime what are the type constructors of an
+ADT and even pattern match the type on those constructors. It is also
+possible to invoke the constructor with the appropiate values to
+produce new values. It should be noted that doing so is not type safe
+since the compiler cannot check that the operations being preformed
+are safe and type errors will lead to runtime
+exceptions. Nevertheless, this mechanism is actively used in libraries
+such as FsPickler \cite{FsPickler} which is a general purpose .Net
+serializer.
 
 \subsection{Type Providers}
-A type provider\cite{typeProviders} in F\# is a mechanism that allows types to be defined by running code at compile time. They where designed for the purpose of provdiding typed access to external data sources. For example, a type provider could parse a configuration file and generate an type that contains as its fields the configuration options and as values for those fields the value of those options (with the value of the option of the corresponding type). A type provider is used as follows:
+A type provider\cite{typeProviders} in F\# is a mechanism that allows
+types to be defined by running code at compile time. They where
+designed for the purpose of provdiding typed access to external data
+sources. For example, a type provider could parse a configuration file
+and generate an type that contains as its fields the configuration
+options and as values for those fields the value of those options
+(with the value of the option of the corresponding type). A type
+provider is used as follows:
 \begin{lstlisting}[
   mathescape,
   columns=fullflexible,
@@ -192,15 +285,25 @@ A type provider\cite{typeProviders} in F\# is a mechanism that allows types to b
 ]
 type T = Provider<arg_1,..,arg_n>
 \end{lstlisting}
-This code triggers the invokation of the type provider \verb+Provider+ which generates a type that is assigned the alias \verb+T+.
+This code triggers the invokation of the type provider \verb+Provider+
+which generates a type that is assigned the alias \verb+T+.
 
 \section{Type Representations in F\#}
-The essence of DGP is to provide an abstraction that is able to treat values of different types and equivalent structure as equivalent while still providing type safety. Type representations are used to achieve that objective. The method used here is similar to the approach from Regular\cite{Regular} but had to be adapted to cope with two of F\#'s limitations:
+The essence of DGP is to provide an abstraction that is able to treat
+values of different types and equivalent structure as equivalent while
+still providing type safety. Type representations are used to achieve
+that objective. The method used here is similar to the approach from
+Regular\cite{Regular} but had to be adapted to cope with two of F\#'s
+limitations:
 \begin{itemize}
 \item Generics of higher kind are not permitted in F\# (nor .Net)
 \item Method calls must be resolved statically
 \end{itemize}
-All type representations are a sub-class of the \verb+Meta+ abstract class. It's main role is imposing type constraints on generics that are required to be a type-representation. Those constraints serve as an alternative to typeclass constraints that are used in Regular. For instance in Regular one might have:
+All type representations are a sub-class of the \verb+Meta+ abstract
+class. It's main role is imposing type constraints on generics that
+are required to be a type-representation. Those constraints serve as
+an alternative to typeclass constraints that are used in Regular. For
+instance in Regular one might have:
 \begin{lstlisting}[
   mathescape,
   columns=fullflexible,
@@ -222,9 +325,23 @@ type GenericClass =
           and 'b :> Meta> 
     (x : Prod<'a,'b>) = ...
 \end{lstlisting}
-and this indicates that \verb+'a+ and \verb+'b+ must be a type representation. Later one will see that the constraints not need to appear in the signature of \verb+genericFunction+ because they are added to the \verb+Prod+ class itself (which is also shown later).
+and this indicates that \verb+'a+ and \verb+'b+ must be a type
+representation. Later one will see that the constraints not need to
+appear in the signature of \verb+genericFunction+ because they are
+added to the \verb+Prod+ class itself (which is also shown later).
 
-The first sub-class of \verb+Meta+ is \verb+SumConstr+. This is used to represent the possible type constructors that an algebraic data type has. This type takes three type arguments: \verb+t+,\verb+a+ and \verb+b+. The first one indicates the type that this representation encodes (or \verb+unit+ when it is an intermediate representation). The \verb+'a+ argument corresponds to the type representation of values created by one of the type constructors. The \verb+b+ argument contains the representation of the remaining type constructors or serves the same role as \verb+'a+ to represent values created with the last type constructor. Both \verb+'a+ and \verb+'b+ have the constraint $\mathtt{'a},\mathtt{'b} :> \mathtt{Meta}$. For instance suppose one has a type:
+The first sub-class of \verb+Meta+ is \verb+SumConstr+. This is used
+to represent the possible type constructors that an algebraic data
+type has. This type takes three type arguments: \verb+t+,\verb+a+ and
+\verb+b+. The first one indicates the type that this representation
+encodes (or \verb+unit+ when it is an intermediate
+representation). The \verb+'a+ argument corresponds to the type
+representation of values created by one of the type constructors. The
+\verb+b+ argument contains the representation of the remaining type
+constructors or serves the same role as \verb+'a+ to represent values
+created with the last type constructor. Both \verb+'a+ and \verb+'b+
+have the constraint $\mathtt{'a},\mathtt{'b} :> \mathtt{Meta}$. For
+instance suppose one has a type:
 \begin{lstlisting}[
   mathescape,
   columns=fullflexible,
@@ -244,7 +361,16 @@ type ElemsRep<'a> = SumConstr<
                      Elem<'a>,
                      _,SumConstr<_,_,_>>
 \end{lstlisting}
-The second sub-class of \verb+Meta+ is \verb+Prod+. This type is used to represent cases in which a type constructor accepts more than one argument. The \verb+Prod+ type accepts two type arguments: \verb+'a+ and \verb+'b+. The first argument contains the type representation of one of the constructor's parameters. The second argument contains the representation of the remaining constructor's arguments or the type \verb+U+ which is used to denote emptyness. Both \verb+'a+ and \verb+'b+ have the constraint $\mathtt{'a},\mathtt{'b} :> \mathtt{Meta}$. With this constructor it is possible to fill the blanks of \verb+ElemsRep+ as follows:
+The second sub-class of \verb+Meta+ is \verb+Prod+. This type is used
+to represent cases in which a type constructor accepts more than one
+argument. The \verb+Prod+ type accepts two type arguments: \verb+'a+
+and \verb+'b+. The first argument contains the type representation of
+one of the constructor's parameters. The second argument contains the
+representation of the remaining constructor's arguments or the type
+\verb+U+ which is used to denote emptyness. Both \verb+'a+ and
+\verb+'b+ have the constraint $\mathtt{'a},\mathtt{'b} :>
+\mathtt{Meta}$. With this constructor it is possible to fill the
+blanks of \verb+ElemsRep+ as follows:
 \begin{lstlisting}[
   mathescape,
   columns=fullflexible,
@@ -258,7 +384,15 @@ type ElemsRep<'a> = SumConstr<
       Prod<_,U>,
       U>>>
 \end{lstlisting}
-The third sub-class of \verb+Meta+ is \verb+K+. This type is used to represent a type that is not an ADT. Such types cannot be generically manipulated with DGP, nevertheless it is possible to write algorithms that operate on ocurrences of a particular type(s) inside a ADT. The \verb+K+ constructor takes a single type argument \verb+'a+ which corresponds to the type of its content. Since F\# cannot statically constrain a type to be or not to be an ADT, \verb+'a+ has no constraints. To continue with the example above, the type \verb+Elem<int>+ would be represented as:
+The third sub-class of \verb+Meta+ is \verb+K+. This type is used to
+represent a type that is not an ADT. Such types cannot be generically
+manipulated with DGP, nevertheless it is possible to write algorithms
+that operate on ocurrences of a particular type(s) inside a ADT. The
+\verb+K+ constructor takes a single type argument \verb+'a+ which
+corresponds to the type of its content. Since F\# cannot statically
+constrain a type to be or not to be an ADT, \verb+'a+ has no
+constraints. To continue with the example above, the type
+\verb+Elem<int>+ would be represented as:
 \begin{lstlisting}[
   mathescape,
   columns=fullflexible,
@@ -272,7 +406,12 @@ type ElemsRep = SumConstr<
       Prod<K<int>,U>,
       U>>>
 \end{lstlisting}
-The fourth sub-class of \verb+Meta+ is \verb+Id+. This type is used to represent recursion within a type. This is necessary otherwise a type representation would be infinite for recursive ADTs. This type takes a single type argument which is the which is the same type being represented. With this addition, \verb+Elem<int>+ is now represented as follows:
+The fourth sub-class of \verb+Meta+ is \verb+Id+. This type is used to
+represent recursion within a type. This is necessary otherwise a type
+representation would be infinite for recursive ADTs. This type takes a
+single type argument which is the which is the same type being
+represented. With this addition, \verb+Elem<int>+ is now represented
+as follows:
 \begin{lstlisting}[
   mathescape,
   columns=fullflexible,
@@ -286,11 +425,24 @@ type ElemsRep = SumConstr<
       Prod<K<int>,U>,
       U>>>
 \end{lstlisting}
-The last sub-class of \verb+Meta+ is \verb+U+. This type is used to represent an empty argument in a type constructor. That is the reason the \verb+Nil+ constructor is represented as \verb+U+ and ocurrences of \verb+Prod+ will always have \verb+U+ as the second argument of the innermost \verb+Prod+.
+The last sub-class of \verb+Meta+ is \verb+U+. This type is used to
+represent an empty argument in a type constructor. That is the reason
+the \verb+Nil+ constructor is represented as \verb+U+ and ocurrences
+of \verb+Prod+ will always have \verb+U+ as the second argument of the
+innermost \verb+Prod+.
 \section{Generic Functions}
-The purpose of type representations is to provide an interface that the programmer can use to define generic functions. In other words is a language to define what the semantics of such functions are. The library will then be provided with a generic function definition and will apply it as appropiate to the values it is provided with.
+The purpose of type representations is to provide an interface that
+the programmer can use to define generic functions. In other words is
+a language to define what the semantics of such functions are. The
+library will then be provided with a generic function definition and
+will apply it as appropiate to the values it is provided with.
 
-To show how generic definitions look like, the generic function \verb+gmap+ will be defined. This function accepts as an argument a function of type $\tau\to\tau$ and applies the function to every value of type $\tau$ in a ADT. In Regular, a generic function is defined as a typeclass. In this implementation, they are defined as an ordinary .Net class:
+To show how generic definitions look like, the generic function
+\verb+gmap+ will be defined. This function accepts as an argument a
+function of type $\tau\to\tau$ and applies the function to every value
+of type $\tau$ in a ADT. In Regular, a generic function is defined as
+a typeclass. In this implementation, they are defined as an ordinary
+.Net class:
 \begin{lstlisting}[
   mathescape,
   columns=fullflexible,
@@ -298,7 +450,10 @@ To show how generic definitions look like, the generic function \verb+gmap+ will
 ]
 type GMap<`t>() = class end
 \end{lstlisting}
-The class has a constructor that takes as argument the function that will be applied. The first step is dealing with the sum of type constructors. As explained in the previous section, they are represented by \verb+SumConstr+:
+The class has a constructor that takes as argument the function that
+will be applied. The first step is dealing with the sum of type
+constructors. As explained in the previous section, they are
+represented by \verb+SumConstr+:
 \begin{lstlisting}[
   mathescape,
   columns=fullflexible,
@@ -312,7 +467,11 @@ member x.gmap<'x>(v : SumConstr<'t,Meta,Meta>
   | R m $\rightarrow$ SumConstr<'x,Meta,Meta>(
              x.gmap m |> Choice2Of2)
 \end{lstlisting}
-Here the active patterns \verb+L+ and \verb+R+ are used to distinguish the two possible cases. Nevertheless, \verb+gmap+ is simply invoked recursively and the result is packed inside the same constructor. The next step is to deal with products. This is handled with the \verb+Prod+ constructor:
+Here the active patterns \verb+L+ and \verb+R+ are used to distinguish
+the two possible cases. Nevertheless, \verb+gmap+ is simply invoked
+recursively and the result is packed inside the same constructor. The
+next step is to deal with products. This is handled with the
+\verb+Prod+ constructor:
 \begin{lstlisting}[
   mathescape,
   columns=fullflexible,
@@ -324,7 +483,11 @@ member x.gmap(v : Prod<Meta,Meta>
     x.gmap(v.E1),
     x.gmap(v.E2))
 \end{lstlisting}
-The type \verb+Prod+ contains the properties \verb+E1+ and \verb+E2+ that access each of the elements of the product. Once again, \verb+gmap+ is invoked recursively on those values. Next is the case for the \verb+K+ constructor which contains values. Here is where the function gets applied:
+The type \verb+Prod+ contains the properties \verb+E1+ and \verb+E2+
+that access each of the elements of the product. Once again,
+\verb+gmap+ is invoked recursively on those values. Next is the case
+for the \verb+K+ constructor which contains values. Here is where the
+function gets applied:
 \begin{lstlisting}[
   mathescape,
   columns=fullflexible,
@@ -332,9 +495,17 @@ The type \verb+Prod+ contains the properties \verb+E1+ and \verb+E2+ that access
 ]
 member x.gmap(v : K<Employee>) = K(f v.Elem)
 \end{lstlisting}
-The property \verb+Elem+ of the \verb+K+ constructor returns the value that is being represented by \verb+K+. Note that this member only works for fundamental values that have a type that matches the argument function. Later it will be explained how other instances of \verb+K+ work.
+The property \verb+Elem+ of the \verb+K+ constructor returns the value
+that is being represented by \verb+K+. Note that this member only
+works for fundamental values that have a type that matches the
+argument function. Later it will be explained how other instances of
+\verb+K+ work.
 
-The case for the \verb+Id+ constructor is a bit more involved because \verb+Id+ contains a property called \verb+Elem+ but the property contains a value, not a representation. In order to obtain the representation, the type \verb+Generic<'t>+ is provided. This type contains the members:
+The case for the \verb+Id+ constructor is a bit more involved because
+\verb+Id+ contains a property called \verb+Elem+ but the property
+contains a value, not a representation. In order to obtain the
+representation, the type \verb+Generic<'t>+ is provided. This type
+contains the members:
 \begin{lstlisting}[
   mathescape,
   columns=fullflexible,
@@ -343,7 +514,9 @@ The case for the \verb+Id+ constructor is a bit more involved because \verb+Id+ 
 member x.To : 't $\rightarrow$ Meta
 member x.From : Meta $\rightarrow$ 't
 \end{lstlisting}
-With that class it is now possible to extract the contents of \verb+Id+, call the \verb+gmap+ function and convert the result back to the original type. This results in:
+With that class it is now possible to extract the contents of
+\verb+Id+, call the \verb+gmap+ function and convert the result back
+to the original type. This results in:
 \begin{lstlisting}[
   mathescape,
   columns=fullflexible,
@@ -355,9 +528,25 @@ member x.gmap(v : Id<'t>
   Id<'t>(x.gmap(
     g.To c.Elem,f) |> g.From)
 \end{lstlisting}
-There are still two pices missing in this generic function. First of all, the recursive calls are invoking \verb+gmap+ of type $\Meta*\mathtt{Employee}\rightarrow\mathtt{Employee}$ and there is no overload that matches that type. Secondly, not all cases are covered. Addressing both of theese problems requires some boilerplate code and validations that cannot be checked by the compiler. To automate some checks and generate the boilerplate code, a type provider will be used.
+There are still two pices missing in this generic function. First of
+all, the recursive calls are invoking \verb+gmap+ of type
+$\Meta*\mathtt{Employee}\rightarrow\mathtt{Employee}$ and there is no
+overload that matches that type. Secondly, not all cases are
+covered. Addressing both of theese problems requires some boilerplate
+code and validations that cannot be checked by the compiler. To
+automate some checks and generate the boilerplate code, a type
+provider will be used.
 \section{The Generic Type Provider}
-In the previous section, the existence of a \verb+gmap+ function with type \verb+Meta+$\to$\verb+Meta+ was assumed. Since \verb+Meta+ is an abstract class, the actual role of the function is to select the \verb+gmap+ overload that corresponds to the argument provided. The typeclasses mechanism in Haskell selects the overload by type-level computations that ocurr during the type-checking process. However, F\# lacks such mechanism. To achieve this, reflection is used with the help of a type provider to make the library easier to use and to provide some extra static checks. The generic type provider is used as follows:
+In the previous section, the existence of a \verb+gmap+ function with
+type \verb+Meta+$\to$\verb+Meta+ was assumed. Since \verb+Meta+ is an
+abstract class, the actual role of the function is to select the
+\verb+gmap+ overload that corresponds to the argument provided. The
+typeclasses mechanism in Haskell selects the overload by type-level
+computations that ocurr during the type-checking process. However, F\#
+lacks such mechanism. To achieve this, reflection is used with the
+help of a type provider to make the library easier to use and to
+provide some extra static checks. The generic type provider is used as
+follows:
 \begin{lstlisting}[
   mathescape,
   columns=fullflexible,
@@ -365,45 +554,72 @@ In the previous section, the existence of a \verb+gmap+ function with type \verb
 ]
 type GMapBase = Generic<''gmap'',1>
 \end{lstlisting}
-The type provider accepts two static arguments. The first one denotes the name of the generic function and the second one the number of arguments (besides the type representation) that the generic function accepts. This produces a type with a method \verb+GMap+ of type $\mathtt{Meta} \to \mathtt{obj}$. This method will be in-charge of selecting the apropiate overload for the multiple representation types.
+The type provider accepts two static arguments. The first one denotes
+the name of the generic function and the second one the number of
+arguments (besides the type representation) that the generic function
+accepts. This produces a type with a method \verb+GMap+ of type
+$\mathtt{Meta} \to \mathtt{obj}$. This method will be in-charge of
+selecting the apropiate overload for the multiple representation
+types.
 \begin{figure*}
 \[
 \mathtt{x.Method(g,arg_1:\tau_1,..,arg_n:\tau_n)} =
 \left\{
   \begin{array}{ll}
-    \mathtt{x.m}(\mathtt{g},\mathtt{arg_1,..,arg_n}) & \mathtt{g} : \Sum<\tau,\Meta,\Meta> \\ & \wedge \exists \mathtt{m} \in \mathtt{x}\ .\ \mathtt{m}\ : \Sum<\tau,\Meta,\Meta>*\tau_1*...*\tau_n \\ & \wedge\ \mathtt{m.Name} \equiv \mathtt{``Metod"} \\
+    \mathtt{x.m}(\mathtt{g},\mathtt{arg_1,..,arg_n}) & \mathtt{g} : \Sum<\tau,\Meta,\Meta> \\ & \wedge \exists \mathtt{m} \in \mathtt{x}\ .\ \mathtt{m}\ : \Sum<\tau,\Meta,\Meta>*\tau_1*...*\tau_n \\ & \wedge\ \mathtt{m.Name} \equiv \mathtt{Method} \\
     
-    \mathtt{x.m}<\mathtt{[\tau/`t]}>(\mathtt{g},\mathtt{arg_1,..,arg_n}) & \exists \mathtt{m} \in \mathtt{x}\ .\ \mathtt{m}<\mathtt{`t}>\ : \Sum<\mathtt{`t},\Meta,\Meta>*\tau_1*...*\tau_n \\ & \wedge\ \mathtt{m.Name} \equiv \mathtt{``Metod"} \\ &\wedge\ \mathtt{g}\ :\ \Sum<\tau,\Meta,\Meta> \\
+    \mathtt{x.m}<\mathtt{[\tau/`t]}>(\mathtt{g},\mathtt{arg_1,..,arg_n}) & \exists \mathtt{m} \in \mathtt{x}\ .\ \mathtt{m}<\mathtt{`t}>\ : \Sum<\mathtt{`t},\Meta,\Meta>*\tau_1*...*\tau_n \\ & \wedge\ \mathtt{m.Name} \equiv \mathtt{Method} \\ &\wedge\ \mathtt{g}\ :\ \Sum<\tau,\Meta,\Meta> \\
     
-    \mathtt{x.m}(\mathtt{g},\mathtt{arg_1,..,arg_n}) & \exists \mathtt{m} \in \mathtt{x}\ .\ \mathtt{m}\ :\ \Prod<\Meta,\Meta>*\tau_1*...*\tau_n \\ & \wedge\ \mathtt{m.Name} \equiv \mathtt{``Metod"} \\
+    \mathtt{x.m}(\mathtt{g},\mathtt{arg_1,..,arg_n}) & \exists \mathtt{m} \in \mathtt{x}\ .\ \mathtt{m}\ :\ \Prod<\Meta,\Meta>*\tau_1*...*\tau_n \\ & \wedge\ \mathtt{m.Name} \equiv \mathtt{Method} \\
     
-    \mathtt{x.m}(\mathtt{g},\mathtt{arg_1,..,arg_n}) & \mathtt{g}\ :\ \K<\tau> \\ & \wedge\exists \mathtt{m} \in \mathtt{x}\ .\ \mathtt{m}\ :\ \K<\tau>*\tau_1*...*\tau_n \\ & \wedge\ \mathtt{m.Name} \equiv \mathtt{``Metod"} \\
+    \mathtt{x.m}(\mathtt{g},\mathtt{arg_1,..,arg_n}) & \mathtt{g}\ :\ \K<\tau> \\ & \wedge\exists \mathtt{m} \in \mathtt{x}\ .\ \mathtt{m}\ :\ \K<\tau>*\tau_1*...*\tau_n \\ & \wedge\ \mathtt{m.Name} \equiv \mathtt{Method} \\
 
-    \mathtt{x.m}<[\tau/\mathtt{`t}]>(\mathtt{g},\mathtt{arg_1,..,arg_n}) & \exists \mathtt{m} \in \mathtt{x}\ .\ \mathtt{m}\ :\ \K<\mathtt{`t}>*\tau_1*...*\tau_n \\ & \wedge\ \mathtt{m.Name} \equiv \mathtt{``Metod"} \\ & \wedge\ \mathtt{g}\ :\ \K<\tau> \\
+    \mathtt{x.m}<[\tau/\mathtt{`t}]>(\mathtt{g},\mathtt{arg_1,..,arg_n}) & \exists \mathtt{m} \in \mathtt{x}\ .\ \mathtt{m}\ :\ \K<\mathtt{`t}>*\tau_1*...*\tau_n \\ & \wedge\ \mathtt{m.Name} \equiv \mathtt{Method} \\ & \wedge\ \mathtt{g}\ :\ \K<\tau> \\
 
-    \mathtt{x.m}(\mathtt{g},\mathtt{arg_1,..,arg_n}) & \exists \mathtt{m} \in \mathtt{x}\ .\ \mathtt{m}\ :\ \Id<\tau>*\tau_1*...*\tau_n \\ & \wedge\ \mathtt{m.Name} \equiv \mathtt{``Metod"} \\
-
+    \mathtt{x.m}(\mathtt{g},\mathtt{arg_1,..,arg_n}) & \exists \mathtt{m} \in \mathtt{x}\ .\ \mathtt{m}\ :\ \Id<\tau>*\tau_1*...*\tau_n \\ & \wedge\ \mathtt{m.Name} \equiv \mathtt{Method} \\
   \end{array}
 \right.
 \]
 \caption{Selection criteria of the generic provider when using reflection to select an overload.}
 \label{fig:selector}
 \end{figure*}
-The method overload selection mechanism of \verb+GMap+ (or any other generic method created with the generic provider) is described in \ref{fig:selector}. In this figure: 
+
+The method overload selection mechanism of \verb+GMap+ (or any other
+generic method created with the generic provider) is described in
+\ref{fig:selector}. In this figure:
 \begin{itemize}
-\item $\tau$ and $\tau_i$ represent type variables which can be any concrete type (like \verb+int+ or \verb+string+). 
-\item \verb+`t+ denotes generic types which can be replaced by any concrete type. Such replacement is represented by the notation $[\tau/\mathtt{`t}]$ meaning replace \verb=`t= with $\tau$.
+\item $\tau$ and $\tau_i$ represent type variables which can be any
+  concrete type (like \verb+int+ or \verb+string+).
+\item \verb+`t+ denotes generic types which can be replaced by any
+  concrete type. Such replacement is represented by the notation
+  $[\tau/\mathtt{`t}]$ meaning replace \verb=`t= with $\tau$.
 \item \verb+x+ denotes the object on which the methods are being invoked.
 \item $\mathtt{v}\ :\ \tau$ denotes the typeing relation $\mathtt{v}$ is of type $\tau$.
 \item $\mathtt{m}\in\mathtt{x}$ denotes a method \verb+m+ of object \verb+x+.
 \end{itemize}
-This selection mechanism selects a method based on the type of the representation provided to the generic function (\verb+gmap+ in the running example). The selection mechanism matches methods by type in order to select the correct overload. The whole process can be sumarized as follows:
+This selection mechanism selects a method based on the type of the
+representation provided to the generic function (\verb+gmap+ in the
+running example). The selection mechanism matches methods by type in
+order to select the correct overload. The whole process can be
+sumarized as follows:
 \begin{itemize}
-\item There exists an overload whose type exactly matches the arguments given to the generic function. For example: \verb+gmap+ is called with a value $\mathtt{v}\ :?\ \K<\mathtt{Employee}>*\tau_1*..*\tau_n$ and there exists a \verb+gmap+ overload of type $\K<\mathtt{Employee}>*\tau_1*..*\tau_n$.
-\item There exists an overload that accepts the same representation type and contains a generic type argument. For example: \verb+gmap+ is called with a value $\mathtt{v}\ :?\ \K<\mathtt{Employee}>*\tau_1*..*\tau_n$ and there exists a \verb+gmap+ overload of type $\K<\mathtt{`t}>*\tau_1*..*\tau_n$.
+\item There exists an overload whose type exactly matches the
+  arguments given to the generic function. For example: \verb+gmap+ is
+  called with a value $\mathtt{v}\ :?\
+  \K<\mathtt{Employee}>*\tau_1*..*\tau_n$ and there exists a
+  \verb+gmap+ overload of type
+  $\K<\mathtt{Employee}>*\tau_1*..*\tau_n$.
+\item There exists an overload that accepts the same representation
+  type and contains a generic type argument. For example: \verb+gmap+
+  is called with a value $\mathtt{v}\ :?\
+  \K<\mathtt{Employee}>*\tau_1*..*\tau_n$ and there exists a
+  \verb+gmap+ overload of type $\K<\mathtt{`t}>*\tau_1*..*\tau_n$.
 \item No overload matches the rules above.
 \end{itemize}
-To take care of the last item. The type provider requires that the provided types as first argument to the constructor a default function $f\ :\ \Meta*\tau_1*\tau_n$. This function will be invoked when no overloads are found. The definition now looks as follows:
+To take care of the last item. The type provider requires that the
+provided types as first argument to the constructor a default function
+$f\ :\ \Meta*\tau_1*\tau_n$. This function will be invoked when no
+overloads are found. The definition now looks as follows:
 \begin{lstlisting}[
   mathescape,
   columns=fullflexible,
@@ -415,7 +631,17 @@ type GMap<'t>() = class
   inherit GMapBase(defaultAction)
 end
 \end{lstlisting}
-This definition (although correct) contains type information whoose origin has still not been explained. Recall that the second static parameter of the type provider is the number of extra arguments of the generic function. But how does the type provider know what is the type of the extra arguments? Unfortunately, currently there is no way to know so all extra arguments will be of type \verb+obj+. The next sections will discuss more in depth the problem and possible solutions. Neverhteless, due to this limitation it is more convenient to include the function arguments of \verb+gmap+ at the class level for more type safety and define a \verb+gmap+ overload of type $\Meta\rightarrow\Meta$ and use it for recursive calls:
+This definition (although correct) contains type information whoose
+origin has still not been explained. Recall that the second static
+parameter of the type provider is the number of extra arguments of the
+generic function. But how does the type provider know what is the type
+of the extra arguments? Unfortunately, currently there is no way to
+know so all extra arguments will be of type \verb+obj+. The next
+sections will discuss more in depth the problem and possible
+solutions. Neverhteless, due to this limitation it is more convenient
+to include the function arguments of \verb+gmap+ at the class level
+for more type safety and define a \verb+gmap+ overload of type
+$\Meta\rightarrow\Meta$ and use it for recursive calls:
 \begin{lstlisting}[
   mathescape,
   columns=fullflexible,
@@ -430,19 +656,35 @@ type GMap<'t,'f>(f : `f$\rightarrow$`f) = class
       x.gmap(v) :?> Meta
   end
 \end{lstlisting}
-Here $\mathtt{x}\ :?>\ \tau$ is the up-casting operation which attempts to assign \verb+x+ the type $\tau$ and fails if $\mathtt{x}\ \not:?\ \tau$. With this definition the function that \verb+gmap+ will apply is provided when the class is instantiated and can now have an explicit type.
+Here $\mathtt{x}\ :?>\ \tau$ is the up-casting operation which
+attempts to assign \verb+x+ the type $\tau$ and fails if $\mathtt{x}\
+\not:?\ \tau$. With this definition the function that \verb+gmap+ will
+apply is provided when the class is instantiated and can now have an
+explicit type.
 \section{A ``better'' Generic Provider}
-In principle, what is wrong with the current generic provider is that it lacks type information of some types. Theese types are:
+In principle, what is wrong with the current generic provider is that
+it lacks type information of some types. Theese types are:
 \begin{enumerate}
 \item The type of each of the extra arguments accepted by the generic function.
 \item The return type of the generic function.
 \end{enumerate}
-Limitation 1 is not a big problem because it can be partially eliminated by having the arguments on the class level (as our example) but limitation 2 would be nice to solve. There are two places where the type provider could accept type arguments:
+Limitation 1 is not a big problem because it can be partially
+eliminated by having the arguments on the class level (as our example)
+but limitation 2 would be nice to solve. There are two places where
+the type provider could accept type arguments:
 \begin{enumerate}
 \item As a static parameter during the invocation of the type provider.
 \item As a generic type parameter passed to the provided type when invoking the constructor.
 \end{enumerate}
-Neither option is possible in F\#. Option 1 would allow very powerful type extensions to the language but would require significant changes to the implementation of type providers because a \verb+Type+ object would need to be constructed to run the type provider's code. Option 2 which is more feasible has been requested at \cite{genericTypeArgs} would also benefit type providers in large. For example, one could modify the SQLProvider \cite{SQLProvider} such that one can speficy how to map database types to .Net types. With such feature in place, the implementation would look similar to:
+Neither option is possible in F\#. Option 1 would allow very powerful
+type extensions to the language but would require significant changes
+to the implementation of type providers because a \verb+Type+ object
+would need to be constructed to run the type provider's code. Option 2
+which is more feasible has been requested at \cite{genericTypeArgs}
+would also benefit type providers in large. For example, one could
+modify the SQLProvider \cite{SQLProvider} such that one can speficy
+how to map database types to .Net types. With such feature in place,
+the implementation would look similar to:
 \begin{lstlisting}[
   mathescape,
   columns=fullflexible,
@@ -452,7 +694,9 @@ type GMap<`t,`f>(f : `f$\rightarrow$`f) = class
     inherit GMapBase<Meta>(defaultAction)
   end
 \end{lstlisting}
-As it can be observed, the generic type argument given to \verb+GMapBase+ allows it to know that the return type of \verb+gmap+ is \verb+Meta+.
+As it can be observed, the generic type argument given to
+\verb+GMapBase+ allows it to know that the return type of \verb+gmap+
+is \verb+Meta+.
 
 \appendix
 \section{Appendix Title}
