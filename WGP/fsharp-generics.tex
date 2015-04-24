@@ -23,7 +23,7 @@
 \documentclass{sigplanconf}
 
 % The following \documentclass options may be useful:
-
+ 
 % preprint      Remove this option only once the paper is in final form.
 % 10pt          To set in 10-point type instead of 9-point.
 % 11pt          To set in 11-point type instead of 9-point.
@@ -31,6 +31,30 @@
 
 \usepackage{amsmath}
 \usepackage{listings}
+%% TODO notes
+\usepackage{color}
+\usepackage{ifthen}
+\newboolean{showNotes}
+\setboolean{showNotes}{true}
+
+\newcommand{\todo}[1]{
+\ifthenelse
+  {\boolean{showNotes}}
+  {\textcolor{red}{\textbf{Todo:~}#1}}
+  {}}
+
+\newcommand{\wouter}[1]{
+\ifthenelse
+  {\boolean{showNotes}}
+  {\textcolor{blue}{\textbf{Wouter:~}#1}}
+  {}}
+
+\newcommand{\ernesto}[1]{
+\ifthenelse
+  {\boolean{showNotes}}
+  {\textcolor{blue}{\textbf{Ernesto:~}#1}}
+  {}}
+
 
 \begin{document}
 
@@ -57,7 +81,7 @@
 \preprintfooter{short description of paper}   % 'preprint' option specified.
 
 \title{Generic Programming in F\#}
-\subtitle{Datatype generic programming for .Net}
+\subtitle{Datatype generic programming for .NET}
 
 \authorinfo{Ernesto Rodriguez}
            {Utrecht University}
@@ -76,7 +100,7 @@
 
 \begin{abstract}
   The introduction of Datatype Generic programming (DGP)
-  *revolutionized* functional programming by allowing numerous
+  \emph{revolutionized} functional programming by allowing numerous
   algorithms to be defined by induction over the structure of types
   while still providing type safety. Due to the advanced type system
   requirements for DGP, only a handful of functional languages can
@@ -86,7 +110,7 @@
   usually error prone and verbose. By combining ideas from DGP and
   implementing them through reflection, a type-safe interface to DGP
   has been built for the F\# language. These generic algorithms can be
-  accessed by any language running in the .Net platform.
+  accessed by any language running in the .NET platform.
 \end{abstract}
 
 \category{CR-number}{subcategory}{third-level}
@@ -102,22 +126,26 @@ keyword1, keyword2
 \section{Introduction}
 
 \section{Background}
-To introduce the F\# language and the .Net platform, a function called
-\verb+IncreaseSalary+ will be used as example. This function is
-provided with a company and increases the salary of every employee in
-the company.
+This section introduces the F\# language and the .NET
+platform. Inspired by the `Scrap your boilerplate' approach to
+datatype generic programming \todo{add citation}, we will define a
+function called \verb+IncreaseSalary+, that increases the salary of
+every employee in a company. Along the way, we will introduce the
+relevant concepts from F\# and .NET; in later sections, we will revise
+this definition using our library for generic programming.
+
 \subsection{The F\# Language}
 The F\# programming language is a functional language of the ML
-family. It focuses on being a productive language by levering on
-functional programming and at the same time easy to adopt by
-programmers of other .Net hosted languages. As a result, the lenguage
-has a much simpler type system than Haskell or Scala. Most of the
-development effort in the language has focused on features to work
-with data (like type-providers) and to be compatible with the .Net
-type system. Unlike Scala, F\# performs no type errasure when compiled
-to the .Net platform.
+family. It aims to combine the advantages of
+functional programming and the .NET platform. To do so, the F\# designers
+have chosen to support a limited number of features from languages such as Haskell or OCaml, 
+while still being able to interface well with other .NET languages.
+As a result, the language
+has a much simpler type system than Haskell or Scala.
+Unlike Scala, F\# performs no type erasure when compiled
+to the .NET platform.
 
-To begin with the example, the types required for the algorithm will be defined:
+Before we can define the \verb+IncreaseSalary+ function, we will define the types on which it operates:
 \begin{lstlisting}[
   mathescape,
   columns=fullflexible,
@@ -152,33 +180,38 @@ type GuatemalanEmployee(salary' : int) = class
     override self.NetSalary with get() = self.Salary / 1.12
   end
 \end{lstlisting}
-
-Several different type declarations are used in this
-example. \verb+Metadata+ is a record type. \verb+Company+,
-\verb+Department+ and \verb+Staff+ are algebraic data types (ADTs)
-like those in other functional languages. \verb+Employee+ and
-\verb+GuatemalanEmployee+ are classes. Records and ADTs behave in many
-ways like types in functional languages since they can be pattern
-matched, are immutable and can't inherit from other types nor types
-can inherit from them. In .Net slang, they are sealed. Classes behave
-as the types of an object oriented language. They can inherit from
-other types (as the case of \verb+GuatemalanEmployee+) and contain
+This example demonstrates the different type declarations that F\# supports.
+Besides records, such as \verb+Metadata+, F\# supports algebraic data types
+that should be familiar to functional programmers. For example, \verb+Company+,
+\verb+Department+ and \verb+Staff+ are all data types. Besides algebraic data types,
+F\# also supports classes, such as \verb+Employee+ and
+\verb+GuatemalanEmployee+. There are several important differences between classes
+and data types. Records and data types may be deconstructed through pattern matching 
+and are immutable. In .NET terminology, they are \emph{sealed}. In contrast to classes,
+there is no possible subtyping relation between data types.
+Classes in F\#, on the other hand, 
+behave just as in any other object oriented language. They can inherit from
+other classes, as is the case for the \verb+GuatemalanEmployee+, and may contain
 member functions declared with the \verb+member+ keyword. Member
-functions always take as an argument the object from which it is
-invoked which is represented by the \verb+self+ before the dot (note
-that \verb+self+ is an identifier not a keyword).
+functions always take the object on which they are
+invoked as an argument. This is represented by the \verb+self+ before the dot.
 
-Another F\# features used are generic types and type
-constraints. Generic types are type arguments that are accepted by
-other types. In this case \verb+Company+, \verb+Department+ and
-\verb+Staff+ accept a single type as argument. This argument has the
-type constraint that it must be a sub-class of the \verb+Missile+
-class. The type constraints are declared using the \verb+when+
-keyword.
+These data declarations also use generic types and type
+constraints. Generic types define data types parametrized by a type
+argument.  In this case \verb+Company+, \verb+Department+ and
+\verb+Staff+ accept a single type as argument. In our example, the
+type arguments have a type constraint, stating that they must be a
+subtype of the \verb+Employee+ class. The type constraints are
+declared using the \verb+when+ keyword.
 
-Next step is to implement the \verb+IncreaseSalary+ function. To do
-so, an auxiliary function called \verb+GMap+ will be defined which
-applies another function to every \verb+Employee+ of the company:
+It is worth pointing out that generic type arguments are constraint to
+be of kind \verb+*+ (star). This is particularly important limitation
+in the context of data type generic programming, as many existing
+Haskell libraries rely on higher-kinded polymorphism.
+
+Next, we implement the \verb+IncreaseSalary+ function. To do so, we
+will begin by defining an auxiliary function called \verb+GMap+ that
+applies its argument function to every \verb+Employee+ of the company:
 \begin{lstlisting}[
   mathescape,
   columns=fullflexible,
@@ -202,7 +235,13 @@ type Company<'t> with
     | Empty $\rightarrow$ Empty
     | Member d,c $\rightarrow$ Member(d.GMap f, c.GMap f)
 \end{lstlisting}
-Then the function \verb+IncreaseSalary+ can be defined as:
+Here we have chosen to \emph{overload} the \verb+GMap+ function,
+allowing a function with the same name to be defined for different
+types. To overload functions in F\#, they must be defined as a member
+function. Member functions can be defined for any type; their
+definition is not restricted to the type's definition site. 
+
+Using \verb+GMap+,  the \verb+IncreaseSalary+ function can be defined as follows:
 \begin{lstlisting}[
   mathescape,
   columns=fullflexible,
@@ -213,25 +252,17 @@ type Company<'t> with
     self.GMap (fun e $\rightarrow$ e.Salary $\leftarrow$ e.Salary + v;e)
 \end{lstlisting}
 
-Since the function \verb+GMap+ is supposed to work with many different
-types, it is defined as a member function of those types. Member
-functions can be defined for any type and they can be defined in any
-part of the code (not only at the type definition). For the case of
-\verb+Staff+ the function simpy applies its argument to the
-\verb+Employee+ component of the value and packs the result back into
-the same constructor. For the other types, the function is recursively
-called for the inner types.
+In the later sections we will show how the \verb+GMap+ function may be
+derived automatically from the type definitions we saw
+previously. Befor doing so, however, we would like to give a brief
+overview of some of the relevant features of F\# and the .NET
+platform.
 
-As final remarks it is important to point out some of the limitations
-of F\#. Firstly, the generic type arguments are constraint to be of
-kind \verb+*+ (star). This is an important limitation since many DGP
-libraries (like Regular) rely on that feature.
-
-\subsection{The .Net platform}
-The .Net platform is a common runtime environment to allow the
+\subsection{The .NET platform}
+The .NET platform is a common runtime environment to allow the
 execution of a family of languages. It implements a very rich type
 system which includes support for generics. Many type operations that
-happen in F\# (such as casting) are handled by the .Net platform. The
+happen in F\# (such as casting) are handled by the .NET platform. The
 sub-typing relation will be denoted by $\tau_a :> \tau_b$ which means
 $\tau_a$ is a sub-type of $\tau_b$ and consequently a value of type
 $\tau_a$ can be automatically converted to a value of type
@@ -240,7 +271,7 @@ dynamically. The notation $\tau_a :> \tau_b$ will be used for static
 checks wheras the notation $\tau_a :? \tau_b$ will be used for dynamic
 checks.
 
-Like most object oriented langagues, .Net sub-typing mechanism that
+Like most object oriented langagues, .NET sub-typing mechanism that
 allows types to be automatically converted to types which are higher
 in the class hierarchy. The F\# language uses the keyword
 \verb+inherit+ to denote that a type inherits from another type. A
@@ -248,12 +279,12 @@ well known restriction of this mechanism is that sub-typing rules
 cannot automatically be applied to generic type arguments. In other
 words $\tau_a :> \tau_b\ \not\Rightarrow\ T<\tau_a> \ :> \ T<\tau_b>$.
 
-The .Net platform internally uses an abstract class \verb+Type+ to
+The .NET platform internally uses an abstract class \verb+Type+ to
 represent any of the types that are available. This class implements
 operations such as casting or instantiating the generic type arguments
 of a type. At runtime, any value can be queried for it's type and the
 program under execution can use this information and even produce new
-types while running. This collection of mechanisms to manipulate .Net
+types while running. This collection of mechanisms to manipulate .NET
 types at runtime is called reflection.
 
 Since the \verb+Type+ class is not sealed. Languages can extend it
@@ -266,7 +297,7 @@ produce new values. It should be noted that doing so is not type safe
 since the compiler cannot check that the operations being preformed
 are safe and type errors will lead to runtime
 exceptions. Nevertheless, this mechanism is actively used in libraries
-such as FsPickler \cite{FsPickler} which is a general purpose .Net
+such as FsPickler \cite{FsPickler} which is a general purpose .NET
 serializer.
 
 \subsection{Type Providers}
@@ -296,7 +327,7 @@ that objective. The method used here is similar to the approach from
 Regular\cite{Regular} but had to be adapted to cope with two of F\#'s
 limitations:
 \begin{itemize}
-\item Generics of higher kind are not permitted in F\# (nor .Net)
+\item Generics of higher kind are not permitted in F\# (nor .NET)
 \item Method calls must be resolved statically
 \end{itemize}
 All type representations are a sub-class of the \verb+Meta+ abstract
@@ -442,7 +473,7 @@ To show how generic definitions look like, the generic function
 function of type $\tau\to\tau$ and applies the function to every value
 of type $\tau$ in a ADT. In Regular, a generic function is defined as
 a typeclass. In this implementation, they are defined as an ordinary
-.Net class:
+.NET class:
 \begin{lstlisting}[
   mathescape,
   columns=fullflexible,
@@ -683,7 +714,7 @@ would need to be constructed to run the type provider's code. Option 2
 which is more feasible has been requested at \cite{genericTypeArgs}
 would also benefit type providers in large. For example, one could
 modify the SQLProvider \cite{SQLProvider} such that one can speficy
-how to map database types to .Net types. With such feature in place,
+how to map database types to .NET types. With such feature in place,
 the implementation would look similar to:
 \begin{lstlisting}[
   mathescape,
@@ -706,25 +737,6 @@ This is the text of the appendix, if you need one.
 \acks
 
 Acknowledgments, if needed.
-Acknowledgments, if needed.
-
-Acknowledgments, if needed.
-
-Acknowledgments, if needed.
-
-Acknowledgments, if needed.
-
-Acknowledgments, if needed.
-
-Acknowledgments, if needed.\\\\
-Acknowledgments, if needed.\\\\
-
-Acknowledgments, if needed.\\\\
-
-Acknowledgments, if needed.\\\\
-
-Acknowledgments, if needed.\\\\
-
 % We recommend abbrvnat bibliography style.
 
 \bibliographystyle{abbrvnat}
