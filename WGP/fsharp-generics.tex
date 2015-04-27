@@ -160,15 +160,15 @@ type Employee() = class
 type Metadata = 
   {name : string; country : string}
 
-type Staff<'t when 't :> Employee> =
+type Staff<'t when 't $\succ$ Employee> =
   | Empty
   | Member of 't*Staff<'t>
 
-type Department<'t when 't :> Employee> =
+type Department<'t when 't $\succ$ Employee> =
   | Tech of Metadata*Members<'t>
   | HR of Metadata*Members<'t>
 
-type Company<'t when 't :> Employee> =
+type Company<'t when 't $\succ$ Employee> =
   | Empty
   | Dept of Department<'t>*Company<'t>
 
@@ -181,9 +181,9 @@ type GuatemalanEmployee(salary' : int) = class
   end
 \end{lstlisting}
 This example demonstrates the different type declarations that F\# supports.
-Besides records, such as \verb+Metadata+, F\# supports algebraic data types
+Besides records, such as \verb+Metadata+, F\# supports algebraic data types (ADTs)
 that should be familiar to functional programmers. For example, \verb+Company+,
-\verb+Department+ and \verb+Staff+ are all data types. Besides algebraic data types,
+\verb+Department+ and \verb+Staff+ are ADTs. Besides algebraic data types,
 F\# also supports classes, such as \verb+Employee+ and
 \verb+GuatemalanEmployee+. There are several important differences between classes
 and data types. Records and data types may be deconstructed through pattern matching 
@@ -268,21 +268,20 @@ in F\#, such as casting, are handled by the .NET platform.
 \paragraph{Generics and subtyping}
 
 Similarly, the subtyping relation in F\# is also based on the
-implementation in .NET.  We write $\tau_a :> \tau_b$ to denote that
+implementation in .NET.  We write $\tau_a \succ \tau_b$ to denote that
 $\tau_a$ is a subtype of $\tau_b$. The subtyping relation can be
-checked statically or dynamically. The notation $\tau_a :> \tau_b$
-will be used for static checks whereas the notation $\tau_a :? \tau_b$
-will be used for dynamic checks. \todo{Say something about when checks
-  are dynamic vs static?}
+checked statically or dynamically. The notation $\tau_a \succ \tau_b$
+will be used for static checks whereas the notation $\tau_a \triangleright \tau_b$
+will be used for dynamic checks. Dynamic checks occurr when using reflection
+to check wether types can be assigned to values at runtime.
 
 As in most object oriented languages, the .NET subtyping mechanism
 allows values to be cast implicitly to any supertype.  The F\#
 language uses the keyword \verb+inherit+ to denote that a type
 inherits from another type. A well-known restriction of this mechanism
 is that this cast cannot automatically be applied to generic type
-arguments. Put differently, $\tau_a :> \tau_b\ \not\Rightarrow\
-T<\tau_a> \ :> \ T<\tau_b>$. \todo{Fix formatting of angle brackets
-  here}
+arguments. Put differently, $\tau_a \succ \tau_b\ \not\Rightarrow\
+\mathtt{T}{<}\tau_a{>} \ \succ \ \mathtt{T}{<}\tau_b{>}$.
 
 \paragraph{Reflection}
 
@@ -374,8 +373,8 @@ which in F\# would translate to a class:
 ]
 type GenericClass =
   member self.genericFunction<
-    'a,'b when 'a :> Meta 
-          and 'b :> Meta> 
+    'a,'b when 'a $\succ$ Meta 
+          and 'b $\succ$ Meta> 
     (x : Prod<'a,'b>) = ...
 \end{lstlisting}
 and this indicates that \verb+'a+ and \verb+'b+ must be a type
@@ -393,7 +392,7 @@ representation of values created by one of the type constructors. The
 \verb+b+ argument contains the representation of the remaining type
 constructors or serves the same role as \verb+'a+ to represent values
 created with the last type constructor. Both \verb+'a+ and \verb+'b+
-have the constraint $\mathtt{'a},\mathtt{'b} :> \mathtt{Meta}$. For
+have the constraint $\mathtt{'a},\mathtt{'b} \succ \mathtt{Meta}$. For
 instance suppose one has a type:
 \begin{lstlisting}[
   mathescape,
@@ -421,7 +420,7 @@ and \verb+'b+. The first argument contains the type representation of
 one of the constructor's parameters. The second argument contains the
 representation of the remaining constructor's arguments or the type
 \verb+U+ which is used to denote emptyness. Both \verb+'a+ and
-\verb+'b+ have the constraint $\mathtt{'a},\mathtt{'b} :>
+\verb+'b+ have the constraint $\mathtt{'a},\mathtt{'b} \succ
 \mathtt{Meta}$. With this constructor it is possible to fill the
 blanks of \verb+ElemsRep+ as follows:
 \begin{lstlisting}[
@@ -658,20 +657,21 @@ summarized as follows:
 \begin{itemize}
 \item There exists an overload whose type exactly matches the
   arguments given to the generic function. For example: \verb+gmap+ is
-  called with a value $\mathtt{v}\ :?\
+  called with a value $\mathtt{v}\ \triangleright\
   \K<\mathtt{Employee}>*\tau_1*..*\tau_n$ and there exists a
   \verb+gmap+ overload of type
   $\K<\mathtt{Employee}>*\tau_1*..*\tau_n$.
 \item There exists an overload that accepts the same representation
   type and contains a generic type argument. For example: \verb+gmap+
-  is called with a value $\mathtt{v}\ :?\
+  is called with a value $\mathtt{v}\ \triangleright\
   \K<\mathtt{Employee}>*\tau_1*..*\tau_n$ and there exists a
-  \verb+gmap+ overload of type $\K<\mathtt{`t}>*\tau_1*..*\tau_n$.
+  \verb+gmap+ overload that accepts the type $\K<\mathtt{`t}>*\tau_1*..*\tau_n$
+  as argument.
 \item No overload matches the rules above.
 \end{itemize}
 To take care of the last item. The type provider requires that the
 provided types as first argument to the constructor a default function
-$f\ :\ \Meta*\tau_1*\tau_n$. This function will be invoked when no
+$f:\ \Meta*\tau_1*..*\tau_n\rightarrow \tau$. This function will be invoked when no
 overloads are found. The definition now looks as follows:
 \begin{lstlisting}[
   mathescape,
@@ -706,12 +706,12 @@ type GMap<'t,'f>(f : `f$\rightarrow$`f) = class
     inherit GMapBase(defaultAction)
 
     member x.gmap(v : Meta) =
-      x.gmap(v) :?> Meta
+      x.gmap(v) $?{\triangleright}$ Meta
   end
 \end{lstlisting}
-Here $\mathtt{x}\ :?>\ \tau$ is the up-casting operation which
-attempts to assign \verb+x+ the type $\tau$ and fails if $\mathtt{x}\
-\not:?\ \tau$. With this definition the function that \verb+gmap+ will
+Here $\mathtt{x}\ ?{\triangleright}\ \tau$ is the up-casting operation which
+attempts to assign \verb+x+ the type $\tau$ and fails if $\mathtt{x}
+\not\triangleright\ \tau$. With this definition the function that \verb+gmap+ will
 apply is provided when the class is instantiated and can now have an
 explicit type.
 \section{A ``better'' Generic Provider}
