@@ -133,7 +133,7 @@ type GuatemalanEmployee(salary' : int) = class
 
 Several different type declarations are used in this example. \verb+Metadata+ is a record type. \verb+Company+, \verb+Department+ and \verb+Staff+ are algebraic data types (ADTs) like those in other functional languages. \verb+Employee+ and \verb+GuatemalanEmployee+ are classes. Records and ADTs behave in many ways like types in functional languages since they can be pattern matched, are immutable and can't inherit from other types nor types can inherit from them. In .Net slang, they are sealed. Classes behave as the types of an object oriented language. They can inherit from other types (as the case of \verb+GuatemalanEmployee+) and contain member functions declared with the \verb+member+ keyword. Member functions always take as an argument the object from which it is invoked which is represented by the \verb+self+ before the dot (note that \verb+self+ is an identifier not a keyword).
 
-Another F\# features used are generic types and type constraints. Generic types are type arguments that are accepted by other types. In this case \verb+Company+, \verb+Department+ and \verb+Staff+ accept a single type as argument. This argument has the type constraint that it must be a sub-class of the \verb+Missile+ class. The type constraints are declared using the \verb+when+ keyword.
+Another F\# features used are generic types and type constraints. Generic types are type arguments that are accepted by other types. In this case \verb+Company+, \verb+Department+ and \verb+Staff+ accept a single type as argument. This argument has the type constraint that it must be a sub-class of the \verb+Employee+ class. The type constraints are declared using the \verb+when+ keyword. Types that contain generic type arguments are called generic types.
 
 Next step is to implement the \verb+IncreaseSalary+ function. To do so, an auxiliary function called \verb+GMap+ will be defined which applies another function to every \verb+Employee+ of the company:
 \begin{lstlisting}[
@@ -192,7 +192,9 @@ A type provider\cite{typeProviders} in F\# is a mechanism that allows types to b
 ]
 type T = Provider<arg_1,..,arg_n>
 \end{lstlisting}
-This code triggers the invokation of the type provider \verb+Provider+ which generates a type that is assigned the alias \verb+T+.
+This code triggers the invokation of the type provider \verb+Provider+ which generates a type that is assigned the alias \verb+T+. The type \verb+T+ can now be used almost indistinguishly from any ordinary .Net type. The type provider api allows it to define constructors, static or regular fields and many other attributes that types contain. The use of this type is also typechecked by the compiler in the same way it happens with ordinary types.
+\\\\
+Type providers can accept optional and mandatory static parameters. These parameters are very different from generic types. They are values of types \verb+bool+, \verb+int+ or \verb+string+ and can only be literal values. This means they cannot accept types (as the case of generic types) as arguments.
 
 \section{Type Representations in F\#}
 The essence of DGP is to provide an abstraction that is able to treat values of different types and equivalent structure as equivalent while still providing type safety. Type representations are used to achieve that objective. The method used here is similar to the approach from Regular\cite{Regular} but had to be adapted to cope with two of F\#'s limitations:
