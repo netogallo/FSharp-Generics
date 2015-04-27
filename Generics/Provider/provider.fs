@@ -240,7 +240,7 @@ module Provider =
     [<TypeProvider>]
     type GenericProvider() =
         let invalidation = new Event<EventHandler, EventArgs>()
-        let mutable ty = None
+        let mutable ty = Map.empty
         interface IProvidedNamespace with
             member this.ResolveTypeName(typeName) = typeof<Generic>
             member this.NamespaceName with get() = ns
@@ -249,7 +249,7 @@ module Provider =
         interface ITypeProvider with
             member this.GetNamespaces() = [| this |]
             member this.ApplyStaticArguments(noArgs,withArgs,args) = 
-                match ty with
+                match ty |> Map.tryFind noArgs.Name with
                 | Some ty' -> GenType(ty',(withArgs.[withArgs.Length - 1])) :> _
                 | None ->
                     let ``method`` = args.[0] :?> string
@@ -258,7 +258,7 @@ module Provider =
                     let className = withArgs.[withArgs.Length - 1]
 
                     let (t,_) = makeCompiledClass className ``method`` argsType retType
-                    ty <- Some t 
+                    ty <- ty |> Map.add className t
                     t
             member this.GetStaticParameters(typeWithoutArguments) = 
                 let param ``type`` name raw def = {new ParameterInfo() with

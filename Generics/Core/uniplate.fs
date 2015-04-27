@@ -135,10 +135,10 @@ module Rep =
      override o.Childs with get() = seq [elem']
      override o.Values with get() = elem'.Values
      override o.Cast() =
-     let e = match elem with
-             | Choice1Of2 e -> e :> Meta |> Choice1Of2
-             | Choice2Of2 e -> e :> Meta |> Choice2Of2
-     SumConstr<'t,Meta,Meta>(e) :> _
+       let e = match elem with
+               | Choice1Of2 e -> e :> Meta |> Choice1Of2
+               | Choice2Of2 e -> e :> Meta |> Choice2Of2
+       SumConstr<'t,Meta,Meta>(e) :> _
   end
 
 
@@ -182,15 +182,27 @@ module Rep =
       override o.Cast() = o :> _
     end
    
+  let (|MTY|_|) (ty : Type) =
+    if ty = typeof<Meta> || ty.IsSubclassOf typeof<Meta> then Some () else None
+
   let (|SUMTY|_|) (x : Type) =
     if x.IsGenericType then
       if x.GetGenericTypeDefinition() = typeof<SumConstr<obj,Meta,Meta>>.GetGenericTypeDefinition() then
         let args = x.GetGenericArguments()
-        Some (args.[1],args.[2])
+        Some (args.[0],args.[1],args.[2])
       else
         None
     else
       None
+
+  let (|PRODTY|_|) (ty : Type) =
+    if ty.IsGenericType then
+      if ty.GetGenericTypeDefinition() = typeof<Prod<Meta,Meta>>.GetGenericTypeDefinition() then
+        let args = ty.GetGenericArguments()
+        Some (args.[0],args.[1])
+      else
+        None
+    else None
 
   let (|GTYPE|_|) (t : Type) =
     if t.IsGenericType then
@@ -379,51 +391,57 @@ module Rep =
 
         let (tC,tR,constr) = constrsAndTypes.[i]
         
-        // Case when ix corresponds to the last union case
-        // In such case, the representation type is that of
-        // the union case before the last case since the inital
-        // case of the fold dosen't include any sum constructors 
-        let mutable c =
-          // The type for the base Choice representation. This either is
-          // unit when the type has more than two Constructors or the
-          // type itself indicating that this Sum representation corresponds
-          // to a specific type
-          let tx =
-            if constrsAndTypes.Length <= 2 then
-              baseType.DeclaringType
-            else
-              typeof<unit>
-          if i = constrsAndTypes.Length - 1 then
-            let (tC,tR',_) = constrsAndTypes.[i-1]
-            let (sty2,argTy,choice1Of2,choice2Of2) = choices tx tR' tR
-            let init = sty2.GetConstructor [| argTy |]
-            fun v -> init.Invoke [| choice2Of2 (constr v) |] :?> Meta
-          else
-            let (tR',_,_) = constrsAndTypes.[i+1]
-            let (sty2,argTy,choice1Of2,choice2Of2) = choices tx tR tR'
-            let init = sty2.GetConstructor [| argTy |]
-            fun v -> init.Invoke [| choice1Of2 (constr v) |] :?> Meta
-
         // The type of the last two cases is identical. This is because they simply
         // correspond to different branch of the same choice. So if the last case
         // is being considered, one before the last is skipped
         let iN = if i = constrsAndTypes.Length - 1 then i - 2 else i - 1
 
+        // Case when ix corresponds to the last union case
+        // In such case, the representation type is that of
+        // the union case before the last case since the inital
+        // case of the fold dosen't include any sum constructors 
+        let c = ref <|
+            // The type for the base Choice representation. This either is
+            // unit when the type has more than two Constructors or the
+            // type itself indicating that this Sum representation corresponds
+            // to a specific type
+            let tx =
+              if iN < 0 then
+                baseType.DeclaringType
+              else
+                typeof<unit>
+            if i = constrsAndTypes.Length - 1 then
+              let (tC,tR',_) = constrsAndTypes.[i-1]
+              let (sty2,argTy,choice1Of2,choice2Of2) = choices tx tR' tR
+              let init = sty2.GetConstructor [| argTy |]
+              fun v -> 
+                init.Invoke [| choice2Of2 (constr v) |] :?> Meta
+            else
+              let (tR',_,_) = constrsAndTypes.[i+1]
+              let (sty2,argTy,choice1Of2,choice2Of2) = choices tx tR tR'
+              let init = sty2.GetConstructor [| argTy |]
+              fun v -> 
+                init.Invoke [| choice1Of2 (constr v) |] :?> Meta
+
         for ix' in 0 .. iN do
             let ix = iN - ix'
-            let tx = if ix = 0 then baseType.DeclaringType else typeof<unit>
+            let tx = 
+              if ix = 0 then 
+                baseType.DeclaringType 
+              else typeof<unit>
             let (_,tf0,_) = constrsAndTypes.[ix]
             let (ty0,_,_) = constrsAndTypes.[ix + 1]
             let (sty2,argTy,choice1Of2,choice2Of2) = choices tx tf0 ty0
             let init = sty2.GetConstructor [| argTy |]
-            c <- c |> fun c2 v ->
+            c := !c |> fun c2 v ->
               let ix = ix
               let i = i
               let elem = c2 v
               let choices = constrsAndTypes
               let elem' = choice2Of2 elem
-              init.Invoke [| elem' |] :?> Meta
-        (gts,uc,c)
+              let r = init.Invoke [| elem' |] :?> Meta
+              printf "%A\n\n" r;r
+        (gts,uc,!c)
                       
       let (ty',_,constr) = constrsAndTypes.[0]
       let ty = 
