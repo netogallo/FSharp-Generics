@@ -100,7 +100,8 @@
 
 \begin{abstract}
   The introduction of Datatype Generic programming (DGP)
-  \emph{revolutionized} functional programming by allowing numerous
+  \emph{revolutionized} \todo{find a better word for revolutionized}
+  functional programming by allowing numerous
   algorithms to be defined by induction over the structure of types
   while still providing type safety. Due to the advanced type system
   requirements for DGP, only a handful of functional languages can
@@ -259,6 +260,20 @@ previously. Before doing so, however, we would like to give a brief
 overview of some of the relevant features of F\# and the .NET
 platform.
 
+\paragraph{Operators} The F\# language has a couple of operators that
+are used very often by programmers. Here is the list:
+\begin{lstlisting}[
+  mathescape,
+  columns=fullflexible,
+  basicstyle=\fontfamily{lmvtt}\selectfont,
+]
+// Reversed function application (aka. pipeline)
+let (|>) x f = f x
+
+// Reversed function composition
+let ($\gg$) f g x = g (f x)
+\end{lstlisting}
+
 \subsection{The .NET platform}
 The .NET platform is a common runtime environment, supporting
 a family of languages. It implements a very rich type
@@ -386,7 +401,7 @@ The first sub-class of \verb+Meta+ is \verb+SumConstr+. This is used
 to represent the possible type constructors that an algebraic data
 type has. This type takes three type arguments: \verb+t+,\verb+a+ and
 \verb+b+. The first one indicates the type that this representation
-encodes (or \verb+unit+ when it is an intermediate
+encodes (or \verb+unit+ when it is an intermediate component of a
 representation). The \verb+'a+ argument corresponds to the type
 representation of values created by one of the type constructors. The
 \verb+b+ argument contains the representation of the remaining type
@@ -431,8 +446,10 @@ blanks of \verb+ElemsRep+ as follows:
 type ElemsRep<'a> = SumConstr<
   Elem<'a>,
   SumConstr<
+    unit,
     Prod<_,Prod<_,U>>,
     SumConstr<
+      unit,
       Prod<_,U>,
       U>>>
 \end{lstlisting}
@@ -453,8 +470,10 @@ constraints. To continue with the example above, the type
 type ElemsRep = SumConstr<
   Elem<int>,
   SumConstr<
+    unit,
     Prod<K<int>,Prod<_,U>>,
     SumConstr<
+      unit,
       Prod<K<int>,U>,
       U>>>
 \end{lstlisting}
@@ -472,8 +491,10 @@ as follows:
 type ElemsRep = SumConstr<
   Elem<int>,
   SumConstr<
+    unit,
     Prod<K<int>,Prod<Id<Elem<int>>,U>>,
     SumConstr<
+      unit,
       Prod<K<int>,U>,
       U>>>
 \end{lstlisting}
@@ -736,8 +757,17 @@ would need to be constructed to run the type provider's code. Option 2
 which is more feasible has been requested at \cite{genericTypeArgs}
 would also benefit type providers in large. For example, one could
 modify the SQLProvider \cite{SQLProvider} such that one can specify
-how to map database types to .NET types. With such feature in place,
-the implementation would look similar to:
+how to map database types to .NET types. The provided \verb+GMapBase+
+type would have the following interface:
+\begin{lstlisting}[
+  mathescape,
+  columns=fullflexible,
+  basicstyle=\fontfamily{lmvtt}\selectfont,
+]
+type GMapBase<`t>(f : Meta$\rightarrow$`t) =
+  member GMap : Meta$\rightarrow$`t
+\end{lstlisting}
+and could be used as follows to define the \verb+GMap+ class:
 \begin{lstlisting}[
   mathescape,
   columns=fullflexible,
@@ -747,10 +777,160 @@ type GMap<`t,`f>(f : `f$\rightarrow$`f) = class
     inherit GMapBase<Meta>(defaultAction)
   end
 \end{lstlisting}
-As it can be observed, the generic type argument given to
-\verb+GMapBase+ allows it to know that the return type of \verb+gmap+
+This imporved type provider is able to
+determine that the return type of \verb+gmap+
 is \verb+Meta+.
+\section{Example}
+To further explore the usefulness of the library, some
+traditional generic functions will be presented. The
+first function is \verb+uniplate+. This function is used
+by the uniplate library \cite{uniplate} to define
+a whole family of generic functions. It's Haskell
+signature is: 
+\[
+\mathtt{uniplate}:\mathtt{Uniplate\ x}
+\Rightarrow \mathtt{x} \rightarrow ([\mathtt{x}],[\mathtt{x}]\rightarrow \mathtt{x})
+\]
+This function is the only member of the \verb+Uniplate+
+type-class. It takes a value as an argument and returns
+a list of all the recursive childs with the same type
+as the argument and a function that allows to re-construct
+a value with the same structure using new childs. The
+F\# variant of the function should work as the following
+example:
+\begin{lstlisting}[
+  mathescape,
+  columns=fullflexible,
+  basicstyle=\fontfamily{lmvtt}\selectfont,
+]
+type Arith =
+  | Op of string*Arith*Arith
+  | Neg of Arith
+  | Val of int
+  
+let (c,f) = uniplate (Op (``add'',Neg (Val 5),Val 8))
+printf ``%A'' c // [Neg (Val 5);Val 8]
+printf ``%A'' (f [Val 1;Val 2]) // Op (``add'',Val 1,Val 2)
 
+let (c,f) = uniplate (Val 5)
+printf ``%A'' c // []
+printf ``%A'' (f []) // Val 5
+
+\end{lstlisting}
+To define the function, two auxiliary generic functions will be
+created. The first one is \verb+Collect+ which obtains the list
+of recursive childs:
+\begin{lstlisting}[
+  mathescape,
+  columns=fullflexible,
+  basicstyle=\fontfamily{lmvtt}\selectfont,
+]
+type CollectBase = Generics.Provided.Generics<''Collect'',0>
+
+type Collect<`t>() =
+  inherit CollectBase(fun m$\rightarrow$(([] : `t list) $\triangleright$ obj)
+
+  member x.Collect(m : Meta) =
+    base.Collect m ${?}\triangleright$ `t list
+
+  member x.Collect<`x>(c : SumConstr<`x,Meta,Meta>) =
+    match c with
+    | L m $\rightarrow$ x.Collect m
+    | R m $\rightarrow$ x.Collect m
+
+  member x.Collect(c : Prod<Meta,Meta>) =
+    List.concat<`t> [x.Collect c.E1;x.Collect c.E2]
+
+  member x.Collect(i : Id<`t>) =
+    [i.Elem]
+\end{lstlisting}
+The function is straightforward to understand. Every time
+the \verb+Id+ constructor is reached, its content is added
+to a list. The results of products are simply joined
+together into a larger list. An explicit type is given
+to the default action (\verb+`t list+) because otherwise
+F\# assigns \verb+obj list+ as default type to lists of
+ambigous type (ie. all lists are a subclass of \verb+obj+).
+The second generic function is \verb+Instantiate+ which is
+defined as follows:
+\begin{lstlisting}[
+  mathescape,
+  columns=fullflexible,
+  basicstyle=\fontfamily{lmvtt}\selectfont,
+]
+type InstantiateBase = Generics.Provided.Generic<''Instantiate'',0>
+
+type Instantiate<`t>(values` : `t list) =
+  inherit InstantiateBase(fun m $\rightarrow$ m $\triangleright$ obj)
+  let mutable values = values`
+
+  let pop () = match values with
+                | x::xs $\rightarrow$ values $\leftarrow$ xs;Some x
+                | [] $\rightarrow$ None
+
+  member x.Instantiate(m : Meta) =
+    base.Instantiate m ${?}\triangleright$ Meta
+
+  member x.Instantiate(
+    s : SumConstr<`t,Meta,Meta>) =
+    match s with
+    | L m $\rightarrow$ SumConstr<`t,Meta,Meta>(
+      x.Instantiate m |> Choice1Of2)
+    | R m $\rightarrow$ SumConstr<`t,Meta,Meta>(
+      x.Instantiate m |> Choice2Of2)
+
+  member x.Instantiate(
+    s : SumConstr<unit,Meta,Meta>) =
+    match s with
+    | L m $\rightarrow$ SumConstr<`t,Meta,Meta>(
+      x.Instantiate m |> Choice1Of2)
+    | R m $\rightarrow$ SumConstr<`t,Meta,Meta>(
+      x.Instantiate m |> Choice2Of2)
+
+  member x.Instantiate(i : Id<`t>) =
+    match pop () with
+    | Some x $\rightarrow$ Id x
+    | None $\rightarrow$ None
+
+\end{lstlisting}
+This function is provided with a list of values and
+when applied to a type representation it will replace
+all the recursive values within the representation
+by values of the provided list. The overloaded
+definition for the \verb+SumConstr+ case is necessary.
+Recall that the first argument of \verb+SumConstr+ is either
+the type being represented by the \verb+SumConstr+ or
+\verb+unit+ if that \verb+SumConstr+ is a intermediate
+representation. Since uniplate only deals with
+recursive values that occurr on the first level,
+the \verb+SumConstr+ where the first argument is different
+from \verb+`t+ (or the generic type to which \verb+uniplate+
+has been applied) should not be recursively traversed.
+To wrap both pieces together the \verb+Uniplate+ function
+is now defined:
+\begin{lstlisting}[
+  mathescape,
+  columns=fullflexible,
+  basicstyle=\fontfamily{lmvtt}\selectfont,
+]
+type UniplateBase = Generics.Provided.Generic<
+  ''Uniplate'',0>
+
+type Uniplate<`t>() =
+  inherit UniplateBase(fun _ $\rightarrow$ 
+    failwith ``Invalid representation'')
+
+  member x.Uniplate(s : SumConstr<`t,Meta,Meta>) =
+    (Collect().Collect s,
+     fun vs $\rightarrow$ Instantiate(vs).Instantiate s)
+
+let uniplate<`t> (x : `t) =
+  let up = Uniplate<`t>()
+  let g = Generic<`t>()
+  x |> g.To |> up.Uniplate
+  |> fun (x,f) $\rightarrow$ (x, f $\gg$ g.From)
+
+\end{lstlisting}
 \appendix
 \section{Appendix Title}
 
