@@ -125,6 +125,50 @@ term1, term2
 keyword1, keyword2
 
 \section{Introduction}
+It is considered a good practice to avoid code repetition since such
+code is more mantainable, less error prone and less boring for 
+programers. Unfortunately, type systems have created some tension
+to achieve this ideal because, on ocassions, it leads to identical
+code that only differs by the type signature.
+
+The problem above has been studied for the case of Algebraic
+Data Types (ADTs) \cite{} \todo{Cite papers about GP}. Algorithms
+that operate on ADTs typically use \emph{pattern matching} to
+implement its behaviour. However, pattern matching does not
+behave generically such that an expression that pattern matches
+values of one type cannot be used to pattern match values of
+another type with identical (not to mention similar) structure.
+
+Effort has been invested to overcome this problem. One approach is
+combinator based libraries like Uniplate \cite{uniplate} and SYB\cite{syb}
+that specify a small set of simple combinators from which a
+family of generic functions can be derived. That way boilerplate
+code is only needed to define these basic combinators and
+it can usually be done automatically. The second approach
+is Datatype Generic Programming (DGP) such as PolyP\cite{polyp}, 
+Regular\cite{regular}, Multi-Rec\cite{multirec} or RepLib\cite{replib}. 
+In this approach, a single (or several) types are used to define
+a type representation to which values of a family of types can
+be converted. Algorithms are specified in terms of theese
+representations and the library provides the infrastructure
+to convert values from/to representations.
+
+In the context of F\# (and .Net in general), the traditional
+approach to define algorithms generically is reflection. Although
+reflection is very powerful, it defeats the purpose of type
+safety since type correctness must entirely be checked dynamically.
+Since reflection is too general, it can't offer a general optimization
+mechanism and every function specified using reflection must
+manually implement some caching mechanism to achieve better performance.
+
+The existence of ADTs in F\# could have the potential to use
+generic programming to avoid reflection. This paper presents an
+implementation of the DGP approach inspired in regular\cite{regular}.
+Unfortunately, F\#'s type system is not as sophisticated as
+Haskell's type system so the library had to be adapted to
+work with F\#. Examples are presented and the definition of
+the \verb+uniplate+ combinator is provided to show the expressiveness
+of the approach.
 
 \section{Background}
 This section introduces the F\# language and the .NET
@@ -858,7 +902,8 @@ defined as follows:
   columns=fullflexible,
   basicstyle=\fontfamily{lmvtt}\selectfont,
 ]
-type InstantiateBase = Generics.Provided.Generic<''Instantiate'',0>
+type InstantiateBase = Generics.Provided.Generic<
+  ''Instantiate'',0>
 
 type Instantiate<`t>(values` : `t list) =
   inherit InstantiateBase(fun m $\rightarrow$ m $\triangleright$ obj)
