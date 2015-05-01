@@ -35,6 +35,7 @@
   {}}
 
 
+\newcommand{\primed}[1]{'#1}
 \newcommand{\Sum}{\mathtt{Sum}}
 \newcommand{\Prod}{\mathtt{Prod}}
 \newcommand{\Meta}{\mathtt{Meta}}

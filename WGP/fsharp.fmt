@@ -10,4 +10,5 @@
 %format member = "\mathbf{member}"
 %format match = "\mathbf{match}"
 %format . = "."
-%format generic(c)(a) = c "\langle" a "\rangle"
+%format generic(c)(a) = c "\langle\primed{" a "}\rangle"
+%format var(a) = "\primed{a}"
