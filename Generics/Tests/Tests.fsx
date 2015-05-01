@@ -190,3 +190,22 @@ for ix in 0 .. 0 do
 
 for ix in 1 .. 5 do
   count <- count |> fun count' () -> count' ();printfn "Hay"
+
+type T = A of int | B of string
+
+let g = Generic<T>()
+
+A 5 |> g.To
+
+let (|SUM|_|)<'t,'a,'b when 'a :> Meta and 'b :> Meta> (m : Meta) =
+  if m.GetType() = typeof<SumConstr<'t,'a,'b>> then
+    let s = m :?> SumConstr<'t,'a,'b>
+    match s.Elem with
+    | Choice1Of2 s' -> Choice1Of2 ((None : 't option),s')
+    | Choice2Of2 s' -> Choice2Of2 ((None : 't option),s')
+    |> Some
+  else
+    None
+
+match A 5 |> g.To with
+  | SUM (c : Choice<(T option)*Meta,(T option)*Meta>) -> ()
