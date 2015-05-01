@@ -51,8 +51,8 @@
 \setlength{\pdfpageheight}{\paperheight}
 \setlength{\pdfpagewidth}{\paperwidth}
 
-\conferenceinfo{CONF 'yy}{Month d--d, 20yy, City, ST, Country} 
-\copyrightyear{20yy} 
+\conferenceinfo{WGP '15}{August 30, 2015, Vancouver, British Columbia, Canada} 
+\copyrightyear{2015} 
 \copyrightdata{978-1-nnnn-nnnn-n/yy/mm} 
 \doi{nnnnnnn.nnnnnnn}
 
@@ -175,7 +175,7 @@ to the .NET platform.
 
 Before we can define the |IncreaseSalary| function, we will define the types on which it operates:
 \begin{code}
-[<AbstractClass>]
+[<<AbstractClass>>]
 type Employee() = class
     abstract Salary : float with get() and set()
     abstract NetSalary : float with get()
@@ -196,7 +196,8 @@ type generic(Company)(t when t :> Employee) =
   | Empty
   | Dept of generic(Department)(t)*generic(Company)(t)
 
-type GuatemalanEmployee(salary' : int) = class
+type GuatemalanEmployee(salary' : int) =
+  class
     inherit Employee()
     let mutable salary = salary'
     override self.Salary  
@@ -206,21 +207,22 @@ type GuatemalanEmployee(salary' : int) = class
       with get() = self.Salary / 1.12
   end
 \end{code}
-This example demonstrates the different type declarations that F\# supports.
-Besides records, such as |Metadata|, F\# supports algebraic data types (ADTs)
-that should be familiar to functional programmers. For example, |Company|,
-|Department| and |Staff| are ADTs. Besides algebraic data types,
-F\# also supports classes, such as |Employee| and
-|GuatemalanEmployee|. There are several important differences between classes
-and data types. Records and data types may be deconstructed through pattern matching 
-and are immutable. In .NET terminology, they are \emph{sealed}. In contrast to classes,
-there is no possible subtyping relation between data types.
-Classes in F\#, on the other hand, 
-behave just as in any other object oriented language. They can inherit from
-other classes, as is the case for the |GuatemalanEmployee|, and may contain
-member functions declared with the |member| keyword. Member
-functions always take the object on which they are
-invoked as an argument. This is represented by the |self| before the dot.
+This example demonstrates the different type declarations that F\#
+supports.  Besides records, such as |Metadata|, F\# supports algebraic
+data types (ADTs) that should be familiar to functional
+programmers. For example, |Company|, |Department| and |Staff| are
+ADTs. Besides algebraic data types, F\# also supports classes, such as
+|Employee| and |GuatemalanEmployee|. There are several important
+differences between classes and data types. Records and data types may
+be deconstructed through pattern matching and are immutable. In .NET
+terminology, they are \emph{sealed}. In contrast to classes, there is
+no possible subtyping relation between data types.  Classes in F\#, on
+the other hand, behave just as in any other object oriented
+language. They can inherit from other classes -- in our example the
+class |GuatemalanEmployee| inherits from the |Employee| class -- and may
+contain member functions declared with the |member| keyword. Member
+functions always take the object on which they are invoked as an
+argument. This is represented by the |self| before the dot.
 
 These data declarations also use generic types and type
 constraints. Generic types define data types parametrized by a type
@@ -231,7 +233,7 @@ subtype of the |Employee| class. The type constraints are
 declared using the |when| keyword.
 
 It is worth pointing out that generic type arguments are constraint to
-be of kind |*| (star). This is particularly important limitation
+be of kind |*|. This is particularly important limitation
 in the context of data type generic programming, as many existing
 Haskell libraries rely on higher-kinded polymorphism.
 
@@ -245,19 +247,22 @@ type generic(Staff)(t) with
     match self.with
     | Empty -> Empty
     | Member (m,s) -> Member (f m,s.GMap f)
-\end{code}
-% type Department<'t> with
-%   member self.GMap(f) =
-%     match self.with
-%     | Tech of meta,staff -> Tech (meta,staff.GMap f)
-%     | HR of meta,staff -> HR (meta,staff.GMap f)
 
-% type Company<'t> with
-%   member self.GMap(f) =
-%     match self.with
-%     | Empty -> Empty
-%     | Member d,c -> Member(d.GMap f, c.GMap f)
-% \end{code}
+type generic(Department)(t) with
+  member self.GMap(f) =
+    match self.with
+    | Tech of meta,staff -> 
+        Tech (meta,staff.GMap f)
+    | HR of meta,staff -> 
+        HR (meta,staff.GMap f)
+
+type generic(Company)(t) with
+  member self.GMap(f) =
+    match self.with
+    | Empty -> Empty
+    | Member d,c -> 
+        Member(d.GMap f, c.GMap f)
+\end{code}
 Here we have chosen to \emph{overload} the |GMap| function,
 allowing a function with the same name to be defined for different
 types. To overload functions in F\#, they must be defined as a member
@@ -265,11 +270,11 @@ function. Member functions can be defined for any type; their
 definition is not restricted to the type's definition site. 
 
 Using |GMap|,  the |IncreaseSalary| function can be defined as follows:
-% \begin{code}
-% type Company<'t> with
-%   member self.IncreaseSalary(v) =
-%     self.GMap (fun e -> e.Salary $\leftarrow$ e.Salary + v;e)
-% \end{code}
+\begin{code}
+type generic(Company)(t) with
+  member self.IncreaseSalary(v) =
+    self.GMap (fun e -> e.Salary <- e.Salary + v;e)
+\end{code}
 
 In the later sections we will show how the |GMap| function may be
 derived automatically from the type definitions we saw
@@ -277,15 +282,19 @@ previously. Before doing so, however, we would like to give a brief
 overview of some of the relevant features of F\# and the .NET
 platform.
 
-\paragraph{Operators} The F\# language has a couple of operators that
-are used very often by programmers. Here is the list:
-\begin{code}
-// Reversed function application (aka. pipeline)
-let (|>) x f = f x
+% \paragraph{Operators} The F\# language has a couple of operators that
+% are used very often by programmers. Here is the list:
+% \begin{code}
+% // Reversed function application (aka. pipeline)
+% let (|>) x f = f x
 
-// Reversed function composition
-let ($\gg$) f g x = g (f x)
-\end{code}
+% // Reversed function composition
+% let ($\gg$) f g x = g (f x)
+% \end{code}
+
+%% Wouter: let's introduce these as we encounter them. 
+% They are pretty familiar to Haskell programmers, even if they have a
+% different name
 
 \subsection{The .NET platform}
 The .NET platform is a common runtime environment, supporting
@@ -368,121 +377,89 @@ purpose .NET serializer.
 \label{sec:representation}
 
 The core of most libraries for data type generic programming is a
-\emph{representation type} or \emph{universe}, that determines which
-types can be represented and how generic functions are defined. We
+\emph{representation type} or \emph{universe}, that determines the
+types that can be represented and how generic functions are defined. We
 will adopt the sums-of-products view of algebraic data types, as
 pioneered by Generic Haskell~\cite{GenericHaskell} and libraries such
 as Regular~\cite{Regular}.
 
 The type system of F\#, however, is not as expressive as that of
 Haskell. In particular, all type variables are necessarily of kind
-|*|; furthermore, all calls to methods must be resolved statically.
-For these reasons, we will need to adapt the Haskell approach
-slightly.
+|*|; furthermore, all calls to overloaded methods must be resolved
+statically. For these reasons, we will need to adapt the Haskell
+approach slightly.
 
-All type representations are a sub-class of the |Meta| abstract
-class. It's main role is imposing type constraints on generics that
-are required to be a type-representation. Those constraints serve as
-an alternative to typeclass constraints that are used in Regular. For
-instance in Regular one might have:
+We will define an abstract class, |Meta|, that can will be used to
+define type representations. Its purpose is to impose type constraints
+on type variables. These constraints serve as an alternative to
+typeclass constraints that are used in Regular. For example, the
+following instance is defined in the Regular library:
 
 \begin{code}
-type GenericClass =
-  member self.genericFunction<
-    var(a),var(b)  when var(a) :< Meta 
-                   and var(b) :< Meta> 
-                   (x : Prod<var(a),var(b)>) = ...
+instance (GMap f, GMap g) => GMap (f :*: g) where
+  gmap f (x :*: y) = ...
 \end{code}
-and this indicates that |var(a)| and |var(b)| must be a type
-representation. Later one will see that the constraints not need to
-appear in the signature of |genericFunction| because they are
-added to the |Prod| class itself (which is also shown later).
+In F\#, we cannot abstract over higher-kinds. Instead, we therefore
+abstract over type variables of kind |*|, and require these types
+themselves are subtypes of the |Meta| class.
 
-The first sub-class of |Meta| is |SumConstr|. This is used
-to represent the possible type constructors that an algebraic data
-type has. This type takes three type arguments: |t|,|a| and
-|b|. The first one indicates the type that this representation
-encodes (or |unit| when it is an intermediate component of a
-representation). The |var(a)| argument corresponds to the type
-representation of values created by one of the type constructors. The
-|b| argument contains the representation of the remaining type
-constructors or serves the same role as |var(a)| to represent values
-created with the last type constructor. Both |var(a)| and |var(b)|
-have the constraint |var(a), var(b) :< Meta|. For
-instance suppose one has a type:
+In the remainder of this section, we will present the concrete
+subtypes of the |Meta| class defined in our library. The first
+subclass of |Meta| is |SumConstr|, used to take the sum of two types.
+The |SumConstr| takes three type arguments: |t|,|a| and |b|. The first
+one indicates the type that this representation encodes. The remaining
+arguments, |vara| and |varb|, are the arguments to the sum type.  Note
+that both |vara| and |varb| have the constraint |vara, varb :<
+Meta|. 
+
+\wouter{Why are they called SumConstr and Prod? Why not just Sum and Prod?}
+
+\wouter{Would it be interesting to give the definition of SumConstr
+  and Prod here? It might be interesting to see how this stuff looks
+  in F\#.  I've trimmed down the example a bit -- this stuff is very
+  familiar to the WGP audience.}
+
+The second subclass of |Meta| is |Prod|, corresponding to the product
+of two types. The |Prod| type accepts two type arguments: |vara| and
+|varb|. Once again, we require both |vara| and |varb| to be subtypes
+of the |Meta| class. We will use the class |U :< Meta| to represent
+the unit type.
+
+Next, the subclass |K| of |Meta| is used to represent a type, that is
+not defined to be an algebraic data type. This can be used to
+represent primitive types, such as |int| or |float|. The |K|
+constructor takes a single type argument |vara| which corresponds to
+the type of its content. Since F\# cannot statically constrain a type
+to be an algebraic data type or not, |vara| has no constraints. 
+
+Finally, |Id| is the last subclass of |Meta|. This type is used to
+represent recursive types. This type takes a single type argument
+which is the same type being represented.
+
+We conclude this section with an example of our type
+representation. Given the following algebraic data type in F\#:
 \begin{code}
-type Elems<var(a)> = Cons of var(a)*Elems<var(a)> 
-                   | Val of var(a) 
+type Elems<<vara>> = Cons of vara*Elems<<vara>>
+                   | Val of vara 
                    | Nil 
 \end{code}
-its representation would look like:
+We can represent this type as a subtype of the |Meta| class as
+follows:
 \begin{code}
-type ElemsRep<var(a)> = SumConstr<
-                     Elem<var(a)>,
-                     _,SumConstr<_,_,_>>
-\end{code}
-The second sub-class of |Meta| is |Prod|. This type is used
-to represent cases in which a type constructor accepts more than one
-argument. The |Prod| type accepts two type arguments: |var(a)|
-and |var(b)|. The first argument contains the type representation of
-one of the constructor's parameters. The second argument contains the
-representation of the remaining constructor's arguments or the type
-|U| which is used to denote emptyness. Both |var(a)| and
-|var(b)| have the constraint |var(a), var(b) :< Meta|. With this constructor it is possible to fill the
-blanks of |ElemsRep| as follows:
-\begin{code}
-type ElemsRep<var(a)> = SumConstr<
-  Elem<var(a)>,
-  SumConstr<
+type ElemsRep = SumConstr<<
+  Elem<<int>>,
+  SumConstr<<
     unit,
-    Prod<_,Prod<_,U>>,
+    Prod<<K<<int>>,Prod<<Id<<Elem<<int>> >>,U>> >>,
     SumConstr<
       unit,
-      Prod<_,U>,
-      U>>>
+      Prod<<K << int >>, U>>,
+      U>> >> >>
 \end{code}
-The third sub-class of |Meta| is |K|. This type is used to
-represent a type that is not an ADT. Such types cannot be generically
-manipulated with DGP, nevertheless it is possible to write algorithms
-that operate on occurrences of a particular type(s) inside a ADT. The
-|K| constructor takes a single type argument |var(a)| which
-corresponds to the type of its content. Since F\# cannot statically
-constrain a type to be or not to be an ADT, |var(a)| has no
-constraints. To continue with the example above, the type
-|Elem<int>| would be represented as:
-\begin{code}
-type ElemsRep = SumConstr<
-  Elem<int>,
-  SumConstr<
-    unit,
-    Prod<K<int>,Prod<_,U>>,
-    SumConstr<
-      unit,
-      Prod<K<int>,U>,
-      U>>>
-\end{code}
-The fourth sub-class of |Meta| is |Id|. This type is used to
-represent recursion within a type. This is necessary otherwise a type
-representation would be infinite for recursive ADTs. This type takes a
-single type argument which is the same type being
-represented. With this addition, |Elem<int>| is now represented
-as follows:
-\begin{code}
-type ElemsRep = SumConstr<
-  Elem<int>,
-  SumConstr<
-    unit,
-    Prod<K<int>,Prod<Id<Elem<int>>,U>>,
-    SumConstr<
-      unit,
-      Prod<K<int>,U>,
-      U>>>
-\end{code}
-The last sub-class of |Meta| is |U|. This type is used to
-represent an empty argument in a type constructor. That is the reason
-the |Nil| constructor is represented as |U| and occurrences
-of |Prod| will always have |U| as the second argument of the
-innermost |Prod|.
+\wouter{Is this even right? It looks like the representation only
+  talks about ints, but the original type is generic...}
+
+
 \section{Generic Functions}
 \label{sec:generic-functions}
 The purpose of type representations is to provide an interface that
@@ -498,19 +475,19 @@ of type $\tau$ in a ADT. In Regular, a generic function is defined as
 a typeclass. In this implementation, they are defined as an ordinary
 .NET class:
 \begin{code}
-type GMap<`t>() = class end
+type GMap<<`t>>() = class end
 \end{code}
 The class has a constructor that takes as argument the function that
 will be applied. The first step is dealing with the sum of type
 constructors. As explained in the previous section, they are
 represented by |SumConstr|:
 \begin{code}
-member x.gmap<'x>(v : SumConstr<'t,Meta,Meta>
-                      ,f : Employee$\rightarrow$Employee) =
+member x.gmap<<varx>>(v : SumConstr<<vart,Meta,Meta>>
+                      ,f : Employee -> Employee) =
   match v with
-  | L m $\rightarrow$ SumConstr<'x,Meta,Meta>(
+  | L m -> SumConstr<<varx,Meta,Meta>>(
              x.gmap m |> Choice1Of2)
-  | R m $\rightarrow$ SumConstr<'x,Meta,Meta>(
+  | R m -> SumConstr<<varx,Meta,Meta>>(
              x.gmap m |> Choice2Of2)
 \end{code}
 Here the active patterns |L| and |R| are used to distinguish
@@ -520,7 +497,7 @@ next step is to deal with products. This is handled with the
 |Prod| constructor:
 \begin{code}
 member x.gmap(v : Prod<Meta,Meta>
-                 ,f : Employee$\rightarrow$Employee) =
+                 ,f : Employee -> Employee) =
   Prod<Meta,Meta>(
     x.gmap(v.E1),
     x.gmap(v.E2))
@@ -545,19 +522,19 @@ contains a value, not a representation. In order to obtain the
 representation, the type |generic(Generic)(t)| is provided. This type
 contains the members:
 \begin{code}
-member x.To : 't $\rightarrow$ Meta
-member x.From : Meta $\rightarrow$ 't
+member x.To : vart -> Meta
+member x.From : Meta -> vart
 \end{code}
 With that class it is now possible to extract the contents of
 |Id|, call the |gmap| function and convert the result back
 to the original type. This results in:
-% \begin{code}
-% member x.gmap(v : Id<'t>
-%                  ,f : Employee$\rightarrow$Employee) =
-%   let g = Generic<'t>()
-%   Id<'t>(x.gmap(
-%     g.To c.Elem,f) |> g.From)
-% \end{code}
+\begin{code}
+member x.gmap(v : Id<<vart>>
+                 ,f : Employee -> Employee) =
+  let g = Generic<<vart>>()
+  Id<<vart>>(x.gmap(
+    g.To c.Elem,f) |> g.From)
+\end{code}
 There are still two pieces missing in this generic function. First of
 all, the recursive calls are invoking |gmap| of type
 $\Meta*\mathtt{Employee}\rightarrow\mathtt{Employee}$ and there is no
@@ -649,13 +626,13 @@ To take care of the last item. The type provider requires that the
 provided types as first argument to the constructor a default function
 $f:\ \Meta*\tau_1*..*\tau_n\rightarrow \tau$. This function will be invoked when no
 overloads are found. The definition now looks as follows:
-% \begin{code}
-% let defaultAction m f = m
+\begin{code}
+let defaultAction m f = m
 
-% type GMap<'t>() = class
-%   inherit GMapBase(defaultAction)
-% end
-% \end{code}
+type GMap<<vart>>() = class
+  inherit GMapBase(defaultAction)
+end
+\end{code}
 This definition (although correct) contains type information whose
 origin has still not been explained. Recall that the second static
 parameter of the type provider is the number of extra arguments of the
@@ -667,16 +644,16 @@ solutions. Nevertheless, due to this limitation it is more convenient
 to include the function arguments of |gmap| at the class level
 for more type safety and define a |gmap| overload of type
 $\Meta\rightarrow\Meta$ and use it for recursive calls:
-% \begin{code}
-% type GMapBase = Generic<''gmap'',0>()
+\begin{code}
+type GMapBase = Generic<<''gmap'',0>>()
 
-% type GMap<'t,'f>(f : `f$\rightarrow$`f) = class
-%     inherit GMapBase(defaultAction)
+type GMap<<vart,varf>>(f : `f -> `f) = class
+    inherit GMapBase(defaultAction)
 
-%     member x.gmap(v : Meta) =
-%       x.gmap(v) $?{\triangleright}$ Meta
-%   end
-% \end{code}
+    member x.gmap(v : Meta) =
+      x.gmap(v) $?{\triangleright}$ Meta
+  end
+\end{code}
 Here $\mathtt{x}\ ?{\triangleright}\ \tau$ is the up-casting operation which
 attempts to assign |x| the type $\tau$ and fails if $\mathtt{x}
 \not\triangleright\ \tau$. With this definition the function that |gmap| will
@@ -928,3 +905,11 @@ Acknowledgments, if needed.
 
 % Subtyping rather than sub-typing
 % data type vs data types
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: t
+%%% TeX-command-default: "lhs2pdf"
+%%% End: 
+
+
