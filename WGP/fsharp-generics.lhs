@@ -100,55 +100,63 @@
 data-type generic programming, reflection, F\#, type providers
 
 \section{Introduction}
-It is considered a good practice to avoid code repetition since such
-code is more mantainable, less error prone and less boring for 
-programers. Unfortunately, type systems have created some tension
-to achieve this ideal because, on ocassions, it leads to identical
-code that only differs by the type signature.
 
-The problem above has been studied for the case of Algebraic
-Data Types (ADTs) \cite{} \todo{Cite papers about GP}. Algorithms
-that operate on ADTs typically use \emph{pattern matching} to
-implement its behaviour. However, pattern matching does not
-behave generically such that an expression that pattern matches
-values of one type cannot be used to pattern match values of
-another type with identical (not to mention similar) structure.
+Over the last decade, data type generic programming has emerged as an
+powerful mechanism for defining families of functions. In Haskell
+alone, there are numerous tools and libraries for data type generic
+programming, including PolyP~\cite{polyp}, Generic
+Haskell~\cite{GenericHaskell}, Scrap your boilerplate~\cite{SYB},
+Uniplate~\cite{Uniplate}, Regular~\cite{Regular},
+Multi-Rec~\cite{MultiRec}, RepLib~\cite{RepLib}, and Instant
+Generics~\cite{instant2}.
 
-Effort has been invested to overcome this problem. One approach is
-combinator based libraries like Uniplate \cite{uniplate} and SYB\cite{syb}
-that specify a small set of simple combinators from which a
-family of generic functions can be derived. That way boilerplate
-code is only needed to define these basic combinators and
-it can usually be done automatically. The second approach
-is Datatype Generic Programming (DGP) such as PolyP\cite{polyp}, 
-Regular\cite{regular}, Multi-Rec\cite{multirec} or RepLib\cite{replib}. 
-In this approach, a single (or several) types are used to define
-a type representation to which values of a family of types can
-be converted. Algorithms are specified in terms of theese
-representations and the library provides the infrastructure
-to convert values from/to representations.
+Many of these libraries are implemented in the same fashion. They
+define a \emph{representation type} or \emph{universe} that can be
+used to describe some collection of types; a \emph{generic} function
+may be defined by induction on the elements of representation
+type. Finally, these libraries typically support some form of
+conversion between values of algebraic data types and their
+corresponding representation. This enables users to call generic
+functions on custom data types, without having to implement the
+underlying conversions manually.
 
-In the context of F\# (and .Net in general), the traditional
-approach to define algorithms generically is reflection. Although
-reflection is very powerful, it defeats the purpose of type
-safety since type correctness must entirely be checked dynamically.
-Since reflection is too general, it can't offer a general optimization
-mechanism and every function specified using reflection must
-manually implement some caching mechanism to achieve better performance.
+Yet this approach has not been as widely adopted in other
+languages. In this paper, we will attempt to address this by
+implementing a library for data type generic programming in F\#. More
+specifically, we make the following contributions:
 
-The existence of ADTs in F\# could have the potential to use
-generic programming to avoid reflection. This paper presents an
-implementation of the DGP approach inspired in regular\cite{regular}.
-Unfortunately, F\#'s type system is not as sophisticated as
-Haskell's type system so the library had to be adapted to
-work with F\#. Examples are presented and the definition of
-the |uniplate| combinator is provided to show the expressiveness
-of the approach.
+\begin{itemize}
+\item The type system of F\# may not be as rich as that of Haskell,
+  but there are numerous features, including reflection, subtyping,
+  type providers and active patterns that may be used for type-level
+  programming in F\#. We will briefly present the F\# features our
+  library relies upon before describing its implementation
+  (Section~\ref{sec:background}).
+
+\item The heart of our library is a representation type defined using
+  the sums-of-products adopted by systems such as Generic
+  Haskell~\cite{GenericHaskell} and Regular~\cite{Regular}. We show
+  how such a representation type may be implmented in F\#
+  (Section~\ref{sec:representation}).
+
+\item Next, we show how generic functions may be defined over this
+  representation type (Section~\ref{sec:generic-functions}). As an
+  example, we will implement a generic map function.
+
+\item To convert a value to our representation type we rely on several
+  more advanced F\# features, such as reflection \todo{and type
+    providers? or active patterns?} (Section~\ref{sec:conversion}).
+
+\item Finally, we will show how how familiar functions from Haskell
+  libraries such as Uniplate, may be implemented using our library
+  (Section~\ref{sec:uniplate}).
+\end{itemize}
 
 \section{Background}
+\label{sec:background}
 This section introduces the F\# language and the .NET
 platform. Inspired by the `Scrap your boilerplate' approach to
-datatype generic programming \todo{add citation}, we will define a
+datatype generic programming~\cite{SYB}, we will define a
 function called |IncreaseSalary|, that increases the salary of
 every employee in a company. Along the way, we will introduce the
 relevant concepts from F\# and .NET; in later sections, we will revise
@@ -322,7 +330,7 @@ type constructors of an ADT to create values of that type. Doing
 so is not type-safe in general, since the information gained through
 reflection is only available at run-time. Any errors will cause a
 runtime exception. Nevertheless, the reflection mechanism is actively
-used in libraries such as FsPickler \cite{FsPickler}, a general
+used in libraries such as FsPickler~\cite{FsPickler}, a general
 purpose .NET serializer.
 
 % \paragraph{Type Providers}
@@ -357,27 +365,27 @@ purpose .NET serializer.
 % details, the reader is advised to read \cite{TypeProviderTutorial}.
 
 \section{Type Representations in F\#}
-The essence of DGP is to provide an abstraction that is able to treat
-values of different types and equivalent structure as equivalent while
-still providing type safety. Type representations are used to achieve
-that objective. The method used here is similar to the approach from
-Regular\cite{Regular} but had to be adapted to cope with two of F\#'s
-limitations:
-\begin{itemize}
-\item Generics of higher kind are not permitted in F\# (nor .NET)
-\item Method calls must be resolved statically
-\end{itemize}
+\label{sec:representation}
+
+The core of most libraries for data type generic programming is a
+\emph{representation type} or \emph{universe}, that determines which
+types can be represented and how generic functions are defined. We
+will adopt the sums-of-products view of algebraic data types, as
+pioneered by Generic Haskell~\cite{GenericHaskell} and libraries such
+as Regular~\cite{Regular}.
+
+The type system of F\#, however, is not as expressive as that of
+Haskell. In particular, all type variables are necessarily of kind
+|*|; furthermore, all calls to methods must be resolved statically.
+For these reasons, we will need to adapt the Haskell approach
+slightly.
+
 All type representations are a sub-class of the |Meta| abstract
 class. It's main role is imposing type constraints on generics that
 are required to be a type-representation. Those constraints serve as
 an alternative to typeclass constraints that are used in Regular. For
 instance in Regular one might have:
-\begin{code}
-instance (GenericClass a,GenericClass b) =>
-  GenericClass (a `times` b) where
-    genericFunction x = ...
-\end{code}
-which in F\# would translate to a class:
+
 \begin{code}
 type GenericClass =
   member self.genericFunction<
@@ -476,6 +484,7 @@ the |Nil| constructor is represented as |U| and occurrences
 of |Prod| will always have |U| as the second argument of the
 innermost |Prod|.
 \section{Generic Functions}
+\label{sec:generic-functions}
 The purpose of type representations is to provide an interface that
 the programmer can use to define generic functions. In other words is
 a language to define what the semantics of such functions are. The
@@ -557,7 +566,9 @@ covered. Addressing both of these problems requires some boilerplate
 code and validations that cannot be checked by the compiler. To
 automate some checks and generate the boilerplate code, a type
 provider will be used.
+
 \section{The Generic Type Provider}
+\label{sec:conversion}
 In the previous section, the existence of a |gmap| function with
 type |Meta -> Meta| was assumed. Since |Meta| is an
 abstract class, the actual role of the function is to select the
@@ -709,10 +720,11 @@ This imporved type provider is able to
 determine that the return type of |gmap|
 is |Meta|.
 \section{Example}
+\label{sec:uniplate}
 To further explore the usefulness of the library, some
 traditional generic functions will be presented. The
 first function is |uniplate|. This function is used
-by the uniplate library \cite{uniplate} to define
+by the uniplate library~\cite{Uniplate} to define
 a whole family of generic functions. It's Haskell
 signature is: 
 \[
@@ -807,7 +819,7 @@ type Instantiate<`t>(values` : `t list) =
   member x.Instantiate(i : Id<`t>) =
     match pop () with
     | Some x $\rightarrow$ Id x
-    | None $\rightarrow$ None
+    | None $\rightarrow$ failwith ``Not enough args''
 
 \end{code}
 This function is provided with a list of values and
@@ -842,29 +854,74 @@ let uniplate<`t> (x : `t) =
   let g = Generic<`t>()
   x |> g.To |> up.Uniplate
   |> fun (x,f) $\rightarrow$ (x, f $\gg$ g.From)
-
 \end{code}
-\appendix
-\section{Appendix Title}
 
-This is the text of the appendix, if you need one.
+% \section{Discussion}
+
+% In the context of F\# (and .NET in general), the traditional
+% approach to define algorithms generically is reflection. Although
+% reflection is very powerful, it defeats the purpose of type
+% safety since type correctness must entirely be checked dynamically.
+% Since reflection is too general, it can't offer a general optimization
+% mechanism and every function specified using reflection must
+% manually implement some caching mechanism to achieve better performance.
+
+% =======
+\section{Discussion}
+Datatype generic programming is a well tested solid approach
+to write generic algorithms. It offers a lot of power compared
+to combinator based libraries but has the cost of being
+harder to use and requiring powerful type systems. The approach
+has been tested and implemented in F\#. Although safety had
+to be compromised due to the absense of type system infrastructure
+in F\#, a useful tool could still be produced. Even though
+not completely safe, it is more type safe than reflection since
+only a minimal part of the algorithms require unchecked
+(or dynamically checked) type operations. In practice, it is
+much more pleasant having theese unsafe runtime 
+operations in F\# than in languages like Haskell or Scala
+because the .Net runtime can provide rich information
+about how/when/why the operation failed. This would result
+in a segmentation fault in Haskell or a stacktrace with
+erased types in Scala.
+
+The library is on its first release so no optimizations have
+been done (since a stable api is desired first) but it is
+clear that DGP opens doors for automated caching of operations
+which would need to be done manually with reflection. In particular,
+the approach is referentially transparent when it comes to the type
+of the arguments. In other words, the same overload will be selected
+when the arguments given to the method selector have the same type.
+This means reflection only needs to be used once to select the
+method and next time a call with the same types is done, the
+right method can automatically be dispatched. \todo{Is this
+clear or should I rather give an example about how this works?}
+
+Compared to existing DGP libraries, the lack of type system
+infrastructure makes it very inconvenient to write a class
+of generic functions. Theese are the functions that produce
+values out of data. The best example is the \verb+read+ function
+from Haskell. The problem is that as the funciton parses the
+string, it must generate a representation. But in this library,
+all type representations are a subclass of \verb+Meta+ so it is
+hard to statically check that the algorithm is correct. A
+possible way to address the problem is having a type provider
+that can be given a type and it produces a new type that
+is the exact type for the representation. Then the \verb+read+
+or any other function must produce a representation with
+that same type (instead of only a sub-type of \verb+Meta+) and
+would be reasonable for the F\# compiler to check the correctness
+of the algorithm. Unfortunately, (as pointed out before) type
+providers can't accept types as static arguments.
+
+
 
 \acks
 
 Acknowledgments, if needed.
 % We recommend abbrvnat bibliography style.
-
 \bibliographystyle{abbrvnat}
-
-% The bibliography should be embedded for final submission.
-
-\begin{thebibliography}{}
-\softraggedright
-
-\bibitem[Smith et~al.(2009)Smith, Jones]{smith02}
-P. Q. Smith, and X. Y. Jones. ...reference text...
-
-\end{thebibliography}
+\bibliography{references}
 
 
 \end{document}

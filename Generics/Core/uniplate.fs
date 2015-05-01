@@ -528,3 +528,69 @@ module Rep =
         foldRep gt (ValRepAlg<'t>()) rep :?> 't
 
     end
+
+module Active =
+
+  open Rep
+
+  type SumPat<'t,'a,'b> = Left of 'a | Right of 'b
+
+  let private extractSum (m : Meta) =
+    m.GetType().GetMethod
+
+  let (|S|_|)<'t,'a,'b when 'a :> Meta and 'b :> Meta> (m : Meta) =
+    let ty = m.GetType()
+    let sty = typeof<SumConstr<obj,Meta,Meta>>.GetGenericTypeDefinition()
+    if ty.IsGenericType then
+      let sty' = ty.GetGenericTypeDefinition()
+      if sty = sty' then
+        let aTy = ty.GenericTypeArguments.[1]
+        let bTy = ty.GenericTypeArguments.[2]
+        if ((aTy = typeof<'a> || aTy.IsSubclassOf typeof<'a>)
+            && (bTy = typeof<'b> || bTy.IsSubclassOf typeof<'b>)) then
+          let sum = m.Cast() :?> SumConstr<'t,Meta,Meta>
+          match sum.Elem with
+            | Choice1Of2 m' -> Left (m' :?> 'a) : SumPat<'t,'a,'b>
+            | Choice2Of2 m' -> Right (m' :?> 'b) : SumPat<'t,'a,'b>
+          |> Some
+        else
+          None
+      else
+        None
+    else
+      None
+
+  let (|P|_|)<'a,'b when 'a :> Meta and 'b :> Meta> (m : Meta) =
+    let ty = m.GetType()
+    let pty = typeof<Prod<Meta,Meta>>.GetGenericTypeDefinition()
+    if ty.IsGenericType then
+      let pty' = ty.GetGenericTypeDefinition()
+      if pty = pty' then
+        let aTy = ty.GenericTypeArguments.[0]
+        let bTy = ty.GenericTypeArguments.[1]
+        if ((aTy = typeof<'a> || aTy.IsSubclassOf typeof<'a>)
+            && (bTy = typeof<'b> || bTy.IsSubclassOf typeof<'b>)) then
+          let prod = m.Cast() :?> Prod<Meta,Meta>
+          Some (prod.E1 :?> 'a,prod.E2 :?> 'b)
+        else
+          None
+      else
+        None
+    else
+      None
+      
+
+  let (|K|_|)<'x when 'x :> obj> (m : Meta) =
+    let ty = m.GetType()
+    if ty = typeof<K<'x>> then
+      Some (m :?> K<'x>).Elem
+    else
+      None
+
+
+  let (|I|_|)<'t> (m : Meta) =
+    let ty = m.GetType()
+    if ty = typeof<Id<'t>> then
+      Some (m :?> Id<'t>).Elem
+    else
+      None
