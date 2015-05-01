@@ -957,7 +957,7 @@ type Instantiate<`t>(values` : `t list) =
   member x.Instantiate(i : Id<`t>) =
     match pop () with
     | Some x $\rightarrow$ Id x
-    | None $\rightarrow$ None
+    | None $\rightarrow$ failwith ``Not enough args''
 
 \end{lstlisting}
 This function is provided with a list of values and
@@ -999,15 +999,63 @@ let uniplate<`t> (x : `t) =
 
 \end{lstlisting}
 
-\section{Discussion}
+% \section{Discussion}
 
-In the context of F\# (and .NET in general), the traditional
-approach to define algorithms generically is reflection. Although
-reflection is very powerful, it defeats the purpose of type
-safety since type correctness must entirely be checked dynamically.
-Since reflection is too general, it can't offer a general optimization
-mechanism and every function specified using reflection must
-manually implement some caching mechanism to achieve better performance.
+% In the context of F\# (and .NET in general), the traditional
+% approach to define algorithms generically is reflection. Although
+% reflection is very powerful, it defeats the purpose of type
+% safety since type correctness must entirely be checked dynamically.
+% Since reflection is too general, it can't offer a general optimization
+% mechanism and every function specified using reflection must
+% manually implement some caching mechanism to achieve better performance.
+
+% =======
+\section{Discussion}
+Datatype generic programming is a well tested solid approach
+to write generic algorithms. It offers a lot of power compared
+to combinator based libraries but has the cost of being
+harder to use and requiring powerful type systems. The approach
+has been tested and implemented in F\#. Although safety had
+to be compromised due to the absense of type system infrastructure
+in F\#, a useful tool could still be produced. Even though
+not completely safe, it is more type safe than reflection since
+only a minimal part of the algorithms require unchecked
+(or dynamically checked) type operations. In practice, it is
+much more pleasant having theese unsafe runtime 
+operations in F\# than in languages like Haskell or Scala
+because the .Net runtime can provide rich information
+about how/when/why the operation failed. This would result
+in a segmentation fault in Haskell or a stacktrace with
+erased types in Scala.
+
+The library is on its first release so no optimizations have
+been done (since a stable api is desired first) but it is
+clear that DGP opens doors for automated caching of operations
+which would need to be done manually with reflection. In particular,
+the approach is referentially transparent when it comes to the type
+of the arguments. In other words, the same overload will be selected
+when the arguments given to the method selector have the same type.
+This means reflection only needs to be used once to select the
+method and next time a call with the same types is done, the
+right method can automatically be dispatched. \todo{Is this
+clear or should I rather give an example about how this works?}
+
+Compared to existing DGP libraries, the lack of type system
+infrastructure makes it very inconvenient to write a class
+of generic functions. Theese are the functions that produce
+values out of data. The best example is the \verb+read+ function
+from Haskell. The problem is that as the funciton parses the
+string, it must generate a representation. But in this library,
+all type representations are a subclass of \verb+Meta+ so it is
+hard to statically check that the algorithm is correct. A
+possible way to address the problem is having a type provider
+that can be given a type and it produces a new type that
+is the exact type for the representation. Then the \verb+read+
+or any other function must produce a representation with
+that same type (instead of only a sub-type of \verb+Meta+) and
+would be reasonable for the F\# compiler to check the correctness
+of the algorithm. Unfortunately, (as pointed out before) type
+providers can't accept types as static arguments.
 
 
 
