@@ -1,0 +1,13 @@
+
+
+%format class = "\mathbf{class}"
+%format with = "\mathbf{with}"
+%format and = "\mathbf{and}"
+%format end = "\mathbf{end}"
+%format abstract = "\mathbf{abstract}"
+%format override = "\mathbf{override}"
+%format inherit = "\mathbf{inherit}"
+%format member = "\mathbf{member}"
+%format match = "\mathbf{match}"
+%format . = "."
+%format generic(c)(a) = c "\langle" a "\rangle"
