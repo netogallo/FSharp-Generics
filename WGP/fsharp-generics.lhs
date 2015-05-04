@@ -411,8 +411,8 @@ subclass of |Meta| is |SumConstr|, used to take the sum of two types.
 The |SumConstr| takes three type arguments: |t|,|a| and |b|. The first
 one indicates the type that this representation encodes. The remaining
 arguments, |vara| and |varb|, are the arguments to the sum type.  Note
-that both |vara| and |varb| have the constraint |vara, varb :>
-Meta|. 
+that both |vara| and |varb| have the constraint that |vara| and |varb|
+are subtypes of the |Meta| class.
 
 \wouter{Why are they called SumConstr and Prod? Why not just Sum and Prod?}
 
@@ -424,10 +424,10 @@ Meta|.
 The second subclass of |Meta| is |Prod|, corresponding to the product
 of two types. The |Prod| type accepts two type arguments: |vara| and
 |varb|. Once again, we require both |vara| and |varb| to be subtypes
-of the |Meta| class. We will use the class |U :> Meta| to represent
-the unit type.
+of the |Meta| class. Besides products, we will use the class |U :>
+Meta| to represent the unit type.
 
-Next, the subclass |K| of |Meta| is used to represent a type, that is
+Next, the subclass |K| of |Meta| is used to represent a type that is
 not defined to be an algebraic data type. This can be used to
 represent primitive types, such as |int| or |float|. The |K|
 constructor takes a single type argument |vara| which corresponds to
@@ -435,8 +435,8 @@ the type of its content. Since F\# cannot statically constrain a type
 to be an algebraic data type or not, |vara| has no constraints. 
 
 Finally, |Id| is the last subclass of |Meta|. This type is used to
-represent recursive types. This type takes a single type argument
-which is the same type being represented.
+represent recursive types. This type takes a single type argument that
+may be used to refer recursively to the type being represented.
 
 We conclude this section with an example of our type
 representation. Given the following algebraic data type in F\#:
