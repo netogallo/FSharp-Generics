@@ -409,7 +409,7 @@ subclass of |Meta| is |SumConstr|, used to take the sum of two types.
 The |SumConstr| takes three type arguments: |t|,|a| and |b|. The first
 one indicates the type that this representation encodes. The remaining
 arguments, |vara| and |varb|, are the arguments to the sum type.  Note
-that both |vara| and |varb| have the constraint |vara, varb :<
+that both |vara| and |varb| have the constraint |vara, varb :>
 Meta|. 
 
 \wouter{Why are they called SumConstr and Prod? Why not just Sum and Prod?}
@@ -422,7 +422,7 @@ Meta|.
 The second subclass of |Meta| is |Prod|, corresponding to the product
 of two types. The |Prod| type accepts two type arguments: |vara| and
 |varb|. Once again, we require both |vara| and |varb| to be subtypes
-of the |Meta| class. We will use the class |U :< Meta| to represent
+of the |Meta| class. We will use the class |U :> Meta| to represent
 the unit type.
 
 Next, the subclass |K| of |Meta| is used to represent a type, that is
@@ -451,7 +451,7 @@ type ElemsRep = SumConstr<<
   SumConstr<<
     unit,
     Prod<<K<<int>>,Prod<<Id<<Elem<<int>> >>,U>> >>,
-    SumConstr<
+    SumConstr<<
       unit,
       Prod<<K << int >>, U>>,
       U>> >> >>
@@ -496,9 +496,9 @@ recursively and the result is packed inside the same constructor. The
 next step is to deal with products. This is handled with the
 |Prod| constructor:
 \begin{code}
-member x.gmap(v : Prod<Meta,Meta>
+member x.gmap(v : Prod<<Meta,Meta>>
                  ,f : Employee -> Employee) =
-  Prod<Meta,Meta>(
+  Prod<<Meta,Meta>>(
     x.gmap(v.E1),
     x.gmap(v.E2))
 \end{code}
@@ -508,7 +508,7 @@ that access each of the elements of the product. Once again,
 for the |K| constructor which contains values. Here is where the
 function gets applied:
 \begin{code}
-member x.gmap(v : K<Employee>) = K(f v.Elem)
+member x.gmap(v : K<<Employee>>) = K(f v.Elem)
 \end{code}
 The property |Elem| of the |K| constructor returns the value
 that is being represented by |K|. Note that this member only
@@ -557,7 +557,7 @@ help of a type provider to make the library easier to use and to
 provide some extra static checks. The generic type provider is used as
 follows:
 \begin{code}
-type GMapBase = Generic<''gmap'',1>
+type GMapBase = Generic<<"gmap",1>>
 \end{code}
 The type provider accepts two static arguments. The first one denotes
 the name of the generic function and the second one the number of
@@ -645,13 +645,13 @@ to include the function arguments of |gmap| at the class level
 for more type safety and define a |gmap| overload of type
 $\Meta\rightarrow\Meta$ and use it for recursive calls:
 \begin{code}
-type GMapBase = Generic<<''gmap'',0>>()
+type GMapBase = Generic<<"gmap",0>>()
 
-type GMap<<vart,varf>>(f : `f -> `f) = class
+type GMap<<vart,varf>>(f : varf-> varf) = class
     inherit GMapBase(defaultAction)
 
     member x.gmap(v : Meta) =
-      x.gmap(v) $?{\triangleright}$ Meta
+      x.gmap(v) mTrRg Meta
   end
 \end{code}
 Here $\mathtt{x}\ ?{\triangleright}\ \tau$ is the up-casting operation which
@@ -668,29 +668,50 @@ it lacks type information of some types. These types are:
 \end{enumerate}
 Limitation 1 is not a big problem because it can be partially
 eliminated by having the arguments on the class level (as our example)
-but limitation 2 would be nice to solve. There are two places where
+but limitation 3 would be nice to solve. There are two places where
 the type provider could accept type arguments:
 \begin{enumerate}
+\item As a static parameter of a member function
 \item As a static parameter during the invocation of the type provider.
 \item As a generic type parameter passed to the provided type when invoking the constructor.
 \end{enumerate}
-Neither option is possible in F\#. Option 1 would allow very powerful
+Option 1 is the only one that is currently possible in F\#. An
+implementation of the generic provider using that option is in
+development but there are some details on how .Net handles generic
+argumetns that need to be address. In any case, the basic idea
+is moving the default action from the constructor of the generic
+type to the generic method. Take for instance [GMap] which could
+be re-written as follows:
+\begin{code}
+type GMap<<vart,varf>>(f : varf->varf) = class
+  inherit GMapBase<<Meta>>()
+  member x.GMap(m) =
+    base.GMap<<Meta>>(id,m)
+\end{code}
+Here the [Meta] type argument provided to the [GMap] call is the
+one that determines its return type. In addition, the type of the
+first argument ([id]) must accept a value of type [Meta] and produce
+a value of the same type as the type argument for [GMap], in this case
+[Meta]. This approach is type safe in the sense it no longer requires
+unsafe casts.
+
+Option 2 would allow very powerful
 type extensions to the language but would require significant changes
 to the implementation of type providers because a |Type| object
-would need to be constructed to run the type provider's code. Option 2
+would need to be constructed to run the type provider's code. Option 3
 which is more feasible has been requested at \cite{genericTypeArgs}
 would also benefit type providers in large. For example, one could
 modify the SQLProvider \cite{SQLProvider} such that one can specify
 how to map database types to .NET types. The provided |GMapBase|
 type would have the following interface:
 \begin{code}
-type GMapBase<`t>(f : Meta$\rightarrow$`t) =
-  member GMap : Meta$\rightarrow$`t
+type GMapBase<<vart>>(f : Meta->vart) =
+  member GMap : Meta->vart
 \end{code}
 and could be used as follows to define the |GMap| class:
 \begin{code}
-type GMap<`t,`f>(f : `f$\rightarrow$`f) = class
-    inherit GMapBase<Meta>(defaultAction)
+type GMap<<vart,varf>>(f : varf->varf) = class
+    inherit GMapBase<<Meta>>(defaultAction)
   end
 \end{code}
 This imporved type provider is able to
@@ -721,36 +742,36 @@ type Arith =
   | Neg of Arith
   | Val of int
   
-let (c,f) = uniplate (Op (``add'',Neg (Val 5),Val 8))
-printf ``%A'' c // [Neg (Val 5);Val 8]
-printf ``%A'' (f [Val 1;Val 2]) // Op (``add'',Val 1,Val 2)
+let (c,f) = uniplate (Op ("add",Neg (Val 5),Val 8))
+printf ``%A'' c -- [Neg (Val 5);Val 8]
+printf ``%A'' (f [Val 1;Val 2]) // Op ("add",Val 1,Val 2)
 
 let (c,f) = uniplate (Val 5)
-printf ``%A'' c // []
-printf ``%A'' (f []) // Val 5
+printf "%A" c // []
+printf "%A" (f []) // Val 5
 
 \end{code}
 To define the function, two auxiliary generic functions will be
 created. The first one is |Collect| which obtains the list
 of recursive childs:
 \begin{code}
-type CollectBase = Generics.Provided.Generics<''Collect'',0>
+type CollectBase = Generics.Provided.Generics<<"Collect",0>>
 
-type Collect<`t>() =
-  inherit CollectBase(fun m$\rightarrow$(([] : `t list) $\triangleright$ obj)
+type Collect<<vart>>() =
+  inherit CollectBase(fun m->(([] : vart list) trRg obj)
 
   member x.Collect(m : Meta) =
-    base.Collect m ${?}\triangleright$ `t list
+    base.Collect m mTrRg vart list
 
-  member x.Collect<`x>(c : SumConstr<`x,Meta,Meta>) =
+  member x.Collect<<varx>>(c : SumConstr<varx,Meta,Meta>) =
     match c with
-    | L m $\rightarrow$ x.Collect m
-    | R m $\rightarrow$ x.Collect m
+    | L m -> x.Collect m
+    | R m -> x.Collect m
 
-  member x.Collect(c : Prod<Meta,Meta>) =
-    List.concat<`t> [x.Collect c.E1;x.Collect c.E2]
+  member x.Collect(c : Prod<<Meta,Meta>>) =
+    List.concat<<vart>> [x.Collect c.E1;x.Collect c.E2]
 
-  member x.Collect(i : Id<`t>) =
+  member x.Collect(i : Id<<vart>>) =
     [i.Elem]
 \end{code}
 The function is straightforward to understand. Every time
@@ -763,40 +784,40 @@ ambigous type (ie. all lists are a subclass of |obj|).
 The second generic function is |Instantiate| which is
 defined as follows:
 \begin{code}
-type InstantiateBase = Generics.Provided.Generic<
-  ''Instantiate'',0>
+type InstantiateBase = Generics.Provided.Generic<<
+  "Instantiate",0>>
 
-type Instantiate<`t>(values` : `t list) =
-  inherit InstantiateBase(fun m $\rightarrow$ m $\triangleright$ obj)
+type Instantiate<<vart>>(values` : vart list) =
+  inherit InstantiateBase(fun m -> m -> obj)
   let mutable values = values`
 
   let pop () = match values with
-                | x::xs $\rightarrow$ values $\leftarrow$ xs;Some x
-                | [] $\rightarrow$ None
+                | x::xs -> values <- xs;Some x
+                | [] -> None
 
   member x.Instantiate(m : Meta) =
-    base.Instantiate m ${?}\triangleright$ Meta
+    base.Instantiate m mTrRg Meta
 
   member x.Instantiate(
-    s : SumConstr<`t,Meta,Meta>) =
+    s : SumConstr<<vart,Meta,Meta>>) =
     match s with
-    | L m $\rightarrow$ SumConstr<`t,Meta,Meta>(
+    | L m -> SumConstr<<vart,Meta,Meta>>(
       x.Instantiate m |> Choice1Of2)
-    | R m $\rightarrow$ SumConstr<`t,Meta,Meta>(
+    | R m -> SumConstr<<vart,Meta,Meta>>(
       x.Instantiate m |> Choice2Of2)
 
   member x.Instantiate(
-    s : SumConstr<unit,Meta,Meta>) =
+    s : SumConstr<<unit,Meta,Meta>>) =
     match s with
-    | L m $\rightarrow$ SumConstr<`t,Meta,Meta>(
+    | L m -> SumConstr<<`t,Meta,Meta>>(
       x.Instantiate m |> Choice1Of2)
-    | R m $\rightarrow$ SumConstr<`t,Meta,Meta>(
+    | R m -> SumConstr<<`t,Meta,Meta>>(
       x.Instantiate m |> Choice2Of2)
 
-  member x.Instantiate(i : Id<`t>) =
+  member x.Instantiate(i : Id<<vart>>) =
     match pop () with
-    | Some x $\rightarrow$ Id x
-    | None $\rightarrow$ failwith ``Not enough args''
+    | Some x -> Id x
+    | None -> failwith "Not enough args"
 
 \end{code}
 This function is provided with a list of values and
@@ -816,21 +837,21 @@ To wrap both pieces together the |Uniplate| function
 is now defined:
 \begin{code}
 type UniplateBase = Generics.Provided.Generic<
-  ''Uniplate'',0>
+  "Uniplate",0>
 
-type Uniplate<`t>() =
-  inherit UniplateBase(fun _ $\rightarrow$ 
-    failwith ``Invalid representation'')
+type Uniplate<<vart>>() =
+  inherit UniplateBase(fun _ ->
+    failwith "Invalid representation")
 
-  member x.Uniplate(s : SumConstr<`t,Meta,Meta>) =
+  member x.Uniplate(s : SumConstr<<vart,Meta,Meta>>) =
     (Collect().Collect s,
-     fun vs $\rightarrow$ Instantiate(vs).Instantiate s)
+     fun vs -> Instantiate(vs).Instantiate s)
 
-let uniplate<`t> (x : `t) =
-  let up = Uniplate<`t>()
-  let g = Generic<`t>()
+let uniplate<<vart>> (x : vart) =
+  let up = Uniplate<<vart>>()
+  let g = Generic<<vart>>()
   x |> g.To |> up.Uniplate
-  |> fun (x,f) $\rightarrow$ (x, f $\gg$ g.From)
+  |> fun (x,f) -> (x, f gg g.From)
 \end{code}
 
 % \section{Discussion}
@@ -846,7 +867,7 @@ let uniplate<`t> (x : `t) =
 % =======
 \section{Discussion}
 Datatype generic programming is a well tested solid approach
-to write generic algorithms. It offers a lot of power compared
+to write generic algorithms. It offers a lot of expressiveness compared
 to combinator based libraries but has the cost of being
 harder to use and requiring powerful type systems. The approach
 has been tested and implemented in F\#. Although safety had

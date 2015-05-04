@@ -538,8 +538,13 @@ module Active =
   let private extractSum (m : Meta) =
     m.GetType().GetMethod
 
-  let (|S|_|)<'t,'a,'b when 'a :> Meta and 'b :> Meta> (m : Meta) =
+  let (|PT|_|) <'t,'a,'b,'x when 'a :> Meta and 'b :> Meta> (action : SumConstr<'t,'a,'b> -> 'x) (m : Meta) =
+    let tyA = action.GetType()
+    Some ()
+
+  let (|S|_|)<'t,'a,'b,'x when 'a :> Meta and 'b :> Meta> (action : SumConstr<'t,'a,'b> -> 'x) (m : Meta) =
     let ty = m.GetType()
+    let tyA = action.GetType()
     let sty = typeof<SumConstr<obj,Meta,Meta>>.GetGenericTypeDefinition()
     if ty.IsGenericType then
       let sty' = ty.GetGenericTypeDefinition()

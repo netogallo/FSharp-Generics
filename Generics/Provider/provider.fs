@@ -7,11 +7,33 @@ open Microsoft.FSharp.Quotations
 //open Samples.FSharp.ProvidedTypes
 open Generics.Rep
 open System.Globalization
+open ILMerging
 
 [<assembly:TypeProviderAssembly>] 
 do()
 
 module Provider =
+
+    let unwords (s : seq<string>) = Seq.fold (fun s w -> sprintf "%s %s" s w) "" s
+
+    let ilMerge = @"X:\Documents\FSharp-Generics\Generics\packages\ilmerge.2.14.1208\tools\ILMerge.exe"
+
+    let mergeAssemblies dup asms =
+      let dll = System.IO.Path.GetTempFileName().Replace(".tmp",".dll")
+      let dups = dup |> List.map (fun (t : Type) -> sprintf "/allowDup:%s" t.Name) |> unwords
+      let files = 
+        asms
+        |> List.map (fun (a:Assembly) -> sprintf "\"%s\"" a.ManifestModule.FullyQualifiedName)
+        |> Set.ofList
+        |> unwords
+
+      let psi = System.Diagnostics.ProcessStartInfo(ilMerge,sprintf "/t:library %s /out:\"%s\" %s" dups dll files)
+      psi.UseShellExecute <- false
+      psi.CreateNoWindow <- true
+      let p = System.Diagnostics.Process.Start psi
+      p.Start() |> ignore
+      p.WaitForExit()
+      dll
    
     let concatWith sep' vals' =
         if Seq.length vals' = 0 then
@@ -129,7 +151,7 @@ module Provider =
 
               public class {{className}} : Selector.Selector{
               
-              private class T{}
+              // public class T{}
               
               private Func<Rep.Meta {{typeArgs}}, {{retType}}> catchAll;
               public {{className}}(Func<Rep.Meta {{typeArgs}}, {{retType}} > f){this.catchAll = f;}
@@ -137,6 +159,7 @@ module Provider =
 
               
               public {{retType}} {{method}} (Rep.Meta m {{methodArgs}}){return this.SelectInvoke( "{{method}}" ,m,new Object[]{ {{methodArgsValuesFlat}} });}
+              public T {{method}} <T> (Func<Rep.Meta {{typeArgs}}, T > f,Rep.Meta m){throw new Exception();}
               /*
               public {{retType}} {{method}} <T> (Rep.K<T> k {{methodArgs}} ){ return this.catchAll(k {{methodArgsValues}} );}
               public {{retType}} {{method}} <T> (Rep.SumConstr<T,Rep.Meta,Rep.Meta> s {{methodArgs}}){ return this.catchAll( s {{methodArgsValues}} );}
@@ -241,6 +264,8 @@ module Provider =
     type GenericProvider() =
         let invalidation = new Event<EventHandler, EventArgs>()
         let mutable ty = Map.empty
+        let assemblies = ref []
+        let mutable compiled = None
         interface IProvidedNamespace with
             member this.ResolveTypeName(typeName) = typeof<Generic>
             member this.NamespaceName with get() = ns
@@ -256,8 +281,9 @@ module Provider =
                     let retType = typeof<obj>
                     let argsType = List.init (args.[1] :?> int) (fun _ -> typeof<obj>)
                     let className = withArgs.[withArgs.Length - 1]
-
-                    let (t,_) = makeCompiledClass className ``method`` argsType retType
+                    
+                    let (t,asm) = makeCompiledClass className ``method`` argsType retType
+                    assemblies := asm :: !assemblies 
                     ty <- ty |> Map.add className t
                     t
             member this.GetStaticParameters(typeWithoutArguments) = 
@@ -273,15 +299,28 @@ module Provider =
                     param typeof<string> "MethodName" "" ""
                     param typeof<int> "NumArgs" 0 0
                 |]
-            member this.GetGeneratedAssemblyContents(assembly:Assembly) =
-                
-                if AssemblyStore.ContainsKey assembly then
-                    AssemblyStore.[assembly]
-                else
-                    let bytes = System.IO.File.ReadAllBytes assembly.ManifestModule.FullyQualifiedName
-                    AssemblyStore.[assembly] <- bytes
-                    bytes
 
+            member this.GetGeneratedAssemblyContents(assembly:Assembly) =
+              let asms = assembly :: !assemblies
+              let dup = Map.toList ty |> List.map (fun (_,t) -> t)
+              match compiled with
+              | Some (asms',bytes) when asms' = asms -> 
+                bytes
+              | _ ->
+              //let ilm = ILMerge()
+                let asm = mergeAssemblies dup asms
+                let bytes = System.IO.File.ReadAllBytes asm
+                compiled <- Some (asms,bytes)
+                bytes
+              //assembly
+              (*
+              if AssemblyStore.ContainsKey assembly then
+                  AssemblyStore.[assembly]
+              else
+                  let bytes = System.IO.File.ReadAllBytes assembly.ManifestModule.FullyQualifiedName
+                  AssemblyStore.[assembly] <- bytes
+                  bytes
+              *)
             member __.GetInvokerExpression(methodBase, parameters) = 
                 match methodBase with
                     | :? ConstructorInfo as ctor ->

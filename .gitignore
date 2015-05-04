@@ -19,3 +19,11 @@ Backend/obj
 Generics/Tests/Generics.dll
 Generics/Core/obj
 Generics/Core/bin
+Generics/Generics-NoTests.sln
+Generics/Provider/packages.config
+Generics/packages/
+WGP/fsharp-generics.pdf
+WGP/fsharp-generics.ptb
+WGP/fsharp-generics.tex
+test.dll
+test.pdb
