@@ -915,11 +915,9 @@ would be reasonable for the F\# compiler to check the correctness
 of the algorithm. Unfortunately, (as pointed out before) type
 providers can't accept types as static arguments.
 
+% \acks
+% Acknowledgments, if needed.
 
-
-\acks
-
-Acknowledgments, if needed.
 % We recommend abbrvnat bibliography style.
 \bibliographystyle{abbrvnat}
 \bibliography{references}
