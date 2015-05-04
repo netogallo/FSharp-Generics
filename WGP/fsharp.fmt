@@ -32,3 +32,4 @@
 %format gg = "\gg"
 %format :> = "\succ"
 %format AbstractClass = "[\langle\mathbf{AbstractClass}\rangle]"
+%subst comment a	= "\mathtt{// " a "}        "

@@ -11,6 +11,7 @@
 \usepackage{listings}
 \usepackage{caption}
 \usepackage{subcaption}
+\DeclareCaptionType{copyrightbox}
 
 %% TODO notes
 \usepackage{color}
@@ -140,16 +141,16 @@ specifically, we make the following contributions:
   example, we will implement a generic map function.
 
 \item To convert a value to our representation type we rely on several
-  more advanced F\# features, such as reflection \todo{and type
-    providers? or active patterns?} (Section~\ref{sec:conversion}).
+  more advanced F\# features, such as reflection and type
+    providers (Section~\ref{sec:conversion}).
 
 \item Finally, we will show how how functions from other Haskell
   libraries such as Uniplate, may be readily implemented using the
   resulting library (Section~\ref{sec:uniplate}).
 \end{itemize}
 
-\todo{Do we want to make the code available from github? If so, this
-  is usually a good place to mention this.}
+% \todo{Do we want to make the code available from github? If so, this
+%   is usually a good place to mention this.}
 
 \section{Background}
 \label{sec:background}
@@ -352,34 +353,43 @@ purpose .NET serializer.
 
 \paragraph{Type Providers}
 One language feature particular to F\# is \emph{type
-  providers}~\cite{typeProviders}. Type providers in F\# define a
-mechanism that allows types to be defined by running code at compile
-time. They where designed to provide typed access to external data
-sources. For example, a type provider could parse the header of a
-files containing comma separated values and generate an type
-describing the columns of the data stored in the file. A type provider
-is invoked as follows:
+  providers}~\cite{typeProviders}. Type providers in F\# allow types
+to be defined by running code at compile time. They were designed to
+provide typed access to external data sources, such as a database or
+XML file. The type provider generates type declarations at compile
+time, allowing you to manipulate of such external data in a type safe
+manner. For example, you might define a type provider that parses the
+header of a file containing comma separated values and subsequently
+generates an type describing the columns of the data stored in that
+file. 
+
+Writing your own type providers is fairly technical and we will ignore
+many of the implementation details in this paper. We will give a brief
+example of how type providers may be invoked in F\#.
 \begin{code}
-type T = NameProvider<"MyType","AnotherType">
+type T = NameProvider<<"TypeA","TypeB">>
 
-// prints "MyType"
-printf "%s" typeof<T.MyType>.Name
+-- prints "TypeA"
+printf "%s" typeof <<T.TypeA>> .Name
 
-// prints "AnotherType"
-printf "%s" typeof<T.AnotherType>.Name
-
+-- prints "AnotherType"
+printf "%s" typeof <<T.TypeB>> .Name
 \end{code}
-This code calls the type provider |Provider| which generates a
-type that is assigned the type synonym |T|. In the example above,
-the |NameProvider| is a type provider that simply creates a type
-that contains nested types named as the arguments that were passed
-to the provider. As it can be seen, the types created by the type
-provider can be used as ordinary F\# types. The type provider also
-accepts static arguments which are restricted to literal values of
-type |int|, |string| and |bool|. The implementation of
-a type provider is quite involved and requires boilerplate code
-to process the information provided by the F\# compiler. For more
-details, the reader is advised to read \cite{TypeProviderTutorial}.
+Here we define the type |T| to be the result of invoking the type
+provider |NameProvider| with two |string| arguments.  The
+|NameProvider| is a simple type provider that, given |string|
+arguments, creates a type with a field for each
+argument. \wouter{Ernesto: could you read this section again? I
+  changed a few things and want to make sure I haven't introduced any
+  falsehoods. Also, I'm not sure what the type provider is doing
+  exactly. What would the type T look like if you wrote it by hand?}
+
+From a users perspective, types genererated by type providers are
+indistinguishable from types defined by hand.  The implementation of a
+type provider is quite involved and requires boilerplate code to
+process the information provided by the F\# compiler. For more
+details, the reader is advised to read the existing documentation on
+writing type providers~\cite{TypeProviderTutorial}.
 
 \section{Type Representations in F\#}
 \label{sec:representation}
@@ -523,11 +533,11 @@ Finally, |Id| is the last subclass of |Meta|. This type is used to
 represent recursive types. This type takes a single type argument that
 may be used to refer recursively to the type being represented.
 
-The definitions of these types is given in figure~\ref{fig:rep-def}.
+The definitions of these types are given in Figure~\ref{fig:rep-def}.
 This definitions are not complete since the actual implementation
-incldues extra code used for reflection which is not relevant
-to demostrate how representations are encoded. The full definition
-is available at \cite{FSharp-Generics-Repo}.
+incldues extra code used for reflection which is not relevant when
+discussing the universe of types that our library can handle. The full
+definition can be found in the source code~\cite{FSharp-Generics-Repo}.
 
 We conclude this section with an example of our type
 representation. Given the following algebraic data type in F\#:
@@ -539,19 +549,26 @@ type Elems = Cons of int*Elems
 We can represent this type as a subtype of the |Meta| class as
 follows:
 \begin{code}
-type ElemsRep = SumConstr<<
-  Elem<<int>>,
+type ElemsRep = 
   SumConstr<<
-    unit,
-    Prod<<K<<int>>,Prod<<Id<<Elem<<int>> >>,U>> >>,
+    Elem<<int>>,
     SumConstr<<
       unit,
-      Prod<<K << int >>, U>>,
-      U>> >> >>
+      Prod<<K<<int>>,Prod<<Id<<Elem<<int>> >>,U>> >>,
+      SumConstr<<
+        unit,
+        Prod<<K << int >>, U>>,
+        U>>,
+    U>>
 \end{code}
-\wouter{Is this even right? It looks like the representation only
-  talks about ints, but the original type is generic...}
-
+This example shows how |SumConstr| takes three arguments: the first
+stores meta-information about the type being represented; the second
+two type arguments are the types whose coproduct is formed. There is
+some overhead in this representation -- we could simplify the
+definition a bit by removing spurious unit types. It is important to
+emphasise, however, that these definitions will be
+\emph{generated}. To keep the generation simple, we have chosen not to
+optimize the representation types.
 
 \section{Generic Functions}
 \label{sec:generic-functions}
@@ -851,11 +868,11 @@ type Arith =
   
 let (c,f) = uniplate (Op ("add",Neg (Val 5),Val 8))
 printf ``%A'' c -- [Neg (Val 5);Val 8]
-printf ``%A'' (f [Val 1;Val 2]) // Op ("add",Val 1,Val 2)
+printf ``%A'' (f [Val 1;Val 2]) -- Op ("add",Val 1,Val 2)
 
 let (c,f) = uniplate (Val 5)
-printf "%A" c // []
-printf "%A" (f []) // Val 5
+printf "%A" c -- []
+printf "%A" (f []) -- Val 5
 
 \end{code}
 To define the function, two auxiliary generic functions will be
