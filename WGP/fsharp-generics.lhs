@@ -66,8 +66,7 @@
                                   % (paid open-access papers, 
                                   % short abstracts)
 
-\title{Generic Programming in F\#}
-\subtitle{Datatype generic programming for .NET}
+\title{Data Type Generic Programming in F\#}
 
 \authorinfo{Ernesto Rodriguez}
            {Utrecht University}
@@ -79,23 +78,18 @@
 \maketitle
 
 \begin{abstract}
-  The introduction of Datatype Generic programming (DGP)
-  \emph{revolutionized} \todo{find a better word for revolutionized}
-  functional programming by allowing numerous
-  algorithms to be defined by induction over the structure of types
-  while still providing type safety. Due to the advanced type system
-  requirements for DGP, only a handful of functional languages can
-  define generic functions making it inaccessible to most
-  programmers. Ordinary languages provide reflection and duck typing
-  as a mechanism to specify generic algorithms. These mechanisms are
-  usually error prone and verbose. By combining ideas from DGP and
-  implementing them through reflection, a type-safe interface to DGP
-  has been built for the F\# language. These generic algorithms can be
-  accessed by any language running in the .NET platform.
+  Datatype Generic programming (DGP) enables the definition of
+  functions by induction over the structure of types on which they
+  work. Yet the approach has not been adopted very widely, possibly
+  due to the many requirements on a language's type system. This paper
+  presents a type-safe library for DGP in F\#, built on top of the
+  .NET reflection mechanism, The generic functions defined using this
+  library can be called by any other language running on the .NET
+  platform.
 \end{abstract}
 
-\category{CR-number}{subcategory}{third-level}
-
+\category{D.1.1}{Applicative (Functional) Programming}{}
+\catgegory{D.3.3}{Language constructs and features}{}
 \keywords
 data-type generic programming, reflection, F\#, type providers
 
