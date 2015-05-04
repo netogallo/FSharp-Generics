@@ -2,12 +2,33 @@
 #r @"../Provider/bin/Debug/Provider.dll"
 
 open Generics.Rep
+open Generics.Active
 open Microsoft.FSharp.Core.CompilerServices
+
 
 type Emp = Full of string*int | Part of string*int*int
 type List<'t> = Cons of 't*List<'t> | Nel | Tip of 't
-
 let g = Generic<List<Emp>>()
+let l1 = Cons(Full("pepe",2),Cons(Part("victor",8,4),Nel))
+
+let t = typeof<List<int>>.GetGenericTypeDefinition()
+
+#r @"X:\ConsoleApplication1\ConsoleApplication1\bin\Debug\ConsoleApplication1.exe"
+ConsoleApplication1.Cls()
+typeof<ConsoleApplication1.Cls>.GetMethod("aMethod").ReturnType
+
+let a v = failwith ""
+
+match g.To l1 with
+  | PT a -> ()
+
+let rec gmap' (m : Meta) =
+
+  // let x = gmap' (failwith "")
+
+  match m with
+  | PT a -> ()
+
 
 type CollectBase = Generics.Provided.Generic<"Collect",0>
 
@@ -15,7 +36,7 @@ type Collect<'t>() =
   inherit CollectBase(fun m -> ([] :'t list) :> obj)
 
   member x.Collect(m : Meta) =
-    base.Collect m :?> 't list
+    base.Collect(fun m -> ([] :'t list))
 
   member x.Collect<'x>(c : SumConstr<'x,Meta,Meta>) =
     match c with
@@ -66,13 +87,15 @@ type Uniplate<'t>() =
 
 let up = Uniplate<List<Emp>>()
 
-let l1 = Cons(Full("pepe",2),Cons(Part("victor",8,4),Nel))
 
 l1 |> g.To |> up.Uniplate
 
 Prod<Meta,Meta>(U(),U()) |> ignore
 
-type EverywhereBase = Generics.Provided.Generic<"Everywhere",0>
+#r @"X:\ClassLibrary1\ClassLibrary1\obj\Debug\ClassLibrary1.dll"
+
+Generics.Provided.EverywhereBase(fun _ -> failwith "").Everywhere<int>((fun (x:Meta) -> 5),g.To l1)
+//type EverywhereBase = Generics.Provided.Generic<"Everywhere",0>
 
 type Everywhere<'t,'v>(f : 'v -> 'v) =
     inherit EverywhereBase(fun m -> m :> obj)
@@ -190,22 +213,3 @@ for ix in 0 .. 0 do
 
 for ix in 1 .. 5 do
   count <- count |> fun count' () -> count' ();printfn "Hay"
-
-type T = A of int | B of string
-
-let g = Generic<T>()
-
-A 5 |> g.To
-
-let (|SUM|_|)<'t,'a,'b when 'a :> Meta and 'b :> Meta> (m : Meta) =
-  if m.GetType() = typeof<SumConstr<'t,'a,'b>> then
-    let s = m :?> SumConstr<'t,'a,'b>
-    match s.Elem with
-    | Choice1Of2 s' -> Choice1Of2 ((None : 't option),s')
-    | Choice2Of2 s' -> Choice2Of2 ((None : 't option),s')
-    |> Some
-  else
-    None
-
-match A 5 |> g.To with
-  | SUM (c : Choice<(T option)*Meta,(T option)*Meta>) -> ()
