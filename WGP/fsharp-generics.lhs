@@ -153,22 +153,22 @@ specifically, we make the following contributions:
 \label{sec:background}
 This section introduces the F\# language and the .NET
 platform. Inspired by the `Scrap your boilerplate' approach to
-datatype generic programming~\cite{SYB}, we will define a
-function called |IncreaseSalary|, that increases the salary of
-every employee in a company. Along the way, we will introduce the
-relevant concepts from F\# and .NET; in later sections, we will revise
-this definition using our library for generic programming.
+datatype generic programming~\cite{SYB}, we will define a function
+called |IncreaseSalary|, that increases the salary of every employee
+in a company. Along the way, we will introduce the the syntax and
+relevant concepts from F\# and .NET. We will provide an alternative
+definition of |IncreaseSalary| using our library for generic
+programming in the second half of this paper.
 
 \subsection{The F\# Language}
 The F\# programming language is a functional language of the ML
-family. It aims to combine the advantages of
-functional programming and the .NET platform. To do so, the F\# designers
-have chosen to support a limited number of features from languages such as Haskell or OCaml, 
-while still being able to interface well with other .NET languages.
-As a result, the language
-has a much simpler type system than Haskell or Scala.
-Unlike Scala, F\# performs no type erasure when compiled
-to the .NET platform.
+family. It aims to combine the advantages of functional programming
+and Microsoft's .NET platform. To do so, the F\# designers have
+adopted numerous features from languages such as Haskell or OCaml,
+without sacrificing the ability to interface well with other .NET
+languages.  As a result, the language has a much simpler type system
+than Haskell or Scala.  Unlike Scala, however, F\# performs no type
+erasure when compiled to the .NET platform.
 
 Before we can define the |IncreaseSalary| function, we will define the types on which it operates:
 \begin{code}
@@ -181,15 +181,15 @@ type Employee() = class
 type Metadata = 
   {name : string; country : string}
 
-type generic(Staff)(t when t :> Employee) =
+type generic(Staff)(t when vart :> Employee) =
   | Empty
-  | Member of t*generic(Staff)(t)
+  | Member of vart*generic(Staff)(t)
 
-type generic(Department)(t when t :> Employee) =
+type generic(Department)(t when vart :> Employee) =
   | Tech of Metadata*generic(Members)(t)
   | HR of Metadata*generic(Members)(t)
 
-type generic(Company)(t when t :> Employee) =
+type generic(Company)(t when vart :> Employee) =
   | Empty
   | Dept of generic(Department)(t)*generic(Company)(t)
 
@@ -208,7 +208,7 @@ This example demonstrates the different type declarations that F\#
 supports.  Besides records, such as |Metadata|, F\# supports algebraic
 data types (ADTs) that should be familiar to functional
 programmers. For example, |Company|, |Department| and |Staff| are
-ADTs. Besides algebraic data types, F\# also supports classes, such as
+ADTs. Furthermore, programmers in F\# may define classes, such as
 |Employee| and |GuatemalanEmployee|. There are several important
 differences between classes and data types. Records and data types may
 be deconstructed through pattern matching and are immutable. In .NET
@@ -232,7 +232,7 @@ declared using the |when| keyword.
 It is worth pointing out that generic type arguments are constraint to
 be of kind |*|. This is particularly important limitation
 in the context of data type generic programming, as many existing
-Haskell libraries rely on higher-kinded polymorphism.
+Haskell libraries rely on higher kinds.
 
 Next, we implement the |IncreaseSalary| function. To do so, we
 will begin by defining an auxiliary function called |GMap| that
@@ -260,11 +260,12 @@ type generic(Company)(t) with
     | Member d,c -> 
         Member(d.GMap f, c.GMap f)
 \end{code}
-Here we have chosen to \emph{overload} the |GMap| function,
-allowing a function with the same name to be defined for different
-types. To overload functions in F\#, they must be defined as a member
-function. Member functions can be defined for any type; their
-definition is not restricted to the type's definition site. 
+Here we have chosen to \emph{overload} the |GMap| function, allowing a
+function with the same name to be defined for different types. To
+overload functions in F\#, they must be defined as a member
+function. Note that member functions can be defined for any type --
+not just classes. They may also be defined post-hoc, i.e., after the
+type has been defined.
 
 Using |GMap|,  the |IncreaseSalary| function can be defined as follows:
 \begin{code}
@@ -294,20 +295,22 @@ platform.
 % different name
 
 \subsection{The .NET platform}
-The .NET platform is a common runtime environment, supporting
-a family of languages. It implements a very rich type
-system, including support for generics. Many operations on types
-in F\#, such as casting, are handled by the .NET platform. 
+The .NET platform is a common runtime environment supporting a family
+of languages. It provides languages with a type system that includes
+support for generics and reflection. Many operations on types in F\#,
+such as casting, are handled by the .NET platform.
 
 \paragraph{Generics and subtyping}
 
-Similarly, the subtyping relation in F\# is also based on the
-implementation in .NET.  We write $\tau_a \succ \tau_b$ to denote that
-$\tau_a$ is a subtype of $\tau_b$. The subtyping relation can be
-checked statically or dynamically. The notation $\tau_a \succ \tau_b$
-will be used for static checks whereas the notation $\tau_a \triangleright \tau_b$
-will be used for dynamic checks. Dynamic checks occurr when using reflection
-to check wether types can be assigned to values at runtime.
+The subtyping relation in F\# is also based on the implementation in
+.NET.  We write $\tau_a \succ \tau_b$ to denote that $\tau_a$ is a
+subtype of $\tau_b$. \wouter{Is this really the notation used? I'd
+  expect the operator to go the other way round} The subtyping
+relation can be checked statically or dynamically. The notation
+$\tau_a \succ \tau_b$ will be used for static checks whereas the
+notation $\tau_a \triangleright \tau_b$ will be used for dynamic
+checks. Dynamic checks occurr when using reflection to check whether
+types can be assigned to values at runtime.
 
 As in most object oriented languages, the .NET subtyping mechanism
 allows values to be cast implicitly to any supertype.  The F\#
@@ -315,12 +318,12 @@ language uses the keyword |inherit| to denote that a type
 inherits from another type. A well-known restriction of this mechanism
 is that this cast cannot automatically be applied to generic type
 arguments. Put differently, $\tau_a \succ \tau_b\ \not\Rightarrow\
-\mathtt{T}{<}\tau_a{>} \ \succ \ \mathtt{T}{<}\tau_b{>}$.
+\mathtt{T}\langle\tau_a\rangle \; \succ \; \mathtt{T}\langle\tau_b\rangle$.
 
 \paragraph{Reflection}
 
 The .NET platform uses an abstract class, |Type|, to represent
-all the types that are available. This class is used to define
+all types. This class is used to define
 operations such as casting or instantiating the generic type arguments
 of a type. Using the .NET reflection mechanism any value can be
 queried for its type dynamically. This information can even be used to
@@ -330,7 +333,7 @@ The |Type| class is not sealed. Languages can extend it with any
 information they want. This allows F\# to include specific metadata
 about algebraic data types and other F\# specific types in the
 |Type| class.  We can use this metadata to query the constructors
-of algebraic data type, or even pattern match on the type of those
+of algebraic data type, or even to pattern match on the type of those
 constructors. It is also possible to use reflection and invoke the
 type constructors of an ADT to create values of that type. Doing
 so is not type-safe in general, since the information gained through
@@ -389,16 +392,18 @@ approach slightly.
 We will define an abstract class, |Meta|, that can will be used to
 define type representations. Its purpose is to impose type constraints
 on type variables. These constraints serve as an alternative to
-typeclass constraints that are used in Regular. For example, the
-following instance is defined in the Regular library:
+typeclass constraints that are used in Regular. For example, (a slight
+variation of) the following instance is defined in the Regular
+library:
 
 \begin{code}
-instance (GMap f, GMap g) => GMap (f :*: g) where
-  gmap f (x :*: y) = ...
+instance (GMap f, GMap g) => 
+  GMap (f :*: g) where
+    gmap f (x :*: y) = ...
 \end{code}
 In F\#, we cannot abstract over higher-kinds. Instead, we therefore
-abstract over type variables of kind |*|, and require these types
-themselves are subtypes of the |Meta| class.
+abstract over first-order type variables of kind |*|, and require
+that these types themselves are subtypes of the |Meta| class.
 
 In the remainder of this section, we will present the concrete
 subtypes of the |Meta| class defined in our library. The first

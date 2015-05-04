@@ -21,3 +21,4 @@
 %format varx = "\primed{x}"
 %format << = "\langle"
 %format >> = "\rangle"
+%format :*: = ":\!\!*\!\!:"
