@@ -360,13 +360,13 @@ files containing comma separated values and generate an type
 describing the columns of the data stored in the file. A type provider
 is invoked as follows:
 \begin{code}
-type T = NameProvider<''MyType'',''AnotherType''>
+type T = NameProvider<"MyType","AnotherType">
 
-// prints ``MyType''
-printf ``%s'' typeof<T.MyType>.Name
+// prints "MyType"
+printf "%s" typeof<T.MyType>.Name
 
-// prints ``AnotherType''
-printf ``%s'' typeof<T.AnotherType>.Name
+// prints "AnotherType"
+printf "%s" typeof<T.AnotherType>.Name
 
 \end{code}
 This code calls the type provider |Provider| which generates a
@@ -522,6 +522,12 @@ to be an algebraic data type or not, |vara| has no constraints.
 Finally, |Id| is the last subclass of |Meta|. This type is used to
 represent recursive types. This type takes a single type argument that
 may be used to refer recursively to the type being represented.
+
+The definitions of these types is given in figure~\ref{fig:rep-def}.
+This definitions are not complete since the actual implementation
+incldues extra code used for reflection which is not relevant
+to demostrate how representations are encoded. The full definition
+is available at \cite{FSharp-Generics-Repo}.
 
 We conclude this section with an example of our type
 representation. Given the following algebraic data type in F\#:
@@ -813,7 +819,11 @@ type GMap<<vart,varf>>(f : varf->varf) = class
 \end{code}
 This imporved type provider is able to
 determine that the return type of |gmap|
-is |Meta|.
+is |Meta|. Compared to option 1, this one has the
+advantage that the |override| keyword could be used
+to define the custom generic methods. That way the
+type must match at compile time or an error is porduced
+instead of a call to the default function.
 \section{Example}
 \label{sec:uniplate}
 To further explore the usefulness of the library, some
