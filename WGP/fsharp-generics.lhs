@@ -708,7 +708,7 @@ summarized as follows:
   arguments given to the generic function. For example: |gmap| is
   called with a value |v : K<<Employee>> *tau1*..*taun| and there exists a
   |gmap| overload of type
-  |K<<Employee>> *tau1*..*\taun|.
+  |K<<Employee>> *tau1*..*taun|.
 \item There exists an overload that accepts the same representation
   type and contains a generic type argument. For example: |gmap|
   is called with a value |v :  K<<Employee>> *tau1*..*taun| and there exists a
