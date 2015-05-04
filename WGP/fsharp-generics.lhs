@@ -9,6 +9,8 @@
 
 \usepackage{amsmath}
 \usepackage{listings}
+\usepackage{caption}
+\usepackage{subcaption}
 
 %% TODO notes
 \usepackage{color}
@@ -414,7 +416,84 @@ arguments, |vara| and |varb|, are the arguments to the sum type.  Note
 that both |vara| and |varb| have the constraint that |vara| and |varb|
 are subtypes of the |Meta| class.
 
+\begin{figure*}
+\centering
+\begin{subfigure}[b]{0.3\textwidth}
+\begin{code}
+AbstractClass
+type Meta() = class end
+\end{code}
+\begin{code}
+type U() =
+  class
+    inherit Meta()
+  end
+\end{code}
+\begin{code}
+type K<<varx>>(elem:varx) =
+  class
+    inherit Meta()
+    member self.Elem 
+      with get() = elem
+  end
+\end{code}
+\end{subfigure}
+\begin{subfigure}[b]{0.3\textwidth}
+\begin{code}
+type Id<<vart>>(elem:vart) =
+  class
+    inherit Meta()
+    self.Elem 
+      with get() = elem
+  end
+\end{code}
+
+\begin{code}
+type SumConstr<<vart,vara,varb
+                when vara :> Meta 
+                and varb :> Meta>>(
+                elem : Choice<<vara,varb>>) =
+  class
+
+    inherit Meta()
+    member self.Elem 
+      with get() = elem
+  end
+\end{code}
+
+%% \ernesto{From a DGP point of veiw, meta has no purpose but to be the
+%%   type from which all derive. In the implementation, it contains some
+%%   methods which are used to do reflection but I don't think they need
+%%   to be mentioned here?}
+\end{subfigure}
+\begin{subfigure}[b]{0.3\textwidth}
+\begin{code}
+type Prod<<vara,varb
+           when vara :> Meta
+           and varb :> Meta>>(e1:vara,e2:varb) =
+  class
+    inherit Meta()
+    member self.Elem 
+      with get() = e1,e2
+    member self.E1 
+      with get() = e1
+    member self.E2 
+      with get() = e2
+  end
+\end{code}
+\end{subfigure}
+%\begin{subfigure}[b]{0.3\textwidth}
+%\end{subfigure}
+\caption{Definition in F\# of all the types used to build type representations.}
+\label{fig:rep-def}
+\end{figure*}
+
 \wouter{Why are they called SumConstr and Prod? Why not just Sum and Prod?}
+\ernesto{I agree it should be just Sum. It is bc the original implementation
+  contained two subclasses of Sum, namely L and R but I removed them and well
+  I would need to re-factor a lot of code to rename which I was planning to do
+  for the finished program but since it's not there yet, I thought for the paper
+  I should be consitent with the implementation?}
 
 \wouter{Would it be interesting to give the definition of SumConstr
   and Prod here? It might be interesting to see how this stuff looks
@@ -663,6 +742,7 @@ attempts to assign |x| the type $\tau$ and fails if $\mathtt{x}
 apply is provided when the class is instantiated and can now have an
 explicit type.
 \section{A ``better'' Generic Provider}
+\label{sec:better-providers}
 In principle, what is wrong with the current generic provider is that
 it lacks type information of some types. These types are:
 \begin{enumerate}
@@ -681,7 +761,7 @@ the type provider could accept type arguments:
 Option 1 is the only one that is currently possible in F\#. An
 implementation of the generic provider using that option is in
 development but there are some details on how .Net handles generic
-argumetns that need to be address. In any case, the basic idea
+argumetns that need to be addressed. In any case, the basic idea
 is moving the default action from the constructor of the generic
 type to the generic method. Take for instance [GMap] which could
 be re-written as follows:
@@ -698,8 +778,16 @@ a value of the same type as the type argument for [GMap], in this case
 [Meta]. This approach is type safe in the sense it no longer requires
 unsafe casts.
 
-Option 2 would allow very powerful
-type extensions to the language but would require significant changes
+With option 1, the selection mechanism (described in \ref{sec:conversion})
+will never select a method that results in a runtime type error
+because it knows what the return type of the generic function should be
+because of the extra argument. However, if the user made a type error,
+he will not see any warnings, errors or runtime errors indicating
+he did. The program will simply call the default action in situations
+where the user was expecting a generic method to be called.
+
+Option 2 would allow very powerful type extensions to the language 
+but would require significant changes
 to the implementation of type providers because a |Type| object
 would need to be constructed to run the type provider's code. Option 3
 which is more feasible has been requested at \cite{genericTypeArgs}
@@ -766,7 +854,8 @@ type Collect<<vart>>() =
   member x.Collect(m : Meta) =
     base.Collect m mTrRg vart list
 
-  member x.Collect<<varx>>(c : SumConstr<varx,Meta,Meta>) =
+  member x.Collect<<varx>>(
+    c : SumConstr<varx,Meta,Meta>) =
     match c with
     | L m -> x.Collect m
     | R m -> x.Collect m
@@ -912,10 +1001,11 @@ is the exact type for the representation. Then the \verb+read+
 or any other function must produce a representation with
 that same type (instead of only a sub-type of \verb+Meta+) and
 would be reasonable for the F\# compiler to check the correctness
-of the algorithm. Unfortunately, (as pointed out before) type
-providers can't accept types as static arguments.
+of the algorithm. Unfortunately, type providers can't accept types 
+as static arguments (see section~\ref{sec:better-providers}).
 
-
+\section{Conclusions}
+Datatype generic programming has been 
 
 \acks
 

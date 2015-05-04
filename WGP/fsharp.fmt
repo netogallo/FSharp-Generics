@@ -31,4 +31,4 @@
 %format mTrRg = "{?}{\triangleright}"
 %format gg = "\gg"
 %format :> = "\succ"
-
+%format AbstractClass = "[\langle\mathbf{AbstractClass}\rangle]"
