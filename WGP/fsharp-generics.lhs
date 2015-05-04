@@ -394,6 +394,78 @@ writing type providers~\cite{TypeProviderTutorial}.
 \section{Type Representations in F\#}
 \label{sec:representation}
 
+\begin{figure*}
+\centering
+\begin{subfigure}[t]{0.3\textwidth}
+\begin{code}
+AbstractClass
+type Meta() = class end
+\end{code}
+\begin{code}
+type U() =
+  class
+    inherit Meta()
+  end
+\end{code}
+\begin{code}
+type K<<varx>>(elem:varx) =
+  class
+    inherit Meta()
+    member self.Elem 
+      with get() = elem
+  end
+\end{code}
+\end{subfigure}
+\begin{subfigure}[t]{0.3\textwidth}
+\begin{code}
+type Id<<vart>>(elem:vart) =
+  class
+    inherit Meta()
+    self.Elem 
+      with get() = elem
+  end
+\end{code}
+
+\begin{code}
+type SumConstr<<vart,vara,varb
+                when vara :> Meta 
+                and varb :> Meta>>(
+                elem : Choice<<vara,varb>>) =
+  class
+
+    inherit Meta()
+    member self.Elem 
+      with get() = elem
+  end
+\end{code}
+
+%% \ernesto{From a DGP point of veiw, meta has no purpose but to be the
+%%   type from which all derive. In the implementation, it contains some
+%%   methods which are used to do reflection but I don't think they need
+%%   to be mentioned here?}
+\end{subfigure}
+\begin{subfigure}[t]{0.3\textwidth}
+\begin{code}
+type Prod<<vara,varb
+           when vara :> Meta
+           and varb :> Meta>>(e1:vara,e2:varb) =
+  class
+    inherit Meta()
+    member self.Elem 
+      with get() = e1,e2
+    member self.E1 
+      with get() = e1
+    member self.E2 
+      with get() = e2
+  end
+\end{code}
+\end{subfigure}
+%\begin{subfigure}[b]{0.3\textwidth}
+%\end{subfigure}
+\caption{Definition in F\# of all the types used to build type representations.}
+\label{fig:rep-def}
+\end{figure*}
+
 The core of most libraries for data type generic programming is a
 \emph{representation type} or \emph{universe}, that determines the
 types that can be represented and how generic functions are defined. We
@@ -432,77 +504,6 @@ arguments, |vara| and |varb|, are the arguments to the sum type.  Note
 that both |vara| and |varb| have the constraint that |vara| and |varb|
 are subtypes of the |Meta| class.
 
-\begin{figure*}
-\centering
-\begin{subfigure}[b]{0.3\textwidth}
-\begin{code}
-AbstractClass
-type Meta() = class end
-\end{code}
-\begin{code}
-type U() =
-  class
-    inherit Meta()
-  end
-\end{code}
-\begin{code}
-type K<<varx>>(elem:varx) =
-  class
-    inherit Meta()
-    member self.Elem 
-      with get() = elem
-  end
-\end{code}
-\end{subfigure}
-\begin{subfigure}[b]{0.3\textwidth}
-\begin{code}
-type Id<<vart>>(elem:vart) =
-  class
-    inherit Meta()
-    self.Elem 
-      with get() = elem
-  end
-\end{code}
-
-\begin{code}
-type SumConstr<<vart,vara,varb
-                when vara :> Meta 
-                and varb :> Meta>>(
-                elem : Choice<<vara,varb>>) =
-  class
-
-    inherit Meta()
-    member self.Elem 
-      with get() = elem
-  end
-\end{code}
-
-%% \ernesto{From a DGP point of veiw, meta has no purpose but to be the
-%%   type from which all derive. In the implementation, it contains some
-%%   methods which are used to do reflection but I don't think they need
-%%   to be mentioned here?}
-\end{subfigure}
-\begin{subfigure}[b]{0.3\textwidth}
-\begin{code}
-type Prod<<vara,varb
-           when vara :> Meta
-           and varb :> Meta>>(e1:vara,e2:varb) =
-  class
-    inherit Meta()
-    member self.Elem 
-      with get() = e1,e2
-    member self.E1 
-      with get() = e1
-    member self.E2 
-      with get() = e2
-  end
-\end{code}
-\end{subfigure}
-%\begin{subfigure}[b]{0.3\textwidth}
-%\end{subfigure}
-\caption{Definition in F\# of all the types used to build type representations.}
-\label{fig:rep-def}
-\end{figure*}
 
 \wouter{Why are they called SumConstr and Prod? Why not just Sum and Prod?}
 \ernesto{I agree it should be just Sum. It is bc the original implementation
@@ -573,17 +574,15 @@ optimize the representation types.
 \section{Generic Functions}
 \label{sec:generic-functions}
 The purpose of type representations is to provide an interface that
-the programmer can use to define generic functions. In other words is
-a language to define what the semantics of such functions are. The
-library will then be provided with a generic function definition and
-will apply it as appropriate to the values it is provided with.
+the programmer can use to define generic functions. Once a function is
+defined on all the subtypes of the |Meta| class, it can be executed on
+any value whose type may be modelled using the |Meta| class.
 
-To show how generic definitions look like, the generic function
-|gmap| will be defined. This function accepts as an argument a
+To illustrate how generic functions may be defined, we will define a
+generic map operator, |gmap|. This function accepts as an argument a
 function of type $\tau\to\tau$ and applies the function to every value
 of type $\tau$ in a ADT. In Regular, a generic function is defined as
-a typeclass. In this implementation, they are defined as an ordinary
-.NET class:
+a typeclass. In this implementation, we define |GMap| as a .NET class:
 \begin{code}
 type GMap<<`t>>() = class end
 \end{code}
