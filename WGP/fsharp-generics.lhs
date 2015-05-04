@@ -9,6 +9,8 @@
 
 \usepackage{amsmath}
 \usepackage{listings}
+\usepackage{caption}
+\usepackage{subcaption}
 
 %% TODO notes
 \usepackage{color}
@@ -172,7 +174,7 @@ erasure when compiled to the .NET platform.
 
 Before we can define the |IncreaseSalary| function, we will define the types on which it operates:
 \begin{code}
-[<<AbstractClass>>]
+AbstractClass
 type Employee() = class
     abstract Salary : float with get() and set()
     abstract NetSalary : float with get()
@@ -305,8 +307,14 @@ such as casting, are handled by the .NET platform.
 The subtyping relation in F\# is also based on the implementation in
 .NET.  We write $\tau_a \succ \tau_b$ to denote that $\tau_a$ is a
 subtype of $\tau_b$. \wouter{Is this really the notation used? I'd
-  expect the operator to go the other way round} The subtyping
-relation can be checked statically or dynamically. The notation
+  expect the operator to go the other way round} \ernesto{In F\# $t1 :> t2$
+  means that t1 is a sub-class of t2. So if I choose to use the 
+  operator the way it is done in F\#, it is that way. However, if
+  you think the main audience is not F\# related we can switch it
+  around and add a footnote saying that in F\# code snippets,
+  $t1 \prec t2$ means $t1 :> t2$ and that we chose this convention
+  to avoid confusion with traditional notation.}
+The subtyping relation can be checked statically or dynamically. The notation
 $\tau_a \succ \tau_b$ will be used for static checks whereas the
 notation $\tau_a \triangleright \tau_b$ will be used for dynamic
 checks. Dynamic checks occurr when using reflection to check whether
@@ -342,36 +350,36 @@ runtime exception. Nevertheless, the reflection mechanism is actively
 used in libraries such as FsPickler~\cite{FsPickler}, a general
 purpose .NET serializer.
 
-% \paragraph{Type Providers}
-% One language feature particular to F\# is \emph{type
-%   providers}~\cite{typeProviders}. Type providers in F\# define a
-% mechanism that allows types to be defined by running code at compile
-% time. They where designed to provide typed access to external data
-% sources. For example, a type provider could parse the header of a
-% files containing comma separated values and generate an type
-% describing the columns of the data stored in the file. A type provider
-% is invoked as follows:
-% \begin{code}
-% type T = NameProvider<''MyType'',''AnotherType''>
+\paragraph{Type Providers}
+One language feature particular to F\# is \emph{type
+  providers}~\cite{typeProviders}. Type providers in F\# define a
+mechanism that allows types to be defined by running code at compile
+time. They where designed to provide typed access to external data
+sources. For example, a type provider could parse the header of a
+files containing comma separated values and generate an type
+describing the columns of the data stored in the file. A type provider
+is invoked as follows:
+\begin{code}
+type T = NameProvider<"MyType","AnotherType">
 
-% // prints ``MyType''
-% printf ``%s'' typeof<T.MyType>.Name
+// prints "MyType"
+printf "%s" typeof<T.MyType>.Name
 
-% // prints ``AnotherType''
-% printf ``%s'' typeof<T.AnotherType>.Name
+// prints "AnotherType"
+printf "%s" typeof<T.AnotherType>.Name
 
-% \end{code}
-% This code calls the type provider |Provider| which generates a
-% type that is assigned the type synonym |T|. In the example above,
-% the |NameProvider| is a type provider that simply creates a type
-% that contains nested types named as the arguments that were passed
-% to the provider. As it can be seen, the types created by the type
-% provider can be used as ordinary F\# types. The type provider also
-% accepts static arguments which are restricted to literal values of
-% type |int|, |string| and |bool|. The implementation of
-% a type provider is quite involved and requires boilerplate code
-% to process the information provided by the F\# compiler. For more
-% details, the reader is advised to read \cite{TypeProviderTutorial}.
+\end{code}
+This code calls the type provider |Provider| which generates a
+type that is assigned the type synonym |T|. In the example above,
+the |NameProvider| is a type provider that simply creates a type
+that contains nested types named as the arguments that were passed
+to the provider. As it can be seen, the types created by the type
+provider can be used as ordinary F\# types. The type provider also
+accepts static arguments which are restricted to literal values of
+type |int|, |string| and |bool|. The implementation of
+a type provider is quite involved and requires boilerplate code
+to process the information provided by the F\# compiler. For more
+details, the reader is advised to read \cite{TypeProviderTutorial}.
 
 \section{Type Representations in F\#}
 \label{sec:representation}
@@ -414,7 +422,84 @@ arguments, |vara| and |varb|, are the arguments to the sum type.  Note
 that both |vara| and |varb| have the constraint that |vara| and |varb|
 are subtypes of the |Meta| class.
 
+\begin{figure*}
+\centering
+\begin{subfigure}[b]{0.3\textwidth}
+\begin{code}
+AbstractClass
+type Meta() = class end
+\end{code}
+\begin{code}
+type U() =
+  class
+    inherit Meta()
+  end
+\end{code}
+\begin{code}
+type K<<varx>>(elem:varx) =
+  class
+    inherit Meta()
+    member self.Elem 
+      with get() = elem
+  end
+\end{code}
+\end{subfigure}
+\begin{subfigure}[b]{0.3\textwidth}
+\begin{code}
+type Id<<vart>>(elem:vart) =
+  class
+    inherit Meta()
+    self.Elem 
+      with get() = elem
+  end
+\end{code}
+
+\begin{code}
+type SumConstr<<vart,vara,varb
+                when vara :> Meta 
+                and varb :> Meta>>(
+                elem : Choice<<vara,varb>>) =
+  class
+
+    inherit Meta()
+    member self.Elem 
+      with get() = elem
+  end
+\end{code}
+
+%% \ernesto{From a DGP point of veiw, meta has no purpose but to be the
+%%   type from which all derive. In the implementation, it contains some
+%%   methods which are used to do reflection but I don't think they need
+%%   to be mentioned here?}
+\end{subfigure}
+\begin{subfigure}[b]{0.3\textwidth}
+\begin{code}
+type Prod<<vara,varb
+           when vara :> Meta
+           and varb :> Meta>>(e1:vara,e2:varb) =
+  class
+    inherit Meta()
+    member self.Elem 
+      with get() = e1,e2
+    member self.E1 
+      with get() = e1
+    member self.E2 
+      with get() = e2
+  end
+\end{code}
+\end{subfigure}
+%\begin{subfigure}[b]{0.3\textwidth}
+%\end{subfigure}
+\caption{Definition in F\# of all the types used to build type representations.}
+\label{fig:rep-def}
+\end{figure*}
+
 \wouter{Why are they called SumConstr and Prod? Why not just Sum and Prod?}
+\ernesto{I agree it should be just Sum. It is bc the original implementation
+  contained two subclasses of Sum, namely L and R but I removed them and well
+  I would need to re-factor a lot of code to rename which I was planning to do
+  for the finished program but since it's not there yet, I thought for the paper
+  I should be consitent with the implementation?}
 
 \wouter{Would it be interesting to give the definition of SumConstr
   and Prod here? It might be interesting to see how this stuff looks
@@ -438,11 +523,17 @@ Finally, |Id| is the last subclass of |Meta|. This type is used to
 represent recursive types. This type takes a single type argument that
 may be used to refer recursively to the type being represented.
 
+The definitions of these types is given in figure~\ref{fig:rep-def}.
+This definitions are not complete since the actual implementation
+incldues extra code used for reflection which is not relevant
+to demostrate how representations are encoded. The full definition
+is available at \cite{FSharp-Generics-Repo}.
+
 We conclude this section with an example of our type
 representation. Given the following algebraic data type in F\#:
 \begin{code}
-type Elems<<vara>> = Cons of vara*Elems<<vara>>
-                   | Val of vara 
+type Elems = Cons of int*Elems
+                   | Val of int
                    | Nil 
 \end{code}
 We can represent this type as a subtype of the |Meta| class as
@@ -663,6 +754,7 @@ attempts to assign |x| the type $\tau$ and fails if $\mathtt{x}
 apply is provided when the class is instantiated and can now have an
 explicit type.
 \section{A ``better'' Generic Provider}
+\label{sec:better-providers}
 In principle, what is wrong with the current generic provider is that
 it lacks type information of some types. These types are:
 \begin{enumerate}
@@ -681,7 +773,7 @@ the type provider could accept type arguments:
 Option 1 is the only one that is currently possible in F\#. An
 implementation of the generic provider using that option is in
 development but there are some details on how .Net handles generic
-argumetns that need to be address. In any case, the basic idea
+argumetns that need to be addressed. In any case, the basic idea
 is moving the default action from the constructor of the generic
 type to the generic method. Take for instance [GMap] which could
 be re-written as follows:
@@ -698,8 +790,16 @@ a value of the same type as the type argument for [GMap], in this case
 [Meta]. This approach is type safe in the sense it no longer requires
 unsafe casts.
 
-Option 2 would allow very powerful
-type extensions to the language but would require significant changes
+With option 1, the selection mechanism (described in \ref{sec:conversion})
+will never select a method that results in a runtime type error
+because it knows what the return type of the generic function should be
+because of the extra argument. However, if the user made a type error,
+he will not see any warnings, errors or runtime errors indicating
+he did. The program will simply call the default action in situations
+where the user was expecting a generic method to be called.
+
+Option 2 would allow very powerful type extensions to the language 
+but would require significant changes
 to the implementation of type providers because a |Type| object
 would need to be constructed to run the type provider's code. Option 3
 which is more feasible has been requested at \cite{genericTypeArgs}
@@ -719,7 +819,11 @@ type GMap<<vart,varf>>(f : varf->varf) = class
 \end{code}
 This imporved type provider is able to
 determine that the return type of |gmap|
-is |Meta|.
+is |Meta|. Compared to option 1, this one has the
+advantage that the |override| keyword could be used
+to define the custom generic methods. That way the
+type must match at compile time or an error is porduced
+instead of a call to the default function.
 \section{Example}
 \label{sec:uniplate}
 To further explore the usefulness of the library, some
@@ -766,7 +870,8 @@ type Collect<<vart>>() =
   member x.Collect(m : Meta) =
     base.Collect m mTrRg vart list
 
-  member x.Collect<<varx>>(c : SumConstr<varx,Meta,Meta>) =
+  member x.Collect<<varx>>(
+    c : SumConstr<varx,Meta,Meta>) =
     match c with
     | L m -> x.Collect m
     | R m -> x.Collect m
@@ -914,8 +1019,72 @@ that same type (instead of only a sub-type of \verb+Meta+) and
 would be reasonable for the F\# compiler to check the correctness
 of the algorithm. Unfortunately, (as pointed out before) type
 providers can't accept types as static arguments.
+of the algorithm. Unfortunately, type providers can't accept types 
+as static arguments (see section~\ref{sec:better-providers}).
 
+\section{Conclusions}
+Datatype generic programming was successfully implemented for
+the F\# programming languages. In spite of the absecne of
+higher-rank polymorphism, it was still possible to reclaim
+some of the functionality using reflection aided with
+type providers for improved static checks. The result is
+a library wich can define various generic functions.
+
+The main advantage of this approach compared to ordinary
+reflection is type safety. Even though the implementation
+performs many unsafe dynamic type checks, they are masked
+behind a type-safe interface. It is not possible that
+a generic method is invoked with a representation of
+a type that is not supported by the method. Another
+minor advantage of this approach is providing a structured
+way to specify how the generic methods should be selected
+through reflection. This opens opportunities for automatic
+optimization since reflection only needs to be used once
+and the method selection can be cached automatically.
+
+The main disatvantage of this library compared to other
+DTG libraries is the reduced type safety of the approach.
+That has practical disatvantages which make it hard to
+define generic functions similar to |read|. Although a
+type error cannot occur when invoking generic methods and
+obtaining the result, the user can still experience 
+unexpected behavior if he defines a generic function
+with the wrong type. This type error will simply be
+ignored by the compiler and the selector and
+the default action will be invoked instead of the
+desired behavior.
+
+Compared to reflection, this approach is much
+less general. In the context of F\#, mutually
+recursive types are still not supported. The reason
+is that the |Id| constructor would require an
+additional type argument for every extra type
+in the recursion. Advanced DGP libraries using
+advanced type systems have solved the problem
+in various ways \cite{multirec}. Generally, the
+idea consists of using type level functions to
+define types that can be used as indexes for
+other types. Then each type of the mutual
+recursion can be assigned an index. If type
+providers in F\# could produce generic types,
+it might be possible to lazyly construct the
+types required for every type present in a
+mutual recurison. Another advantage of
+reflection is that it can be used with
+any .Net type. This library only works
+for algebraic data types.
+
+Type providers were not designed as a
+mechanism to do type level programming.
+Nevertheless, their flexibility and the
+richness of .Net's type system allow
+interesting type features to be implemented
+in F\#. This is potential available in type
+providers that has not yet been exploited
+and could result in useful features for
+the F\# language.
 % \acks
+
 % Acknowledgments, if needed.
 
 % We recommend abbrvnat bibliography style.
