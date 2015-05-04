@@ -305,28 +305,30 @@ such as casting, are handled by the .NET platform.
 \paragraph{Generics and subtyping}
 
 The subtyping relation in F\# is also based on the implementation in
-.NET.  We write $\tau_a \succ \tau_b$ to denote that $\tau_a$ is a
-subtype of $\tau_b$. \wouter{Is this really the notation used? I'd
-  expect the operator to go the other way round} \ernesto{In F\# $t1 :> t2$
-  means that t1 is a sub-class of t2. So if I choose to use the 
-  operator the way it is done in F\#, it is that way. However, if
-  you think the main audience is not F\# related we can switch it
-  around and add a footnote saying that in F\# code snippets,
-  $t1 \prec t2$ means $t1 :> t2$ and that we chose this convention
-  to avoid confusion with traditional notation.}
-The subtyping relation can be checked statically or dynamically. The notation
-$\tau_a \succ \tau_b$ will be used for static checks whereas the
-notation $\tau_a \triangleright \tau_b$ will be used for dynamic
-checks. Dynamic checks occurr when using reflection to check whether
-types can be assigned to values at runtime.
+.NET.  We write $\tau_a \prec \tau_b$ 
+\footnote{The notation in this paper was chosen for a non F\# audience. 
+  The F\# programmer should read $\tau_a \prec \tau_b$ as $\tau_a :> \tau_b$}
+to denote that $\tau_a$ is a
+subtype of $\tau_b$. Due to this sub-typeing relation, a value can
+be assigned multiple types. When assigning a type $\tau$ to a value
+$x$, it is necessary to check that $x$ is of type $\tau$. In some
+cases this check can be done statically for which the notatin
+$x \prec \tau$ \footnote{The F\# programmer should read $x :> \tau$ instead of $x \prec \tau$.}. 
+is used. In other cases, this check can only be done
+dynamically for which the notation $x \precsim \tau$
+\footnote{The F\# programmer should read $x\ {:}{?}{>}\ \tau$ instead of $x \precsim \tau$.}
+ is used. Dynamic checks are usually necessary when using reflection and
+when a dynamic type check fails it results in a runtime error. The result of
+$x \prec \tau$ or $x \precsim \tau$ is the value of $x$ but assigned to it
+the type $\tau$.
 
 As in most object oriented languages, the .NET subtyping mechanism
 allows values to be cast implicitly to any supertype.  The F\#
 language uses the keyword |inherit| to denote that a type
 inherits from another type. A well-known restriction of this mechanism
 is that this cast cannot automatically be applied to generic type
-arguments. Put differently, $\tau_a \succ \tau_b\ \not\Rightarrow\
-\mathtt{T}\langle\tau_a\rangle \; \succ \; \mathtt{T}\langle\tau_b\rangle$.
+arguments. Put differently, $\tau_a \prec \tau_b\ \not\Rightarrow\
+\mathtt{T}\langle\tau_a\rangle \; \prec \; \mathtt{T}\langle\tau_b\rangle$.
 
 \paragraph{Reflection}
 
@@ -362,11 +364,11 @@ is invoked as follows:
 \begin{code}
 type T = NameProvider<"MyType","AnotherType">
 
-// prints "MyType"
-printf "%s" typeof<T.MyType>.Name
+-- prints "MyType"
+printf "%s" typeof<<T.MyType>> .Name
 
-// prints "AnotherType"
-printf "%s" typeof<T.AnotherType>.Name
+-- prints "AnotherType"
+printf "%s" typeof<<T.AnotherType>> .Name
 
 \end{code}
 This code calls the type provider |Provider| which generates a
@@ -415,8 +417,8 @@ that these types themselves are subtypes of the |Meta| class.
 
 In the remainder of this section, we will present the concrete
 subtypes of the |Meta| class defined in our library. The first
-subclass of |Meta| is |SumConstr|, used to take the sum of two types.
-The |SumConstr| takes three type arguments: |t|,|a| and |b|. The first
+subclass of |Meta| is |Sum|, used to take the sum of two types.
+The |Sum| takes three type arguments: |t|,|a| and |b|. The first
 one indicates the type that this representation encodes. The remaining
 arguments, |vara| and |varb|, are the arguments to the sum type.  Note
 that both |vara| and |varb| have the constraint that |vara| and |varb|
@@ -455,7 +457,7 @@ type Id<<vart>>(elem:vart) =
 \end{code}
 
 \begin{code}
-type SumConstr<<vart,vara,varb
+type Sum<<vart,vara,varb
                 when vara :> Meta 
                 and varb :> Meta>>(
                 elem : Choice<<vara,varb>>) =
@@ -494,14 +496,14 @@ type Prod<<vara,varb
 \label{fig:rep-def}
 \end{figure*}
 
-\wouter{Why are they called SumConstr and Prod? Why not just Sum and Prod?}
+\wouter{Why are they called Sum and Prod? Why not just Sum and Prod?}
 \ernesto{I agree it should be just Sum. It is bc the original implementation
   contained two subclasses of Sum, namely L and R but I removed them and well
   I would need to re-factor a lot of code to rename which I was planning to do
   for the finished program but since it's not there yet, I thought for the paper
   I should be consitent with the implementation?}
 
-\wouter{Would it be interesting to give the definition of SumConstr
+\wouter{Would it be interesting to give the definition of Sum
   and Prod here? It might be interesting to see how this stuff looks
   in F\#.  I've trimmed down the example a bit -- this stuff is very
   familiar to the WGP audience.}
@@ -539,12 +541,12 @@ type Elems = Cons of int*Elems
 We can represent this type as a subtype of the |Meta| class as
 follows:
 \begin{code}
-type ElemsRep = SumConstr<<
+type ElemsRep = Sum<<
   Elem<<int>>,
-  SumConstr<<
+  Sum<<
     unit,
     Prod<<K<<int>>,Prod<<Id<<Elem<<int>> >>,U>> >>,
-    SumConstr<<
+    Sum<<
       unit,
       Prod<<K << int >>, U>>,
       U>> >> >>
@@ -573,14 +575,14 @@ type GMap<<`t>>() = class end
 The class has a constructor that takes as argument the function that
 will be applied. The first step is dealing with the sum of type
 constructors. As explained in the previous section, they are
-represented by |SumConstr|:
+represented by |Sum|:
 \begin{code}
-member x.gmap<<varx>>(v : SumConstr<<vart,Meta,Meta>>
+member x.gmap<<varx>>(v : Sum<<vart,Meta,Meta>>
                       ,f : Employee -> Employee) =
   match v with
-  | L m -> SumConstr<<varx,Meta,Meta>>(
+  | L m -> Sum<<varx,Meta,Meta>>(
              x.gmap m |> Choice1Of2)
-  | R m -> SumConstr<<varx,Meta,Meta>>(
+  | R m -> Sum<<varx,Meta,Meta>>(
              x.gmap m |> Choice2Of2)
 \end{code}
 Here the active patterns |L| and |R| are used to distinguish
@@ -704,15 +706,13 @@ summarized as follows:
 \begin{itemize}
 \item There exists an overload whose type exactly matches the
   arguments given to the generic function. For example: |gmap| is
-  called with a value $\mathtt{v}\ \triangleright\
-  \K<\mathtt{Employee}>*\tau_1*..*\tau_n$ and there exists a
+  called with a value |v : K<<Employee>> *tau1*..*taun| and there exists a
   |gmap| overload of type
-  $\K<\mathtt{Employee}>*\tau_1*..*\tau_n$.
+  |K<<Employee>> *tau1*..*\taun|.
 \item There exists an overload that accepts the same representation
   type and contains a generic type argument. For example: |gmap|
-  is called with a value $\mathtt{v}\ \triangleright\
-  \K<\mathtt{Employee}>*\tau_1*..*\tau_n$ and there exists a
-  |gmap| overload that accepts the type $\K<\mathtt{`t}>*\tau_1*..*\tau_n$
+  is called with a value |v :  K<<Employee>> *tau1*..*taun| and there exists a
+  |gmap| overload that accepts the type |K<<vart>> *tau1*..*taun|
   as argument.
 \item No overload matches the rules above.
 \end{itemize}
@@ -745,14 +745,14 @@ type GMap<<vart,varf>>(f : varf-> varf) = class
     inherit GMapBase(defaultAction)
 
     member x.gmap(v : Meta) =
-      x.gmap(v) mTrRg Meta
+      base.gmap(v) :?> Meta
   end
 \end{code}
-Here $\mathtt{x}\ ?{\triangleright}\ \tau$ is the up-casting operation which
-attempts to assign |x| the type $\tau$ and fails if $\mathtt{x}
-\not\triangleright\ \tau$. With this definition the function that |gmap| will
-apply is provided when the class is instantiated and can now have an
-explicit type.
+In this overload, the |gmap| definition of |GMapBase| is invoked.
+This definition selects the correct overload and applies it or
+it applies |defaultAction| to the argument when no suitable
+overload has been defined. The result is assigned
+dynamically the type |Meta|.
 \section{A ``better'' Generic Provider}
 \label{sec:better-providers}
 In principle, what is wrong with the current generic provider is that
@@ -868,10 +868,10 @@ type Collect<<vart>>() =
   inherit CollectBase(fun m->(([] : vart list) trRg obj)
 
   member x.Collect(m : Meta) =
-    base.Collect m mTrRg vart list
+    base.Collect m :?> vart list
 
   member x.Collect<<varx>>(
-    c : SumConstr<varx,Meta,Meta>) =
+    c : Sum<varx,Meta,Meta>) =
     match c with
     | L m -> x.Collect m
     | R m -> x.Collect m
@@ -904,22 +904,22 @@ type Instantiate<<vart>>(values` : vart list) =
                 | [] -> None
 
   member x.Instantiate(m : Meta) =
-    base.Instantiate m mTrRg Meta
+    base.Instantiate m :?> Meta
 
   member x.Instantiate(
-    s : SumConstr<<vart,Meta,Meta>>) =
+    s : Sum<<vart,Meta,Meta>>) =
     match s with
-    | L m -> SumConstr<<vart,Meta,Meta>>(
+    | L m -> Sum<<vart,Meta,Meta>>(
       x.Instantiate m |> Choice1Of2)
-    | R m -> SumConstr<<vart,Meta,Meta>>(
+    | R m -> Sum<<vart,Meta,Meta>>(
       x.Instantiate m |> Choice2Of2)
 
   member x.Instantiate(
-    s : SumConstr<<unit,Meta,Meta>>) =
+    s : Sum<<unit,Meta,Meta>>) =
     match s with
-    | L m -> SumConstr<<`t,Meta,Meta>>(
+    | L m -> Sum<<`t,Meta,Meta>>(
       x.Instantiate m |> Choice1Of2)
-    | R m -> SumConstr<<`t,Meta,Meta>>(
+    | R m -> Sum<<`t,Meta,Meta>>(
       x.Instantiate m |> Choice2Of2)
 
   member x.Instantiate(i : Id<<vart>>) =
@@ -932,13 +932,13 @@ This function is provided with a list of values and
 when applied to a type representation it will replace
 all the recursive values within the representation
 by values of the provided list. The overloaded
-definition for the |SumConstr| case is necessary.
-Recall that the first argument of |SumConstr| is either
-the type being represented by the |SumConstr| or
-|unit| if that |SumConstr| is a intermediate
+definition for the |Sum| case is necessary.
+Recall that the first argument of |Sum| is either
+the type being represented by the |Sum| or
+|unit| if that |Sum| is a intermediate
 representation. Since uniplate only deals with
 recursive values that occurr on the first level,
-the |SumConstr| where the first argument is different
+the |Sum| where the first argument is different
 from |`t| (or the generic type to which |uniplate|
 has been applied) should not be recursively traversed.
 To wrap both pieces together the |Uniplate| function
@@ -951,7 +951,7 @@ type Uniplate<<vart>>() =
   inherit UniplateBase(fun _ ->
     failwith "Invalid representation")
 
-  member x.Uniplate(s : SumConstr<<vart,Meta,Meta>>) =
+  member x.Uniplate(s : Sum<<vart,Meta,Meta>>) =
     (Collect().Collect s,
      fun vs -> Instantiate(vs).Instantiate s)
 
