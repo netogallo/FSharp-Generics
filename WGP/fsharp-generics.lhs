@@ -78,7 +78,7 @@
 \maketitle
 
 \begin{abstract}
-  Datatype Generic programming (DGP) enables the definition of
+  Datatype Generic programming (DGP) enable programmers to define
   functions by induction over the structure of types on which they
   work. Yet the approach has not been adopted very widely, possibly
   due to the many requirements on a language's type system. This paper
@@ -89,7 +89,7 @@
 \end{abstract}
 
 \category{D.1.1}{Applicative (Functional) Programming}{}
-\catgegory{D.3.3}{Language constructs and features}{}
+\category{D.3.3}{Language constructs and features}{}
 \keywords
 data-type generic programming, reflection, F\#, type providers
 
@@ -98,10 +98,10 @@ data-type generic programming, reflection, F\#, type providers
 Over the last decade, data type generic programming has emerged as an
 powerful mechanism for defining families of functions. In Haskell
 alone, there are numerous tools and libraries for data type generic
-programming, including PolyP~\cite{polyp}, Generic
+programming, including amongst others PolyP~\cite{polyp}, Generic
 Haskell~\cite{GenericHaskell}, Scrap your boilerplate~\cite{SYB},
-Uniplate~\cite{Uniplate}, Regular~\cite{Regular},
-Multi-Rec~\cite{MultiRec}, RepLib~\cite{RepLib}, and Instant
+RepLib~\cite{RepLib}, Uniplate~\cite{Uniplate},
+Regular~\cite{Regular}, Multi-Rec~\cite{MultiRec}, and Instant
 Generics~\cite{instant2}.
 
 Many of these libraries are implemented in the same fashion. They
@@ -141,10 +141,13 @@ specifically, we make the following contributions:
   more advanced F\# features, such as reflection \todo{and type
     providers? or active patterns?} (Section~\ref{sec:conversion}).
 
-\item Finally, we will show how how familiar functions from Haskell
-  libraries such as Uniplate, may be implemented using our library
-  (Section~\ref{sec:uniplate}).
+\item Finally, we will show how how functions from other Haskell
+  libraries such as Uniplate, may be readily implemented using the
+  resulting library (Section~\ref{sec:uniplate}).
 \end{itemize}
+
+\todo{Do we want to make the code available from github? If so, this
+  is usually a good place to mention this.}
 
 \section{Background}
 \label{sec:background}
