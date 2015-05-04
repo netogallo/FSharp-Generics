@@ -271,7 +271,7 @@ Using |GMap|,  the |IncreaseSalary| function can be defined as follows:
 \begin{code}
 type generic(Company)(t) with
   member self.IncreaseSalary(v) =
-    self.GMap (fun e -> e.Salary <- e.Salary + v;e)
+    self.GMap (fun e -> e.Salary <- e.Salary + v)
 \end{code}
 
 In the later sections we will show how the |GMap| function may be
@@ -510,7 +510,8 @@ that access each of the elements of the product. Once again,
 for the |K| constructor which contains values. Here is where the
 function gets applied:
 \begin{code}
-member x.gmap(v : K<<Employee>>) = K(f v.Elem)
+member x.gmap(v : K<<Employee>>) = 
+  K(f v.Elem)
 \end{code}
 The property |Elem| of the |K| constructor returns the value
 that is being represented by |K|. Note that this member only

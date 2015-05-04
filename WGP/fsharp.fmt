@@ -1,6 +1,7 @@
 
 
 %format class = "\mathbf{class}"
+%format fun = "\mathbf{fun}"
 %format with = "\mathbf{with}"
 %format mutable = "\mathbf{mutable}"
 %format when = "\mathbf{when}"
