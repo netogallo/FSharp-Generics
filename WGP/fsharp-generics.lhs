@@ -779,7 +779,7 @@ type to the generic method. Take for instance [GMap] which could
 be re-written as follows:
 \begin{code}
 type GMap<<vart,varf>>(f : varf->varf) = class
-  inherit GMapBase<<Meta>>()
+  inherit GMapBase()
   member x.GMap(m) =
     base.GMap<<Meta>>(id,m)
 \end{code}
