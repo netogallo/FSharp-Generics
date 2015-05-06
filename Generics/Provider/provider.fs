@@ -69,7 +69,6 @@ module Provider =
                         |> failwith ""
         
         override this.Name with get() = name
-        
         override this.HasElementTypeImpl() = this.Invoker "HasElementTypeImpl" [||] [||]
         override this.IsPrimitiveImpl() = this.Invoker "IsPrimitiveImpl" [||] [||]
         override this.IsPointerImpl() = this.Invoker "IsPointerImpl" [||] [||]
@@ -148,18 +147,23 @@ module Provider =
           using System;
           using Generics;
 
+            public class {{className}}{
+              public class C : Selector.Selector{
 
-              public class {{className}} : Selector.Selector{
+                public T Id<T>(T t){return t;}
+              }
+
+              public class X : C{
               
-              // public class T{}
+              //public class T{}
               
               private Func<Rep.Meta {{typeArgs}}, {{retType}}> catchAll;
-              public {{className}}(Func<Rep.Meta {{typeArgs}}, {{retType}} > f){this.catchAll = f;}
+              public X(Func<Rep.Meta {{typeArgs}}, {{retType}} > f){this.catchAll = f;}
               public {{retType}} {{method}}{{basePrefix}} (Rep.Meta m {{methodArgs}}) {return this.catchAll(m {{methodArgsValues}});}
 
               
               public {{retType}} {{method}} (Rep.Meta m {{methodArgs}}){return this.SelectInvoke( "{{method}}" ,m,new Object[]{ {{methodArgsValuesFlat}} });}
-              public T {{method}} <T> (Func<Rep.Meta {{typeArgs}}, T > f,Rep.Meta m){throw new Exception();}
+              // public T {{method}} <T> (Func<Rep.Meta {{typeArgs}}, T > f,Rep.Meta m){throw new Exception();}
               /*
               public {{retType}} {{method}} <T> (Rep.K<T> k {{methodArgs}} ){ return this.catchAll(k {{methodArgsValues}} );}
               public {{retType}} {{method}} <T> (Rep.SumConstr<T,Rep.Meta,Rep.Meta> s {{methodArgs}}){ return this.catchAll( s {{methodArgsValues}} );}
@@ -168,6 +172,7 @@ module Provider =
               public {{retType}} {{method}} (Rep.Prod<Rep.Meta,Rep.Meta> p {{methodArgs}}){ return this.catchAll(p {{methodArgsValues}});}
               */
               }
+            }
           }
           """
         x.Elements |> List.fold (fun (s : string) (m,r) -> s.Replace(m,r)) v0
@@ -247,8 +252,8 @@ module Provider =
         let csc = new Microsoft.CSharp.CSharpCodeProvider()
         let args = System.CodeDom.Compiler.CompilerParameters()
         args.OutputAssembly <- dll
-        args.CompilerOptions <- "/t:library"
-        args.CompilerOptions <- sprintf "/r:\"%s\" /r:\"%s\"" libAsm fSharpCore
+        //args.CompilerOptions <- "/t:library"
+        args.CompilerOptions <- sprintf "/t:library /r:\"%s\" /r:\"%s\"" libAsm fSharpCore
         let compiled = csc.CompileAssemblyFromSource(args, [| code |])
         let errs = seq{
             for e in compiled.Errors do
@@ -258,7 +263,7 @@ module Provider =
 
         let asm = compiled.CompiledAssembly
         AssemblyStore.Add(asm,System.IO.File.ReadAllBytes dll)
-        (asm.GetType(sprintf "%s.%s" ns className), asm)
+        (asm.GetType(sprintf "%s.%s" ns "Md"), asm)
 
     [<TypeProvider>]
     type GenericProvider() =
@@ -270,7 +275,8 @@ module Provider =
             member this.ResolveTypeName(typeName) = typeof<Generic>
             member this.NamespaceName with get() = ns
             member this.GetNestedNamespaces() = [| |]
-            member this.GetTypes() = [| typeof<Generic> |]
+            member this.GetTypes() = 
+              [| typeof<Generic> |]
         interface ITypeProvider with
             member this.GetNamespaces() = [| this |]
             member this.ApplyStaticArguments(noArgs,withArgs,args) = 
@@ -301,6 +307,8 @@ module Provider =
                 |]
 
             member this.GetGeneratedAssemblyContents(assembly:Assembly) =
+              //!assemblies |> List.head |> fun a -> a.ManifestModule.FullyQualifiedName |> System.IO.File.ReadAllBytes
+              
               let asms = assembly :: !assemblies
               let dup = Map.toList ty |> List.map (fun (_,t) -> t)
               match compiled with
@@ -312,6 +320,7 @@ module Provider =
                 let bytes = System.IO.File.ReadAllBytes asm
                 compiled <- Some (asms,bytes)
                 bytes
+              
               //assembly
               (*
               if AssemblyStore.ContainsKey assembly then

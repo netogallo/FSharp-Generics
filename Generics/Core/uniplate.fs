@@ -185,6 +185,21 @@ module Rep =
   let (|MTY|_|) (ty : Type) =
     if ty = typeof<Meta> || ty.IsSubclassOf typeof<Meta> then Some () else None
 
+  let (|UTY|_|) (ty : Type) =
+    if ty = typeof<U> then Some () else None
+
+  let (|IDTY|_|) (ty : Type) =
+    if ty.IsGenericType && ty.GetGenericTypeDefinition() = typeof<Id<obj>>.GetGenericTypeDefinition() then
+      ty.GetGenericArguments().[0] |> Some
+    else 
+      None
+
+  let (|KTY|_|) (ty : Type) =
+    if ty.IsGenericType && ty.GetGenericTypeDefinition() = typeof<K<obj>>.GetGenericTypeDefinition() then
+      ty.GetGenericArguments().[0] |> Some
+    else 
+      None
+
   let (|SUMTY|_|) (x : Type) =
     if x.IsGenericType then
       if x.GetGenericTypeDefinition() = typeof<SumConstr<obj,Meta,Meta>>.GetGenericTypeDefinition() then

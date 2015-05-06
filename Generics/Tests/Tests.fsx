@@ -4,12 +4,36 @@
 open Generics.Rep
 open Generics.Active
 open Microsoft.FSharp.Core.CompilerServices
-
+open Generics.Selector.Monofold
 
 type Emp = Full of string*int | Part of string*int*int
 type List<'t> = Cons of 't*List<'t> | Nel | Tip of 't
 let g = Generic<List<Emp>>()
 let l1 = Cons(Full("pepe",2),Cons(Part("victor",8,4),Nel))
+
+type GMap<'g,'t>(f : 't -> 't) =
+  inherit Monofold<'g,Meta>()
+
+  override x.Monofold<'x>(m : SumConstr<'x,Meta,Meta>) =
+    match m with
+    | L v -> SumConstr<'x,Meta,Meta>(x.Monofold v |> Choice1Of2)
+    | R v -> SumConstr<'x,Meta,Meta>(x.Monofold v |> Choice2Of2)
+    :> Meta
+
+  override x.Monofold(m : Prod<Meta,Meta>) =
+    Prod(m.E1 |> x.Monofold,m.E2 |> x.Monofold) :> Meta
+
+  override x.Monofold(m : Id<'g>) =
+    let g = Generic<'g>()
+    Id<'g>(g.To m.Elem |> x.Monofold |> g.From) :> Meta
+
+  override x.Monofold<'x>(m : K<'x>) = m :> Meta
+
+  member x.Monofold(m : K<'t>) = K(f m.Elem) :> Meta
+
+  override x.Monofold(m : U) = m :> Meta
+
+g.To l1 |> GMap<List<Emp>,string>(fun s -> s + "!").Monofold |> g.From
 
 let t = typeof<List<int>>.GetGenericTypeDefinition()
 
@@ -31,6 +55,16 @@ let rec gmap' (m : Meta) =
 
 
 type CollectBase = Generics.Provided.Generic<"Collect",0>
+
+let m = (typeof<CollectBase>.GetMethods() |> Array.filter (fun m -> m.Name = "Collect")).[1]
+
+m.ContainsGenericParameters
+
+m.GetParameters().[0].ParameterType.GenericTypeArguments.[1].Assembly.FullName
+
+let g = CollectBase(fun _ -> failwith "")
+g.Collect<int>(fun _ -> 4,U() :> Meta)
+//Collect<int>
 
 type Collect<'t>() =
   inherit CollectBase(fun m -> ([] :'t list) :> obj)
@@ -98,11 +132,12 @@ Generics.Provided.EverywhereBase(fun _ -> failwith "").Everywhere<int>((fun (x:M
 //type EverywhereBase = Generics.Provided.Generic<"Everywhere",0>
 
 type Everywhere<'t,'v>(f : 'v -> 'v) =
-    inherit EverywhereBase(fun m -> m :> obj)
+    //inherit EverywhereBase(fun m -> m :> obj)
+    inherit Generics.Provided.EverywhereBase(fun _ -> failwith "")
     let g = Generic<'t>()
 
     member x.Everywhere(c : Meta) =
-      base.Everywhere(c) :?> Meta
+      base.Everywhere<Meta>((fun m -> m),c) //:?> Meta
 
     member x.Everywhere<'t>(c : SumConstr<'t,Meta,Meta>) =
         printf "%A\n" c
@@ -204,7 +239,7 @@ type B() =
 [| B() |] :> obj :?> (A[])
 
 [| B() :> A |] :> obj :?> (A[])
-kk
+
 
 let mutable count = fun () -> printfn "Hay"
 
@@ -213,3 +248,27 @@ for ix in 0 .. 0 do
 
 for ix in 1 .. 5 do
   count <- count |> fun count' () -> count' ();printfn "Hay"
+
+
+let asmBy = System.IO.File.ReadAllBytes(@"X:\ClassLibrary1\ClassLibrary1\bin\Debug\ClassLibrary1.dll")
+
+let asm = System.Reflection.Assembly.Load asmBy
+
+let t = asm.GetType("Generics.Provided.EverywhereBase")
+
+let p = t.GetMethod("Everywhere").GetParameters().[0].ParameterType.GenericTypeArguments.[1]
+
+#r @"X:\BSTypeProvider\BSTypeProvider\bin\Debug\BSTypeProvider.dll"
+
+type T = BSTypeProvider.Provider.BS<"">
+typeof<T>
+T().G //.meth<int> 9\
+
+typeof<SumConstr<obj,Meta,Meta>>.GetGenericTypeDefinition().IsSubclassOf typeof<Meta>
+
+
+
+
+
+
+

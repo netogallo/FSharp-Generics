@@ -12,39 +12,12 @@ module Selector =
   let Kg = typeof<Rep.K<obj>>.GetGenericTypeDefinition()
 
 
-  let (<~>) t1 t2 =
+  let rec (<~>) (t1 : Type) (t2 : Type) =
     match (t1,t2) with
-    | (SUMTY (t,MTY,MTY), SUMTY (t',MTY,MTY)) -> t = t'
-    | (PRODTY (MTY,MTY), PRODTY (MTY,MTY)) -> true
-    | _ -> t1 = t2
-
-  let (?=) m1' m2' =
-      let rec op =
-          function 
-              | (m1 : Type, m2 : Type) when m2.IsSubclassOf m1 -> true
-              | (m1, m2) when m1.IsGenericType && m2.IsGenericType && m1.GetGenericTypeDefinition() = m2.GetGenericTypeDefinition() ->
-                  let args1,args2 = m1.GetGenericArguments(), m2.GetGenericArguments()
-                  if args1 = args2 then
-                      true
-                  else
-                      Array.zip args1 args2 |> Array.forall op
-              | (m1,m2) -> m1 = m2
-
-
-      op (m1',m2')
-
-  let (>~) m1' m2' =
-      let rec op =
-          function 
-              | (m1 : Type, m2 : Type) when m1.IsSubclassOf m2 -> true
-              | (m1,m2) when m1.IsGenericType && m2.IsGenericType && m1.GetGenericTypeDefinition() = m2.GetGenericTypeDefinition() ->
-                  let args1,args2 = m1.GetGenericArguments(), m2.GetGenericArguments()
-                  if args1 = args2 then
-                    true
-                  else
-                    Array.zip args1 args2 |> Array.forall op
-              | (m1,m2) -> m1 = m2
-      op (m1',m2')
+    | (SUMTY (t,(MTY as m1),(MTY as m2)), SUMTY (t',(MTY as m1'),(MTY as m2'))) when t = t' -> 1 + (m1 <~> m1') + (m2 <~> m2')
+    | (PRODTY ((MTY as m1), (MTY as m2)), PRODTY ((MTY as m1'),(MTY as m2'))) -> 1 + (m1 <~> m1') + (m2 <~> m2')
+    | _ when t1 = t2 -> 1
+    | _ -> 0
                   
   let (>!) x' y' = 
       let mkTup (t1,t2) =
@@ -85,67 +58,95 @@ module Selector =
   let basePrefix = "__BASE"
   let mkBaseName n = sprintf "%s%s" n basePrefix
 
-  type Selector() as this =    
+  type Selector(obj : obj, ``method`` : string, args : Type []) =    
 
-    member x.SelectMethod(m : string, c : Rep.Meta, args : obj []) =
+    let baseMethodFilter (m : MethodInfo) =
+      let args' = m.GetParameters() 
+                |> Array.map (fun arg -> arg.ParameterType)
+                |> Array.toList
 
-      let mt = c.GetType()
+      match args' with
+      | x::xs -> m.Name = ``method``
+                && x.IsSubclassOf typeof<Meta>
+                && xs = Array.toList args
+      | _ -> false
 
-      let methodFinder name (constr : Rep.Meta) =
-        let gt = constr.GetType()
-        let select = function 
-          | (m : MethodInfo) when m.GetParameters().Length = 0 -> false
-          | m when m.GetParameters().[0].ParameterType.IsSubclassOf typeof<Rep.Meta> ->
-            let tmp = m.GetParameters().[0].ParameterType
-            if tmp.IsGenericType && mt.IsGenericType then
-              tmp.GetGenericTypeDefinition() = mt.GetGenericTypeDefinition()
-            else
-              tmp = mt
-          | _ -> false
-        x.GetType().GetMethods(BindingFlags.FlattenHierarchy ||| BindingFlags.Instance ||| BindingFlags.Public) |> Array.filter (fun m -> select m)
+    let methods = obj.GetType().GetMethods(
+                    BindingFlags.FlattenHierarchy 
+                    ||| BindingFlags.Instance 
+                    ||| BindingFlags.Public) 
+                  |> Array.filter baseMethodFilter
 
-      let (gMethods,ordMethods) = methodFinder m c |> Array.partition (fun m -> m.IsGenericMethod)
-      
-      let baseMethod = x.GetType().GetMethod(mkBaseName m)
+    let uMethods = methods |> Array.filter (fun m -> match m.GetParameters().[0].ParameterType with
+                                                      | UTY -> true
+                                                      | _ -> false)
 
-      let methodMatcher (m : MethodInfo) = 
-        m.GetParameters().[0].ParameterType <~> mt
+    let sMethods = methods |> Array.filter (fun m -> match m.GetParameters().[0].ParameterType with
+                                                      | SUMTY _ -> true
+                                                      | _ -> false)
 
-      let initGMethod = 
-        match mt with
-        | Rep.GTYPE valueType ->
-          function (m : MethodInfo) ->
-            if m.GetGenericArguments().Length = 1 then
-              m.MakeGenericMethod [| valueType |]
-            else
-              m
-        | _ -> id
+    let pMethods = methods |> Array.filter (fun m -> match m.GetParameters().[0].ParameterType with
+                                                      | PRODTY _ -> true
+                                                      | _ -> false)
 
-      match ordMethods |> Array.tryFind methodMatcher with
-      | Some m -> m
-      | None -> match gMethods |> Array.map initGMethod |> Array.tryFind methodMatcher with
-                | Some m -> m
-                | None -> baseMethod
+    let iMethods =  methods |> Array.filter (fun m -> match m.GetParameters().[0].ParameterType with
+                                                      | IDTY _ -> true
+                                                      | _ -> false)
 
-      (*
-        let darwin (m1 : MethodInfo) (m2 : MethodInfo) = 
-            if m1.GetParameters().[0].ParameterType >~ m2.GetParameters().[0].ParameterType then
-                m1
-            else
-                m2
+    let kMethods =  methods |> Array.filter (fun m -> match m.GetParameters().[0].ParameterType with
+                                                      | KTY _ -> true
+                                                      | _ -> false)
 
-        let methods = methodFinder m c
-        if methods.Length > 0 then
-            methods |> Array.fold darwin (methods.[0])
+    let instantiator types (m : MethodInfo) =
+      if m.IsGenericMethod then
+        m.MakeGenericMethod types
+      else
+        m
+
+    member x.SelectMethod(c : Rep.Meta) =
+      let cty = c.GetType()
+      let mCmp tys (mi : MethodInfo) = 
+        if mi.IsGenericMethod then
+          cty <~> (mi.MakeGenericMethod(tys).GetParameters().[0].ParameterType)
         else
-            failwith <| sprintf "Method with name '%s' could not be found for type %A." m c
-        *)
+          1 + (cty <~> (mi.GetParameters().[0].ParameterType))
 
-    member x.SelectInvoke(m : string, c : Rep.Meta, args : obj []) =
-        let m = x.SelectMethod(m, c, args)
+      let inst tys (mi : MethodInfo) = 
+        if mi.IsGenericMethod then mi.MakeGenericMethod(tys) else mi
+
+      match cty with
+      | SUMTY (t,_,_) -> sMethods |> Array.maxBy (mCmp [|t|]) |> inst [|t|]
+      | PRODTY _ -> pMethods |> Array.maxBy (mCmp [||])
+      | KTY t -> kMethods |> Array.maxBy (mCmp [|t|]) |> inst [|t|]
+      | IDTY _ -> iMethods |> Array.maxBy (mCmp [||])
+      | UTY -> uMethods |> Array.maxBy (mCmp [||])
+      | _ -> failwith "The type representation %A is not recoginezed" cty
+
+    member x.SelectInvoke(c : Rep.Meta, args : obj []) =
+        let m = x.SelectMethod(c)
         let arg = m.GetParameters().[0].ParameterType
         let allArgs = Array.append [|c >! arg :> obj |] args
         try
-            m.Invoke(x, allArgs)
+            m.Invoke(obj, allArgs)
         with
             | :? System.Reflection.TargetParameterCountException as e -> sprintf "Could not invoke %A with %A" m args |> failwith
+
+  module Monofold =
+    
+    [<AbstractClass>]
+    type Monofold<'i,'t>() as this =
+
+      let selector = Selector(this,"Monofold",[||])
+
+      abstract Monofold : Meta -> 't
+      default __.Monofold (m : Meta) = selector.SelectInvoke(m,[||]) :?> 't
+
+      abstract Monofold<'x> : SumConstr<'x,Meta,Meta> -> 't
+      
+      abstract Monofold : Prod<Meta,Meta> -> 't
+
+      abstract Monofold : Id<'i> -> 't
+
+      abstract Monofold<'x> : K<'x> -> 't
+
+      abstract Monofold : U -> 't
