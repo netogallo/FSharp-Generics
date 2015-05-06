@@ -11,6 +11,7 @@
 \usepackage{listings}
 \usepackage{caption}
 \usepackage{subcaption}
+\DeclareCaptionType{copyrightbox}
 
 %% TODO notes
 \usepackage{color}
@@ -140,16 +141,16 @@ specifically, we make the following contributions:
   example, we will implement a generic map function.
 
 \item To convert a value to our representation type we rely on several
-  more advanced F\# features, such as reflection \todo{and type
-    providers? or active patterns?} (Section~\ref{sec:conversion}).
+  more advanced F\# features, such as reflection and type
+    providers (Section~\ref{sec:conversion}).
 
 \item Finally, we will show how how functions from other Haskell
   libraries such as Uniplate, may be readily implemented using the
   resulting library (Section~\ref{sec:uniplate}).
 \end{itemize}
 
-\todo{Do we want to make the code available from github? If so, this
-  is usually a good place to mention this.}
+% \todo{Do we want to make the code available from github? If so, this
+%   is usually a good place to mention this.}
 
 \section{Background}
 \label{sec:background}
@@ -354,37 +355,118 @@ purpose .NET serializer.
 
 \paragraph{Type Providers}
 One language feature particular to F\# is \emph{type
-  providers}~\cite{typeProviders}. Type providers in F\# define a
-mechanism that allows types to be defined by running code at compile
-time. They where designed to provide typed access to external data
-sources. For example, a type provider could parse the header of a
-files containing comma separated values and generate an type
-describing the columns of the data stored in the file. A type provider
-is invoked as follows:
-\begin{code}
-type T = NameProvider<"MyType","AnotherType">
+  providers}~\cite{typeProviders}. Type providers in F\# allow types
+to be defined by running code at compile time. They were designed to
+provide typed access to external data sources, such as a database or
+XML file. The type provider generates type declarations at compile
+time, allowing you to manipulate of such external data in a type safe
+manner. For example, you might define a type provider that parses the
+header of a file containing comma separated values and subsequently
+generates an type describing the columns of the data stored in that
+file. 
 
--- prints "MyType"
-printf "%s" typeof<<T.MyType>> .Name
+Writing your own type providers is fairly technical and we will ignore
+many of the implementation details in this paper. We will give a brief
+example of how type providers may be invoked in F\#.
+\begin{code}
+type T = NameProvider<<"TypeA","TypeB">>
+
+-- prints "TypeA"
+printf "%s" typeof <<T.TypeA>> .Name
 
 -- prints "AnotherType"
-printf "%s" typeof<<T.AnotherType>> .Name
-
+printf "%s" typeof <<T.TypeB>> .Name
 \end{code}
-This code calls the type provider |Provider| which generates a
-type that is assigned the type synonym |T|. In the example above,
-the |NameProvider| is a type provider that simply creates a type
-that contains nested types named as the arguments that were passed
-to the provider. As it can be seen, the types created by the type
-provider can be used as ordinary F\# types. The type provider also
-accepts static arguments which are restricted to literal values of
-type |int|, |string| and |bool|. The implementation of
-a type provider is quite involved and requires boilerplate code
-to process the information provided by the F\# compiler. For more
-details, the reader is advised to read \cite{TypeProviderTutorial}.
+Here we define the type |T| to be the result of invoking the type
+provider |NameProvider| with two |string| arguments.  The
+|NameProvider| is a simple type provider that, given |string|
+arguments, creates a type with a field for each
+argument. \wouter{Ernesto: could you read this section again? I
+  changed a few things and want to make sure I haven't introduced any
+  falsehoods. Also, I'm not sure what the type provider is doing
+  exactly. What would the type T look like if you wrote it by hand?}
+
+From a users perspective, types genererated by type providers are
+indistinguishable from types defined by hand.  The implementation of a
+type provider is quite involved and requires boilerplate code to
+process the information provided by the F\# compiler. For more
+details, the reader is advised to read the existing documentation on
+writing type providers~\cite{TypeProviderTutorial}.
 
 \section{Type Representations in F\#}
 \label{sec:representation}
+
+\begin{figure*}
+\centering
+\begin{subfigure}[t]{0.3\textwidth}
+\begin{code}
+AbstractClass
+type Meta() = class end
+\end{code}
+\begin{code}
+type U() =
+  class
+    inherit Meta()
+  end
+\end{code}
+\begin{code}
+type K<<varx>>(elem:varx) =
+  class
+    inherit Meta()
+    member self.Elem 
+      with get() = elem
+  end
+\end{code}
+\end{subfigure}
+\begin{subfigure}[t]{0.3\textwidth}
+\begin{code}
+type Id<<vart>>(elem:vart) =
+  class
+    inherit Meta()
+    self.Elem 
+      with get() = elem
+  end
+\end{code}
+
+\begin{code}
+type Sum<<vart,vara,varb
+                when vara :> Meta 
+                and varb :> Meta>>(
+                elem : Choice<<vara,varb>>) =
+  class
+
+    inherit Meta()
+    member self.Elem 
+      with get() = elem
+  end
+\end{code}
+
+%% \ernesto{From a DGP point of veiw, meta has no purpose but to be the
+%%   type from which all derive. In the implementation, it contains some
+%%   methods which are used to do reflection but I don't think they need
+%%   to be mentioned here?}
+\end{subfigure}
+\begin{subfigure}[t]{0.3\textwidth}
+\begin{code}
+type Prod<<vara,varb
+           when vara :> Meta
+           and varb :> Meta>>(e1:vara,e2:varb) =
+  class
+    inherit Meta()
+    member self.Elem 
+      with get() = e1,e2
+    member self.E1 
+      with get() = e1
+    member self.E2 
+      with get() = e2
+  end
+\end{code}
+\end{subfigure}
+%\begin{subfigure}[b]{0.3\textwidth}
+%\end{subfigure}
+\caption{Definition in F\# of all the types used to build type representations.}
+\label{fig:rep-def}
+\end{figure*}
 
 The core of most libraries for data type generic programming is a
 \emph{representation type} or \emph{universe}, that determines the
@@ -417,84 +499,13 @@ that these types themselves are subtypes of the |Meta| class.
 
 In the remainder of this section, we will present the concrete
 subtypes of the |Meta| class defined in our library. The first
-subclass of |Meta| is |Sum|, used to take the sum of two types.
-The |Sum| takes three type arguments: |t|,|a| and |b|. The first
+subclass of |Meta| is |SumConstr|, used to take the sum of two types.
+The |SumConstr| takes three type arguments: |t|,|a| and |b|. The first
 one indicates the type that this representation encodes. The remaining
 arguments, |vara| and |varb|, are the arguments to the sum type.  Note
 that both |vara| and |varb| have the constraint that |vara| and |varb|
 are subtypes of the |Meta| class.
 
-\begin{figure*}
-\centering
-\begin{subfigure}[b]{0.3\textwidth}
-\begin{code}
-AbstractClass
-type Meta() = class end
-\end{code}
-\begin{code}
-type U() =
-  class
-    inherit Meta()
-  end
-\end{code}
-\begin{code}
-type K<<varx>>(elem:varx) =
-  class
-    inherit Meta()
-    member self.Elem 
-      with get() = elem
-  end
-\end{code}
-\end{subfigure}
-\begin{subfigure}[b]{0.3\textwidth}
-\begin{code}
-type Id<<vart>>(elem:vart) =
-  class
-    inherit Meta()
-    self.Elem 
-      with get() = elem
-  end
-\end{code}
-
-\begin{code}
-type Sum<<vart,vara,varb
-                when vara :> Meta 
-                and varb :> Meta>>(
-                elem : Choice<<vara,varb>>) =
-  class
-
-    inherit Meta()
-    member self.Elem 
-      with get() = elem
-  end
-\end{code}
-
-%% \ernesto{From a DGP point of veiw, meta has no purpose but to be the
-%%   type from which all derive. In the implementation, it contains some
-%%   methods which are used to do reflection but I don't think they need
-%%   to be mentioned here?}
-\end{subfigure}
-\begin{subfigure}[b]{0.3\textwidth}
-\begin{code}
-type Prod<<vara,varb
-           when vara :> Meta
-           and varb :> Meta>>(e1:vara,e2:varb) =
-  class
-    inherit Meta()
-    member self.Elem 
-      with get() = e1,e2
-    member self.E1 
-      with get() = e1
-    member self.E2 
-      with get() = e2
-  end
-\end{code}
-\end{subfigure}
-%\begin{subfigure}[b]{0.3\textwidth}
-%\end{subfigure}
-\caption{Definition in F\# of all the types used to build type representations.}
-\label{fig:rep-def}
-\end{figure*}
 
 \wouter{Why are they called Sum and Prod? Why not just Sum and Prod?}
 \ernesto{I agree it should be just Sum. It is bc the original implementation
@@ -525,11 +536,11 @@ Finally, |Id| is the last subclass of |Meta|. This type is used to
 represent recursive types. This type takes a single type argument that
 may be used to refer recursively to the type being represented.
 
-The definitions of these types is given in figure~\ref{fig:rep-def}.
+The definitions of these types are given in Figure~\ref{fig:rep-def}.
 This definitions are not complete since the actual implementation
-incldues extra code used for reflection which is not relevant
-to demostrate how representations are encoded. The full definition
-is available at \cite{FSharp-Generics-Repo}.
+incldues extra code used for reflection which is not relevant when
+discussing the universe of types that our library can handle. The full
+definition can be found in the source code~\cite{FSharp-Generics-Repo}.
 
 We conclude this section with an example of our type
 representation. Given the following algebraic data type in F\#:
@@ -541,34 +552,39 @@ type Elems = Cons of int*Elems
 We can represent this type as a subtype of the |Meta| class as
 follows:
 \begin{code}
-type ElemsRep = Sum<<
-  Elem<<int>>,
+type ElemsRep = 
   Sum<<
-    unit,
-    Prod<<K<<int>>,Prod<<Id<<Elem<<int>> >>,U>> >>,
+    Elem<<int>>,
     Sum<<
       unit,
-      Prod<<K << int >>, U>>,
-      U>> >> >>
+      Prod<<K<<int>>,Prod<<Id<<Elem<<int>> >>,U>> >>,
+      Sum<<
+        unit,
+        Prod<<K << int >>, U>>,
+        U>>,
+    U>>
 \end{code}
-\wouter{Is this even right? It looks like the representation only
-  talks about ints, but the original type is generic...}
-
+This example shows how |SumConstr| takes three arguments: the first
+stores meta-information about the type being represented; the second
+two type arguments are the types whose coproduct is formed. There is
+some overhead in this representation -- we could simplify the
+definition a bit by removing spurious unit types. It is important to
+emphasise, however, that these definitions will be
+\emph{generated}. To keep the generation simple, we have chosen not to
+optimize the representation types.
 
 \section{Generic Functions}
 \label{sec:generic-functions}
 The purpose of type representations is to provide an interface that
-the programmer can use to define generic functions. In other words is
-a language to define what the semantics of such functions are. The
-library will then be provided with a generic function definition and
-will apply it as appropriate to the values it is provided with.
+the programmer can use to define generic functions. Once a function is
+defined on all the subtypes of the |Meta| class, it can be executed on
+any value whose type may be modelled using the |Meta| class.
 
-To show how generic definitions look like, the generic function
-|gmap| will be defined. This function accepts as an argument a
+To illustrate how generic functions may be defined, we will define a
+generic map operator, |gmap|. This function accepts as an argument a
 function of type $\tau\to\tau$ and applies the function to every value
 of type $\tau$ in a ADT. In Regular, a generic function is defined as
-a typeclass. In this implementation, they are defined as an ordinary
-.NET class:
+a typeclass. In this implementation, we define |GMap| as a .NET class:
 \begin{code}
 type GMap<<`t>>() = class end
 \end{code}
@@ -851,11 +867,11 @@ type Arith =
   
 let (c,f) = uniplate (Op ("add",Neg (Val 5),Val 8))
 printf ``%A'' c -- [Neg (Val 5);Val 8]
-printf ``%A'' (f [Val 1;Val 2]) // Op ("add",Val 1,Val 2)
+printf ``%A'' (f [Val 1;Val 2]) -- Op ("add",Val 1,Val 2)
 
 let (c,f) = uniplate (Val 5)
-printf "%A" c // []
-printf "%A" (f []) // Val 5
+printf "%A" c -- []
+printf "%A" (f []) -- Val 5
 
 \end{code}
 To define the function, two auxiliary generic functions will be
@@ -1017,6 +1033,8 @@ is the exact type for the representation. Then the \verb+read+
 or any other function must produce a representation with
 that same type (instead of only a sub-type of \verb+Meta+) and
 would be reasonable for the F\# compiler to check the correctness
+of the algorithm. Unfortunately, (as pointed out before) type
+providers can't accept types as static arguments.
 of the algorithm. Unfortunately, type providers can't accept types 
 as static arguments (see section~\ref{sec:better-providers}).
 
@@ -1081,9 +1099,10 @@ in F\#. This is potential available in type
 providers that has not yet been exploited
 and could result in useful features for
 the F\# language.
-\acks
+% \acks
 
-Acknowledgments, if needed.
+% Acknowledgments, if needed.
+
 % We recommend abbrvnat bibliography style.
 \bibliographystyle{abbrvnat}
 \bibliography{references}
