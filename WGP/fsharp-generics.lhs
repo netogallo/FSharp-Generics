@@ -930,7 +930,7 @@ defined as follows:
 \begin{code}
 
 type Instantiate<<vart>>(values` : vart list) =
-  inherit Monofold<vart,Meta>()
+  inherit Monofold<<vart,Meta>>()
   let mutable values = values`
 
   let pop () = match values with
@@ -970,8 +970,6 @@ type Instantiate<<vart>>(values` : vart list) =
   override x.Monofold(u : Unit) = u :> Meta
 
   override x.Monofold<<`x>>(k : K<<`x>>) = k :> Meta
-  
-
 \end{code}
 This function is provided with a list of values and
 when applied to a type representation it will replace
@@ -982,29 +980,18 @@ Recall that the first argument of |Sum| is either
 the type being represented by the |Sum| or
 |unit| if that |Sum| is a intermediate
 representation. Since uniplate only deals with
-recursive values that occurr on the first level,
+recursive values that occur on the first level,
 the |Sum| where the first argument is different
 from |`t| (or the generic type to which |uniplate|
 has been applied) should not be recursively traversed.
 To wrap both pieces together the |Uniplate| function
 is now defined:
 \begin{code}
-type UniplateBase = Generics.Provided.Generic<
-  "Uniplate",0>
-
-type Uniplate<<vart>>() =
-  inherit UniplateBase(fun _ ->
-    failwith "Invalid representation")
-
-  member x.Uniplate(s : Sum<<vart,Meta,Meta>>) =
-    (Collect().Collect s,
-     fun vs -> Instantiate(vs).Instantiate s)
-
 let uniplate<<vart>> (x : vart) =
-  let up = Uniplate<<vart>>()
   let g = Generic<<vart>>()
-  x |> g.To |> up.Uniplate
-  |> fun (x,f) -> (x, f gg g.From)
+  let rep = g.To x
+  let xs = rep |> Collect().Monofold
+  (xs, \ xs' -> Instantiate<<vart>>(xs').Monofold<<vart>>(rep) |> g.From)
 \end{code}
 
 % \section{Discussion}

@@ -173,18 +173,12 @@ module Selector =
     [<AbstractClass>]
     type Monofold<'i,'t>() as this =
 
-      //inherit Monofold<'i,'t,'t,'t,'t,'t,'t>()
       let selector = Selector(this,"Monofold",[||])
-      abstract Monofold : Meta -> 't
-      //default __.Monofold (m : Meta) = (base.Monofold m).Elem
+      abstract Monofold : Meta -> 't      
       default __.Monofold (m : Meta) = selector.SelectInvoke(m,[||]) :?> 't
 
       abstract Monofold<'x> : SumConstr<'x,Meta,Meta> -> 't
 
-(*      
-      override self.Monofold<'x>(v : SumConstr<'x,Meta,Meta>) =
-        Inh<'t,'t>.Inh(self.Monofold<'x>(v) : 't)
-*)
       abstract Monofold : Prod<Meta,Meta> -> 't
 
       abstract Monofold : Id<'i> -> 't
