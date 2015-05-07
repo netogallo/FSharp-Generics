@@ -604,13 +604,22 @@ override x.Monofold<<varx>>(v : Sum<<vart,Meta,Meta>>
 \wouter{What do Choice1Of1 and Choice1Of2 do? Shouldn't this be L and
   R? And why do we need to use active patterns here? And what are they
   exactly?}
-\todo{Explain what the \verb+|>+ operator does}
-
-Here the active patterns |L| and |R| are used to distinguish
-the two possible cases. Nevertheless, |Monofold| is simply invoked
-recursively and the result is packed inside the same constructor. 
-The result must be casted to |Meta| in order to match the type
-required by the |Monofold| abstract class The
+In this example the follwing F\# specifc constructs are used:
+\begin{itemize}
+\item The pipeline (|pipe|) operator which simply is reversed function
+  application |x pipe f| is |f x|.
+\item The |Choice| type which has the constructors |Choice1Of2| and
+  |Choice2of2|. It is analogous to the |Either| type in Haskell.
+\item Active patterns |L| and |R|. They are simply functions defined
+  in such a way that they can be used to distinguish values when
+  pattern matching. Since they are functions and not type
+  constructors, the left and right cases of |Sum| must be
+  constructed with its class constructor.
+\end{itemize}
+This overload simply de-constructs the sum of the products
+and applies the |Monofold| function to the value contained
+by the sum. It then constructs an equivalent |Sum| instance
+with the results of the recursive application. The
 next step is to deal with products. This is handled with the
 |Prod| constructor:
 \begin{code}
@@ -622,10 +631,8 @@ override x.Monofold(v : Prod<<Meta,Meta>>
   :> Meta
 \end{code}
 The type |Prod| contains the properties |E1| and |E2|, storing the two
-constituent elements of the product. Once again, |gmap| is invoked
-recursively on these values. 
-
-Next is the case for the |K| constructor which contains values. Here
+constituent elements of the product. Once again, |Monofold| is invoked
+recursively on these values. Next is the case for the |K| constructor which contains values. Here
 is where the function gets applied:
 \begin{code}
 member x.Monofold(v : K<<Employee>>) = 
@@ -646,8 +653,8 @@ member x.To : vart -> Meta
 member x.From : Meta -> vart
 \end{code}
 With that class it is now possible to extract the contents of |Id|,
-call the |gmap| function and convert the result back to the original
-type. Using these functions, we can define the |gmap| instance for the
+call the |Monofold| function and convert the result back to the original
+type. Using these functions, we can define the |Monofold| instance for the
 |Id| constructor as follows:
 \begin{code}
 override x.Monofold(v : Id<<vart>>
@@ -665,7 +672,7 @@ by the |Monofold| class. They are provided below:
 override x.Monofold(u : U,
                    ,f : Employee -> Employee) = u :> Meta
 
-override x.Monofold<varx>(k : K<<varx>>
+override x.Monofold<<varx>>(k : K<<varx>>
                          ,f : Employee -> Employee) = k :> K<<varx>>
 \end{code}
 To give a nice interface, it is possible to include an alias for
@@ -924,7 +931,7 @@ defined as follows:
 \begin{code}
 
 type Instantiate<<vart>>(values` : vart list) =
-  inherit Monofold<vart,Meta>()
+  inherit Monofold<<vart,Meta>>()
   let mutable values = values`
 
   let pop () = match values with
@@ -964,8 +971,6 @@ type Instantiate<<vart>>(values` : vart list) =
   override x.Monofold(u : Unit) = u :> Meta
 
   override x.Monofold<<`x>>(k : K<<`x>>) = k :> Meta
-  
-
 \end{code}
 This function is provided with a list of values and
 when applied to a type representation it will replace
@@ -976,29 +981,18 @@ Recall that the first argument of |Sum| is either
 the type being represented by the |Sum| or
 |unit| if that |Sum| is a intermediate
 representation. Since uniplate only deals with
-recursive values that occurr on the first level,
+recursive values that occur on the first level,
 the |Sum| where the first argument is different
 from |`t| (or the generic type to which |uniplate|
 has been applied) should not be recursively traversed.
 To wrap both pieces together the |Uniplate| function
 is now defined:
 \begin{code}
-type UniplateBase = Generics.Provided.Generic<
-  "Uniplate",0>
-
-type Uniplate<<vart>>() =
-  inherit UniplateBase(fun _ ->
-    failwith "Invalid representation")
-
-  member x.Uniplate(s : Sum<<vart,Meta,Meta>>) =
-    (Collect().Collect s,
-     fun vs -> Instantiate(vs).Instantiate s)
-
 let uniplate<<vart>> (x : vart) =
-  let up = Uniplate<<vart>>()
   let g = Generic<<vart>>()
-  x |> g.To |> up.Uniplate
-  |> fun (x,f) -> (x, f gg g.From)
+  let rep = g.To x
+  let xs = rep |> Collect().Monofold
+  (xs, \ xs' -> Instantiate<<vart>>(xs').Monofold<<vart>>(rep) |> g.From)
 \end{code}
 
 % \section{Discussion}
@@ -1056,17 +1050,18 @@ is the exact type for the representation. Then the \verb+read+
 or any other function must produce a representation with
 that same type (instead of only a sub-type of \verb+Meta+) and
 would be reasonable for the F\# compiler to check the correctness
-of the algorithm. Unfortunately, (as pointed out before) type
+of the algorithm. Unfortunately, type
 providers can't accept types as static arguments.
-of the algorithm. Unfortunately, type providers can't accept types 
-as static arguments (see section~\ref{sec:better-providers}).
+of the algorithm. \ernesto{This last statement is 
+  still relevant in spite of no longer using
+  type providers}
 
 \section{Conclusions}
 Datatype generic programming was successfully implemented for
 the F\# programming languages. In spite of the absecne of
 higher-rank polymorphism, it was still possible to reclaim
-some of the functionality using reflection aided with
-type providers for improved static checks. The result is
+some of the functionality using reflection and abstract 
+classes to enforce certain static assurances. The result is
 a library wich can define various generic functions.
 
 The main advantage of this approach compared to ordinary
@@ -1090,8 +1085,8 @@ obtaining the result, the user can still experience
 unexpected behavior if he defines a generic function
 with the wrong type. This type error will simply be
 ignored by the compiler and the selector and
-the default action will be invoked instead of the
-desired behavior.
+resulting in the wrong overload of |Monofold| being
+selected by the selector.
 
 Compared to reflection, this approach is much
 less general. In the context of F\#, mutually
@@ -1113,14 +1108,6 @@ reflection is that it can be used with
 any .Net type. This library only works
 for algebraic data types.
 
-Type providers were not designed as a
-mechanism to do type level programming.
-Nevertheless, their flexibility and the
-richness of .Net's type system allow
-interesting type features to be implemented
-in F\#. This is potential available in type
-providers that has not yet been exploited
-and could result in useful features for
 the F\# language.
 % \acks
 

@@ -288,7 +288,7 @@ type Inh<'x,'y> with
 type Inh<'x,'y> with
   static member Inh<'a when 'a :> Meta> x = Inh<'a,Meta>(x,fun x -> x :> Meta)
 
-Inh<U,Meta>.Inh<U>(U()).Elem
+Inh<_,_>.Inh<U>(U())
 
 type Pr<'x,'y when 'x :> Val<'y>> () = 
   class 
