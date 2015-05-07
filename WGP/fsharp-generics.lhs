@@ -1049,17 +1049,18 @@ is the exact type for the representation. Then the \verb+read+
 or any other function must produce a representation with
 that same type (instead of only a sub-type of \verb+Meta+) and
 would be reasonable for the F\# compiler to check the correctness
-of the algorithm. Unfortunately, (as pointed out before) type
+of the algorithm. Unfortunately, type
 providers can't accept types as static arguments.
-of the algorithm. Unfortunately, type providers can't accept types 
-as static arguments (see section~\ref{sec:better-providers}).
+of the algorithm. \ernesto{This last statement is 
+  still relevant in spite of no longer using
+  type providers}
 
 \section{Conclusions}
 Datatype generic programming was successfully implemented for
 the F\# programming languages. In spite of the absecne of
 higher-rank polymorphism, it was still possible to reclaim
-some of the functionality using reflection aided with
-type providers for improved static checks. The result is
+some of the functionality using reflection and abstract 
+classes to enforce certain static assurances. The result is
 a library wich can define various generic functions.
 
 The main advantage of this approach compared to ordinary
@@ -1083,8 +1084,8 @@ obtaining the result, the user can still experience
 unexpected behavior if he defines a generic function
 with the wrong type. This type error will simply be
 ignored by the compiler and the selector and
-the default action will be invoked instead of the
-desired behavior.
+resulting in the wrong overload of |Monofold| being
+selected by the selector.
 
 Compared to reflection, this approach is much
 less general. In the context of F\#, mutually
@@ -1106,14 +1107,6 @@ reflection is that it can be used with
 any .Net type. This library only works
 for algebraic data types.
 
-Type providers were not designed as a
-mechanism to do type level programming.
-Nevertheless, their flexibility and the
-richness of .Net's type system allow
-interesting type features to be implemented
-in F\#. This is potential available in type
-providers that has not yet been exploited
-and could result in useful features for
 the F\# language.
 % \acks
 
