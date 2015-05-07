@@ -150,9 +150,10 @@ specifically, we make the following contributions:
 % \todo{Do we want to make the code available from github? If so, this
 %   is usually a good place to mention this.}
 
-\todo{Implementing this library paves the way for further exploration
-  in this area, also for other hybrid OO-FP languages such as Scala or
-  Swift}
+We hope that porting the ideas from the data type generic programming
+community to F\# will pave the way for the wider adoption of these
+ideas in other, more mainstream, functional languages such as Scala or
+Swift.
 
 \section{Background}
 \label{sec:background}
@@ -494,10 +495,11 @@ subtypes of the |Meta| class defined in our library. The first
 subclass of |Meta| is |Sum|, that represents the sum of two types.
 The |Sum| takes three type arguments: |t|,|a| and |b|. The first one
 indicates the type that this representation encodes. The remaining
-arguments, |vara| and |varb|, are the arguments to the sum type.  Note
-that both |vara| and |varb| have the constraint that |vara| and |varb|
-are subtypes of the |Meta| class. \wouter{Why do we need the t? And
-  should we say what |Choice| is?}
+arguments, |vara| and |varb|, are the arguments to the sum type. The
+|Choice| type in F\# is analagous to Haskell's |Either| type. It has
+two constructors: |Choice1Of2| and |Choice2Of2|. Note that both |vara|
+and |varb| have the constraint that |vara| and |varb| are subtypes of
+the |Meta| class. \wouter{Why do we need the t in the Sum type?}
 
 
 The second subclass of |Meta| is |Prod|, corresponding to the product
@@ -582,15 +584,16 @@ type GMap<<vart>>() =
   end
 \end{code}
 All classes that define generic functions inherit from the class
-|Monofold|. This is an abstract class that speficies the minimal
-implementation required to define a generic function. The logic of
-generic funtions is defined by overriding the |Monofold| method
-of the |Monofold| class. The |Monofold| class contains several
-type arguments that will be explained in detail in section \ref{sec:selector}.
+|Monofold|. This is an abstract class that specifies the minimal
+implementation required to define a generic function. This minimal
+implementation consists of a method, |Monofold|, for all the different
+subtypes of our |Meta| class. By overriding these |Monofold| methods
+in the concrete |GMap| class, we can then define the desired map
+operation. The |Monofold| class contains several type arguments that
+will be explained in detail in section \ref{sec:conversion}.
 
-The first override of |Monofold| is to deal with the sum of type
-constructors. As explained in the previous section, they are
-represented by the |Sum| type constructor:
+The first method we override in the of |GMap| class handles the |Sum|
+type constructor:
 \begin{code}
 override x.Monofold<<varx>>(v : Sum<<vart,Meta,Meta>>
                            ,f : Employee -> Employee) =
@@ -601,27 +604,25 @@ override x.Monofold<<varx>>(v : Sum<<vart,Meta,Meta>>
              x.Monofold(m,f) |> Choice2Of2)
   :> Meta
 \end{code}
-\wouter{What do Choice1Of1 and Choice1Of2 do? Shouldn't this be L and
-  R? And why do we need to use active patterns here? And what are they
-  exactly?}
-In this example the follwing F\# specifc constructs are used:
+This example uses several F\# specific constructs:
 \begin{itemize}
-\item The pipeline (|pipe|) operator which simply is reversed function
-  application |x pipe f| is |f x|.
-\item The |Choice| type which has the constructors |Choice1Of2| and
-  |Choice2of2|. It is analogous to the |Either| type in Haskell.
-\item Active patterns |L| and |R|. They are simply functions defined
-  in such a way that they can be used to distinguish values when
-  pattern matching. Since they are functions and not type
-  constructors, the left and right cases of |Sum| must be
-  constructed with its class constructor.
+\item The pipeline ($\!\!\!\!$ | ||> | $\!\!\!\!$) operator is simply reversed function
+  application: |x ||> f = f x|.
+\item The patterns |L| and |R| are \emph{active patterns}. They are
+  simply functions defined in such a way that they can be used to
+  distinguish values when pattern matching. Since they are functions
+  and not type constructors, the left and right cases of |Sum| must be
+  constructed with its class constructor. \wouter{And
+    why do we need to use active patterns here? And what are they
+    exactly?}
+
 \end{itemize}
-This overload simply de-constructs the sum of the products
-and applies the |Monofold| function to the value contained
-by the sum. It then constructs an equivalent |Sum| instance
-with the results of the recursive application. The
-next step is to deal with products. This is handled with the
-|Prod| constructor:
+The definition itself is unremarkable: it pattern matches on its
+argument and applies the |Monofold| function to the values contained
+in the |Sum| type. It then reconstructs a |Sum| instance
+with the results of the recursive call. 
+
+The next definition handles products:
 \begin{code}
 override x.Monofold(v : Prod<<Meta,Meta>>
                    ,f : Employee -> Employee) =
@@ -631,8 +632,10 @@ override x.Monofold(v : Prod<<Meta,Meta>>
   :> Meta
 \end{code}
 The type |Prod| contains the properties |E1| and |E2|, storing the two
-constituent elements of the product. Once again, |Monofold| is invoked
-recursively on these values. Next is the case for the |K| constructor which contains values. Here
+constituent elements of the product. Once again, we recursively invoke |Monofold| 
+on these values. 
+
+Next is the case for the |K| constructor which contains values. Here
 is where the function gets applied:
 \begin{code}
 member x.Monofold(v : K<<Employee>>) = 
