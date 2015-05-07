@@ -604,13 +604,22 @@ override x.Monofold<<varx>>(v : Sum<<vart,Meta,Meta>>
 \wouter{What do Choice1Of1 and Choice1Of2 do? Shouldn't this be L and
   R? And why do we need to use active patterns here? And what are they
   exactly?}
-\todo{Explain what the \verb+|>+ operator does}
-
-Here the active patterns |L| and |R| are used to distinguish
-the two possible cases. Nevertheless, |Monofold| is simply invoked
-recursively and the result is packed inside the same constructor. 
-The result must be casted to |Meta| in order to match the type
-required by the |Monofold| abstract class The
+In this example the follwing F\# specifc constructs are used:
+\begin{itemize}
+\item The pipeline (|pipe|) operator which simply is reversed function
+  application |x pipe f| is |f x|.
+\item The |Choice| type which has the constructors |Choice1Of2| and
+  |Choice2of2|. It is analogous to the |Either| type in Haskell.
+\item Active patterns |L| and |R|. They are simply functions defined
+  in such a way that they can be used to distinguish values when
+  pattern matching. Since they are functions and not type
+  constructors, the left and right cases of |Sum| must be
+  constructed with its class constructor.
+\end{itemize}
+This overload simply de-constructs the sum of the products
+and applies the |Monofold| function to the value contained
+by the sum. It then constructs an equivalent |Sum| instance
+with the results of the recursive application. The
 next step is to deal with products. This is handled with the
 |Prod| constructor:
 \begin{code}
@@ -622,10 +631,8 @@ override x.Monofold(v : Prod<<Meta,Meta>>
   :> Meta
 \end{code}
 The type |Prod| contains the properties |E1| and |E2|, storing the two
-constituent elements of the product. Once again, |gmap| is invoked
-recursively on these values. 
-
-Next is the case for the |K| constructor which contains values. Here
+constituent elements of the product. Once again, |Monofold| is invoked
+recursively on these values. Next is the case for the |K| constructor which contains values. Here
 is where the function gets applied:
 \begin{code}
 member x.Monofold(v : K<<Employee>>) = 
@@ -646,8 +653,8 @@ member x.To : vart -> Meta
 member x.From : Meta -> vart
 \end{code}
 With that class it is now possible to extract the contents of |Id|,
-call the |gmap| function and convert the result back to the original
-type. Using these functions, we can define the |gmap| instance for the
+call the |Monofold| function and convert the result back to the original
+type. Using these functions, we can define the |Monofold| instance for the
 |Id| constructor as follows:
 \begin{code}
 override x.Monofold(v : Id<<vart>>
@@ -665,7 +672,7 @@ by the |Monofold| class. They are provided below:
 override x.Monofold(u : U,
                    ,f : Employee -> Employee) = u :> Meta
 
-override x.Monofold<varx>(k : K<<varx>>
+override x.Monofold<<varx>>(k : K<<varx>>
                          ,f : Employee -> Employee) = k :> K<<varx>>
 \end{code}
 To give a nice interface, it is possible to include an alias for
