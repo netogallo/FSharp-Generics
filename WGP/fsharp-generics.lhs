@@ -84,12 +84,10 @@
 \begin{abstract}
   Datatype Generic programming (DGP) enable programmers to define
   functions by induction over the structure of types on which they
-  work. Yet the approach has not been adopted very widely, possibly
-  due to the many requirements on a language's type system. This paper
-  presents a type-safe library for DGP in F\#, built on top of the
-  .NET reflection mechanism. The generic functions defined using this
-  library can be called by any other language running on the .NET
-  platform.
+  operate. This paper presents a type-safe library for DGP in F\#,
+  built on top of the .NET reflection mechanism. The generic functions
+  defined using this library can be called by any other language
+  running on the .NET platform. 
 \end{abstract}
 
 \category{D.1.1}{Applicative (Functional) Programming}{}
@@ -151,6 +149,10 @@ specifically, we make the following contributions:
 
 % \todo{Do we want to make the code available from github? If so, this
 %   is usually a good place to mention this.}
+
+\todo{Implementing this library paves the way for further exploration
+  in this area, also for other hybrid OO-FP languages such as Scala or
+  Swift}
 
 \section{Background}
 \label{sec:background}
@@ -232,7 +234,7 @@ type arguments have a type constraint, stating that they must be a
 subtype of the |Employee| class. The type constraints are
 declared using the |when| keyword.
 
-It is worth pointing out that generic type arguments are constraint to
+It is worth pointing out that generic type arguments can only
 be of kind |*|. This is particularly important limitation
 in the context of data type generic programming, as many existing
 Haskell libraries rely on higher kinds.
@@ -276,26 +278,15 @@ type generic(Company)(t) with
   member self.IncreaseSalary(v) =
     self.GMap (fun e -> e.Salary <- e.Salary + v)
 \end{code}
+\wouter{Ernesto -- is the code above still right? I remember I changed the
+  formatting and may also have changed its semantics}
+
 
 In the later sections we will show how the |GMap| function may be
 derived automatically from the type definitions we saw
 previously. Before doing so, however, we would like to give a brief
 overview of some of the relevant features of F\# and the .NET
 platform.
-
-% \paragraph{Operators} The F\# language has a couple of operators that
-% are used very often by programmers. Here is the list:
-% \begin{code}
-% // Reversed function application (aka. pipeline)
-% let (|>) x f = f x
-
-% // Reversed function composition
-% let ($\gg$) f g x = g (f x)
-% \end{code}
-
-%% Wouter: let's introduce these as we encounter them. 
-% They are pretty familiar to Haskell programmers, even if they have a
-% different name
 
 \subsection{The .NET platform}
 The .NET platform is a common runtime environment supporting a family
@@ -307,21 +298,19 @@ such as casting, are handled by the .NET platform.
 
 The subtyping relation in F\# is also based on the implementation in
 .NET.  We write $\tau_a \prec \tau_b$ 
-\footnote{The notation in this paper was chosen for a non F\# audience. 
-  The F\# programmer should read $\tau_a \prec \tau_b$ as $\tau_a :> \tau_b$}
 to denote that $\tau_a$ is a
-subtype of $\tau_b$. Due to this sub-typeing relation, a value can
-be assigned multiple types. When assigning a type $\tau$ to a value
-$x$, it is necessary to check that $x$ is of type $\tau$. In some
-cases this check can be done statically for which the notatin
-$x \prec \tau$ \footnote{The F\# programmer should read $x :> \tau$ instead of $x \prec \tau$.}. 
-is used. In other cases, this check can only be done
-dynamically for which the notation $x \precsim \tau$
-\footnote{The F\# programmer should read $x\ {:}{?}{>}\ \tau$ instead of $x \precsim \tau$.}
- is used. Dynamic checks are usually necessary when using reflection and
-when a dynamic type check fails it results in a runtime error. The result of
-$x \prec \tau$ or $x \precsim \tau$ is the value of $x$ but assigned to it
-the type $\tau$.
+subtype of $\tau_b$. In F\# such subtyping constraints can be specified in a type,
+by writing |varta ::> vartb|. 
+
+In any language running on .NET, it is possible to cast a value to
+some other (super)type explicitly. When assigning a type $\tau$ to a
+value $x$, it is necessary to check that $x$ is of type $\tau$. In
+some cases this check can be done statically for which the notatin $x
+\prec \tau$, writen $x :> \tau$ in F\#. In other cases, this check can
+only be done dynamically, which we will denote by $x \precsim
+\tau$. In F\# $x\ {:}{?}{>}\ \tau$. Dynamic checks are usually
+necessary when using reflection. When a dynamic type check
+fails it results in a runtime error.
 
 As in most object oriented languages, the .NET subtyping mechanism
 allows values to be cast implicitly to any supertype.  The F\#
@@ -392,6 +381,9 @@ type provider is quite involved and requires boilerplate code to
 process the information provided by the F\# compiler. For more
 details, the reader is advised to read the existing documentation on
 writing type providers~\cite{TypeProviderTutorial}.
+
+\wouter{Can we scrap this section If we're not using type
+  providers anymore?}
 
 \section{Type Representations in F\#}
 \label{sec:representation}
@@ -499,25 +491,14 @@ that these types themselves are subtypes of the |Meta| class.
 
 In the remainder of this section, we will present the concrete
 subtypes of the |Meta| class defined in our library. The first
-subclass of |Meta| is |SumConstr|, used to take the sum of two types.
-The |SumConstr| takes three type arguments: |t|,|a| and |b|. The first
-one indicates the type that this representation encodes. The remaining
+subclass of |Meta| is |Sum|, that represents the sum of two types.
+The |Sum| takes three type arguments: |t|,|a| and |b|. The first one
+indicates the type that this representation encodes. The remaining
 arguments, |vara| and |varb|, are the arguments to the sum type.  Note
 that both |vara| and |varb| have the constraint that |vara| and |varb|
-are subtypes of the |Meta| class.
+are subtypes of the |Meta| class. \wouter{Why do we need the t? And
+  should we say what |Choice| is?}
 
-
-\wouter{Why are they called Sum and Prod? Why not just Sum and Prod?}
-\ernesto{I agree it should be just Sum. It is bc the original implementation
-  contained two subclasses of Sum, namely L and R but I removed them and well
-  I would need to re-factor a lot of code to rename which I was planning to do
-  for the finished program but since it's not there yet, I thought for the paper
-  I should be consitent with the implementation?}
-
-\wouter{Would it be interesting to give the definition of Sum
-  and Prod here? It might be interesting to see how this stuff looks
-  in F\#.  I've trimmed down the example a bit -- this stuff is very
-  familiar to the WGP audience.}
 
 The second subclass of |Meta| is |Prod|, corresponding to the product
 of two types. The |Prod| type accepts two type arguments: |vara| and
@@ -564,13 +545,16 @@ type ElemsRep =
         U>>,
     U>>
 \end{code}
-This example shows how |SumConstr| takes three arguments: the first
-stores meta-information about the type being represented; the second
-two type arguments are the types whose coproduct is formed. There is
-some overhead in this representation -- we could simplify the
-definition a bit by removing spurious unit types. It is important to
-emphasise, however, that these definitions will be
-\emph{generated}. To keep the generation simple, we have chosen not to
+\wouter{Can you double check this example? I may have screwed it up during reformatting.}
+
+This example shows how the |Sum| type constructor takes three
+arguments: the first stores meta-information about the type being
+represented; the second two type arguments are the types whose
+coproduct is formed. There is some overhead in this representation --
+we could simplify the definition a bit by removing spurious unit
+types. It is important to emphasise, however, that these definitions
+will be \emph{generated} using .NET's reflection mechanism. To keep
+the generation process as simple as possible, we have chosen not to
 optimize the representation types.
 
 \section{Generic Functions}
@@ -580,11 +564,14 @@ the programmer can use to define generic functions. Once a function is
 defined on all the subtypes of the |Meta| class, it can be executed on
 any value whose type may be modelled using the |Meta| class.
 
+\wouter{Should we say that we are defining GMap specifically for
+  mapping Employee to Employee functions? Or can we be more general?}
+
 To illustrate how generic functions may be defined, we will define a
 generic map operator, |gmap|. This function accepts as an argument a
 function of type $\tau\to\tau$ and applies the function to every value
 of type $\tau$ in a ADT. In Regular, a generic function is defined as
-a typeclass. In this implementation, we define |GMap| as a .NET class:
+a typeclass. In our library, we define |GMap| as a .NET class:
 \begin{code}
 type GMap<<vart>>() = 
   class 
@@ -603,7 +590,7 @@ type arguments that will be explained in detail in section \ref{sec:selector}.
 
 The first override of |Monofold| is to deal with the sum of type
 constructors. As explained in the previous section, they are
-represented by |Sum|:
+represented by the |Sum| type constructor:
 \begin{code}
 override x.Monofold<<varx>>(v : Sum<<vart,Meta,Meta>>
                            ,f : Employee -> Employee) =
@@ -614,6 +601,11 @@ override x.Monofold<<varx>>(v : Sum<<vart,Meta,Meta>>
              x.Monofold(m,f) |> Choice2Of2)
   :> Meta
 \end{code}
+\wouter{What do Choice1Of1 and Choice1Of2 do? Shouldn't this be L and
+  R? And why do we need to use active patterns here? And what are they
+  exactly?}
+\todo{Explain what the \verb+|>+ operator does}
+
 Here the active patterns |L| and |R| are used to distinguish
 the two possible cases. Nevertheless, |Monofold| is simply invoked
 recursively and the result is packed inside the same constructor. 
@@ -629,20 +621,20 @@ override x.Monofold(v : Prod<<Meta,Meta>>
     x.Monofold(v.E2,f))
   :> Meta
 \end{code}
-The type |Prod| contains the properties |E1| and |E2|
-that access each of the elements of the product. Once again,
-|gmap| is invoked recursively on those values. Next is the case
-for the |K| constructor which contains values. Here is where the
-function gets applied:
+The type |Prod| contains the properties |E1| and |E2|, storing the two
+constituent elements of the product. Once again, |gmap| is invoked
+recursively on these values. 
+
+Next is the case for the |K| constructor which contains values. Here
+is where the function gets applied:
 \begin{code}
 member x.Monofold(v : K<<Employee>>) = 
   K(f v.Elem) :> Meta
 \end{code}
-The property |Elem| of the |K| constructor returns the value
-that is being represented by |K|. Note that this member only
-works for fundamental values that have a type that matches the
-argument function. Later it will be explained how other instances of
-|K| work.
+The property |Elem| of the |K| constructor returns the value that is
+being represented by |K|. Note that this member only works for
+fundamental values that have a type that matches the argument
+function. We will explain other instances of |K| later.
 
 The case for the |Id| constructor is a bit more involved because
 |Id| contains a property called |Elem| but the property
@@ -653,9 +645,10 @@ contains the members:
 member x.To : vart -> Meta
 member x.From : Meta -> vart
 \end{code}
-With that class it is now possible to extract the contents of
-|Id|, call the |gmap| function and convert the result back
-to the original type. This results in:
+With that class it is now possible to extract the contents of |Id|,
+call the |gmap| function and convert the result back to the original
+type. Using these functions, we can define the |gmap| instance for the
+|Id| constructor as follows:
 \begin{code}
 override x.Monofold(v : Id<<vart>>
                  ,f : Employee -> Employee) =
@@ -664,8 +657,9 @@ override x.Monofold(v : Id<<vart>>
     g.To c.Elem,f) |> g.From)
   :> Meta
 \end{code}
+
 This is not a complete definition of a generic function since
-a couple of overrides which only return their input are reqiored
+a couple of overrides which only return their input are required
 by the |Monofold| class. They are provided below:
 \begin{code}
 override x.Monofold(u : U,
