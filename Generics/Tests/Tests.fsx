@@ -269,6 +269,30 @@ typeof<SumConstr<obj,Meta,Meta>>.GetGenericTypeDefinition().IsSubclassOf typeof<
 
 
 
+type Inh<'x>(elem : 'x) = 
+  class 
+    member x.Elem with get() = elem
+  end
 
+  // M,U
+
+type Inh<'x,'y>(x : 'x, inh : 'x -> 'y) = 
+  class
+  inherit Inh<'y>(inh x)
+  //base.Elem :> 'y
+  end
+
+type Inh<'x,'y> with
+  static member Inh<'a> x = Inh<'a,'a>(x,id)
+
+type Inh<'x,'y> with
+  static member Inh<'a when 'a :> Meta> x = Inh<'a,Meta>(x,fun x -> x :> Meta)
+
+Inh<U,Meta>.Inh<U>(U()).Elem
+
+type Pr<'x,'y when 'x :> Val<'y>> () = 
+  class 
+    abstract X : unit -> Val<'x,'y>
+  end
 
 

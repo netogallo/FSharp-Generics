@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 
 
 %format class = "\mathbf{class}"
@@ -41,3 +42,45 @@
 %format AbstractClass = "[\langle\mathbf{AbstractClass}\rangle]"
 %format SumConstr = Sum
 %subst comment a	= "\mathtt{// " a "}        "
+=======
+
+
+%format class = "\mathbf{class}"
+%format fun = "\mathbf{fun}"
+%format with = "\mathbf{with}"
+%format mutable = "\mathbf{mutable}"
+%format when = "\mathbf{when}\ "
+%format and = "\mathbf{and}\ "
+%format end = "\mathbf{end}"
+%format get = "\mathbf{get}"
+%format set = "\mathbf{set}"
+%format base = "\mathbf{base}"
+%format abstract = "\mathbf{abstract}"
+%format override = "\mathbf{override}"
+%format inherit = "\mathbf{inherit}"
+%format member = "\mathbf{member}"
+%format match = "\mathbf{match}"
+%format AbstractClass = "\mathbf{AbstractClass}"
+%format . = "."
+%format generic(c)(a) = c "\langle`{" a "}\rangle"
+%format var(a) = "\primed{" a "}"
+%format vara = "`a"
+%format varb = "`b"
+%format vart = "`t"
+%format varf = "`f"
+%format varx = "`x"
+%format << = "\langle"
+%format >> = "\rangle"
+%format :*: = ":\!\!*\!\!:"
+%format trRg = "\triangleright"
+%format :?> = "\precsim"
+%format mTrRg = "{?}{\triangleright}"
+%format gg = "\gg"
+%format :> = "\prec"
+%format |> = "\ {|}{>}\ "
+%format tau = "\tau"
+%format tau1 = "\tau_1"
+%format taun = "\tau_n"
+%format AbstractClass = "[\langle\mathbf{AbstractClass}\rangle]"
+%subst comment a	= "\mathtt{// " a "}        "
+>>>>>>> 184c9a115673933f1dd79ff7be406edf39b397d7
