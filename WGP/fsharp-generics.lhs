@@ -876,8 +876,8 @@ type Arith =
   | Val of int
   
 let (c,f) = uniplate (Op ("add",Neg (Val 5),Val 8))
-printf ``%A'' c -- [Neg (Val 5);Val 8]
-printf ``%A'' (f [Val 1;Val 2]) -- Op ("add",Val 1,Val 2)
+printf "%A" c -- [Neg (Val 5);Val 8]
+printf "%A" (f [Val 1;Val 2]) -- Op ("add",Val 1,Val 2)
 
 let (c,f) = uniplate (Val 5)
 printf "%A" c -- []
