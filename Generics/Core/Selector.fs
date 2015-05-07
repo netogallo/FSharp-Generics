@@ -133,36 +133,58 @@ module Selector =
 
   module Monofold =
     
-    (*
+    type Inh<'x>(elem : 'x) = 
+      class 
+        member x.Elem with get() = elem
+      end
+    
+      // M,U
+    
+    type Inh<'x,'y>(x : 'x, inh : 'x -> 'y) = 
+      class
+      inherit Inh<'y>(inh x)
+      //base.Elem :> 'y
+      end
+
+    type Inh<'x,'y> with
+      static member Inh<'a> a = Inh<'a,'a>(a,id)
+    
+    type Meta with
+      static member Inh<'a when 'a :> Meta> x = Inh<'a,Meta>(x,fun x -> x :> Meta)
+    
     [<AbstractClass>]
-    type Monofold<'i,'m,'s,'p,'id,'k,'u when 's :> 'm and 'p :> 'm and 'p :> 'm and 'id :> 'm and 'k :> 'm and 'u :> 'm>() as this =
+    type Monofold<'i,'m,'s,'p,'id,'k,'u>() as this =
         
       let selector = Selector(this,"Monofold",[||])
 
-      abstract Monofold : Meta -> 't
-      default __.Monofold (m : Meta) = selector.SelectInvoke(m,[||]) :?> 't
+      abstract Monofold : Meta -> Inh<'m>
+      default __.Monofold (m : Meta) = selector.SelectInvoke(m,[||]) :?> Inh<'m>
 
-      abstract Monofold<'x> : SumConstr<'x,Meta,Meta> -> 't
+      abstract Monofold<'x> : SumConstr<'x,Meta,Meta> -> Inh<'m,'p>
       
-      abstract Monofold : Prod<Meta,Meta> -> 't
+      abstract Monofold : Prod<Meta,Meta> -> Inh<'m,'p>
 
-      abstract Monofold : Id<'i> -> 't
+      abstract Monofold : Id<'i> -> Inh<'m,'id>
 
-      abstract Monofold<'x> : K<'x> -> 't
-
-      abstract Monofold : U -> 't
-    *)     
+      abstract Monofold<'x> : K<'x> -> Inh<'m,'k>
+      
+      abstract Monofold : U -> Inh<'s,'u>
 
     [<AbstractClass>]
     type Monofold<'i,'t>() as this =
 
+      //inherit Monofold<'i,'t,'t,'t,'t,'t,'t>()
       let selector = Selector(this,"Monofold",[||])
-
       abstract Monofold : Meta -> 't
+      //default __.Monofold (m : Meta) = (base.Monofold m).Elem
       default __.Monofold (m : Meta) = selector.SelectInvoke(m,[||]) :?> 't
 
       abstract Monofold<'x> : SumConstr<'x,Meta,Meta> -> 't
-      
+
+(*      
+      override self.Monofold<'x>(v : SumConstr<'x,Meta,Meta>) =
+        Inh<'t,'t>.Inh(self.Monofold<'x>(v) : 't)
+*)
       abstract Monofold : Prod<Meta,Meta> -> 't
 
       abstract Monofold : Id<'i> -> 't

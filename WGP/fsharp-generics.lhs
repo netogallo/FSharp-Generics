@@ -44,6 +44,7 @@
 \newcommand{\Meta}{\mathtt{Meta}}
 \newcommand{\K}{\mathtt{K}}
 \newcommand{\Id}{\mathtt{Id}}
+\newcommand{\U}{\mathtt{U}}
 
 %% End preamble
 
@@ -86,7 +87,7 @@
   work. Yet the approach has not been adopted very widely, possibly
   due to the many requirements on a language's type system. This paper
   presents a type-safe library for DGP in F\#, built on top of the
-  .NET reflection mechanism, The generic functions defined using this
+  .NET reflection mechanism. The generic functions defined using this
   library can be called by any other language running on the .NET
   platform.
 \end{abstract}
@@ -125,7 +126,7 @@ specifically, we make the following contributions:
 \begin{itemize}
 \item The type system of F\# may not be as rich as that of Haskell,
   but there are numerous features, including reflection, subtyping,
-  type providers and active patterns that may be used for type-level
+  and active patterns that may be used for type-level
   programming in F\#. We will briefly present the F\# features our
   library relies upon before describing its implementation
   (Section~\ref{sec:background}).
@@ -141,8 +142,7 @@ specifically, we make the following contributions:
   example, we will implement a generic map function.
 
 \item To convert a value to our representation type we rely on several
-  more advanced F\# features, such as reflection and type
-    providers (Section~\ref{sec:conversion}).
+  more advanced F\# features, such as reflection (Section~\ref{sec:conversion}).
 
 \item Finally, we will show how how functions from other Haskell
   libraries such as Uniplate, may be readily implemented using the
@@ -586,32 +586,48 @@ function of type $\tau\to\tau$ and applies the function to every value
 of type $\tau$ in a ADT. In Regular, a generic function is defined as
 a typeclass. In this implementation, we define |GMap| as a .NET class:
 \begin{code}
-type GMap<<`t>>() = class end
+type GMap<<vart>>() = 
+  class 
+  inherit Monofold<<
+    vart,Meta,
+    Employee -> Employee>>()
+  -- [...] Implementation [...]
+  end
 \end{code}
-The class has a constructor that takes as argument the function that
-will be applied. The first step is dealing with the sum of type
+All classes that define generic functions inherit from the class
+|Monofold|. This is an abstract class that speficies the minimal
+implementation required to define a generic function. The logic of
+generic funtions is defined by overriding the |Monofold| method
+of the |Monofold| class. The |Monofold| class contains several
+type arguments that will be explained in detail in section \ref{sec:selector}.
+
+The first override of |Monofold| is to deal with the sum of type
 constructors. As explained in the previous section, they are
 represented by |Sum|:
 \begin{code}
-member x.gmap<<varx>>(v : Sum<<vart,Meta,Meta>>
-                      ,f : Employee -> Employee) =
+override x.Monofold<<varx>>(v : Sum<<vart,Meta,Meta>>
+                           ,f : Employee -> Employee) =
   match v with
   | L m -> Sum<<varx,Meta,Meta>>(
-             x.gmap m |> Choice1Of2)
+             x.Monofold(m,f) |> Choice1Of2)
   | R m -> Sum<<varx,Meta,Meta>>(
-             x.gmap m |> Choice2Of2)
+             x.Monofold(m,f) |> Choice2Of2)
+  :> Meta
 \end{code}
 Here the active patterns |L| and |R| are used to distinguish
-the two possible cases. Nevertheless, |gmap| is simply invoked
-recursively and the result is packed inside the same constructor. The
+the two possible cases. Nevertheless, |Monofold| is simply invoked
+recursively and the result is packed inside the same constructor. 
+The result must be casted to |Meta| in order to match the type
+required by the |Monofold| abstract class The
 next step is to deal with products. This is handled with the
 |Prod| constructor:
 \begin{code}
-member x.gmap(v : Prod<<Meta,Meta>>
-                 ,f : Employee -> Employee) =
+override x.Monofold(v : Prod<<Meta,Meta>>
+                   ,f : Employee -> Employee) =
   Prod<<Meta,Meta>>(
-    x.gmap(v.E1),
-    x.gmap(v.E2))
+    x.Monofold(v.E1,f),
+    x.Monofold(v.E2,f))
+  :> Meta
 \end{code}
 The type |Prod| contains the properties |E1| and |E2|
 that access each of the elements of the product. Once again,
@@ -619,8 +635,8 @@ that access each of the elements of the product. Once again,
 for the |K| constructor which contains values. Here is where the
 function gets applied:
 \begin{code}
-member x.gmap(v : K<<Employee>>) = 
-  K(f v.Elem)
+member x.Monofold(v : K<<Employee>>) = 
+  K(f v.Elem) :> Meta
 \end{code}
 The property |Elem| of the |K| constructor returns the value
 that is being represented by |K|. Note that this member only
@@ -641,59 +657,70 @@ With that class it is now possible to extract the contents of
 |Id|, call the |gmap| function and convert the result back
 to the original type. This results in:
 \begin{code}
-member x.gmap(v : Id<<vart>>
+override x.Monofold(v : Id<<vart>>
                  ,f : Employee -> Employee) =
   let g = Generic<<vart>>()
-  Id<<vart>>(x.gmap(
+  Id<<vart>>(x.Monofold(
     g.To c.Elem,f) |> g.From)
+  :> Meta
 \end{code}
-There are still two pieces missing in this generic function. First of
-all, the recursive calls are invoking |gmap| of type
-$\Meta*\mathtt{Employee}\rightarrow\mathtt{Employee}$ and there is no
-overload that matches that type. Secondly, not all cases are
-covered. Addressing both of these problems requires some boilerplate
-code and validations that cannot be checked by the compiler. To
-automate some checks and generate the boilerplate code, a type
-provider will be used.
-
-\section{The Generic Type Provider}
-\label{sec:conversion}
-In the previous section, the existence of a |gmap| function with
-type |Meta -> Meta| was assumed. Since |Meta| is an
-abstract class, the actual role of the function is to select the
-|gmap| overload that corresponds to the argument provided. The
-typeclasses mechanism in Haskell selects the overload by type-level
-computations that occur during the type-checking process. However, F\#
-lacks such mechanism. To achieve this, reflection is used with the
-help of a type provider to make the library easier to use and to
-provide some extra static checks. The generic type provider is used as
-follows:
+This is not a complete definition of a generic function since
+a couple of overrides which only return their input are reqiored
+by the |Monofold| class. They are provided below:
 \begin{code}
-type GMapBase = Generic<<"gmap",1>>
+override x.Monofold(u : U,
+                   ,f : Employee -> Employee) = u :> Meta
+
+override x.Monofold<varx>(k : K<<varx>>
+                         ,f : Employee -> Employee) = k :> K<<varx>>
 \end{code}
-The type provider accepts two static arguments. The first one denotes
-the name of the generic function and the second one the number of
-arguments (besides the type representation) that the generic function
-accepts. This produces a type with a method |GMap| of type
-$\mathtt{Meta} \to \mathtt{obj}$. This method will be in-charge of
-selecting the appropriate overload for the multiple representation
-types.
+To give a nice interface, it is possible to include an alias for
+|Monofold| called |gmap|:
+\begin{code}
+member x.gmap(x : vart,
+             f : Employee -> Employee) =
+  let gen = Generic<<vart>>()
+  x.Monofold(gen.To x,f)
+  |> gen.From
+\end{code}
+
+This class contains two definitions for the |K| case. Furthermore, the the
+definition for |K<<Employee>>| uses the |member| keyword instead of
+|override|. This is because the only definition required by the
+|Monofold| class is the one for |K<<varx>>|. Nevertheless, the
+programmer can provide overloads targeting a more specific type.
+In this case |varx| is a type variable whereas |Employee| is a
+concrete type. The library will always select the overload that
+most closely matches the arguments given to |Monofold|. In 
+section \ref{sec:conversion}, the mechanism is explained in
+detail.
+
+There are still two pieces missing in this generic function. First of
+all, the recursive calls are invoking |Monofold| of type
+$\Meta*\mathtt{Employee}\rightarrow\mathtt{Employee}$. There is a
+default override for this case which takes care of selecting
+the correct method using reflection. The mechanism will
+be explained in the following sections.
+
+\section{The Monofold class}
+\label{sec:conversion}
 \begin{figure*}
 \[
-\mathtt{x.Method(g,arg_1:\tau_1,..,arg_n:\tau_n)} =
+\mathtt{x.Monofold(g,a_1:\tau_1,..,a_n:\tau_n)} =
 \left\{
   \begin{array}{ll}
-    \mathtt{x.m}(\mathtt{g},\mathtt{arg_1,..,arg_n}) & \mathtt{g} : \Sum<\tau,\Meta,\Meta> \\ & \wedge \exists \mathtt{m} \in \mathtt{x}\ .\ \mathtt{m}\ : \Sum<\tau,\Meta,\Meta>*\tau_1*...*\tau_n \\ & \wedge\ \mathtt{m.Name} \equiv \mathtt{Method} \\
+    \mathtt{x.Monofold}(\mathtt{g},\mathtt{arg_1,..,arg_n}) & \mathtt{g} : \Sum\langle\tau,\Meta,\Meta\rangle \\ & \wedge \exists\ \mathtt{Monofold}\ \in\ \mathtt{x} : \Sum\langle\tau,\Meta,\Meta\rangle*\tau_1*...*\tau_n \\
     
-    \mathtt{x.m}<\mathtt{[\tau/`t]}>(\mathtt{g},\mathtt{arg_1,..,arg_n}) & \exists \mathtt{m} \in \mathtt{x}\ .\ \mathtt{m}<\mathtt{`t}>\ : \Sum<\mathtt{`t},\Meta,\Meta>*\tau_1*...*\tau_n \\ & \wedge\ \mathtt{m.Name} \equiv \mathtt{Method} \\ &\wedge\ \mathtt{g}\ :\ \Sum<\tau,\Meta,\Meta> \\
+    \mathtt{x.Monofold}\langle\mathtt{[\tau/`t]}\rangle(\mathtt{g},\mathtt{arg_1,..,arg_n}) & \mathtt{g}\ :\ \Sum\langle\tau,\Meta,\Meta\rangle \\ % & \exists \mathtt{x}.\mathtt{Monofold}<\mathtt{`t}>\ : \Sum<\mathtt{`t},\Meta,\Meta>*\tau_1*...*\tau_n \\
     
-    \mathtt{x.m}(\mathtt{g},\mathtt{arg_1,..,arg_n}) & \exists \mathtt{m} \in \mathtt{x}\ .\ \mathtt{m}\ :\ \Prod<\Meta,\Meta>*\tau_1*...*\tau_n \\ & \wedge\ \mathtt{m.Name} \equiv \mathtt{Method} \\
+    \mathtt{x.Monofold}(\mathtt{g},\mathtt{arg_1,..,arg_n}) & \mathtt{g}\ :\ \Prod\langle\Meta,\Meta\rangle*\tau_1*...*\tau_n \\
     
-    \mathtt{x.m}(\mathtt{g},\mathtt{arg_1,..,arg_n}) & \mathtt{g}\ :\ \K<\tau> \\ & \wedge\exists \mathtt{m} \in \mathtt{x}\ .\ \mathtt{m}\ :\ \K<\tau>*\tau_1*...*\tau_n \\ & \wedge\ \mathtt{m.Name} \equiv \mathtt{Method} \\
+    \mathtt{x.Monofold}(\mathtt{g},\mathtt{arg_1,..,arg_n}) & \mathtt{g}\ :\ \K\langle\tau\rangle \\ & \wedge\exists\ \mathtt{Monofold}\in\mathtt{x}\ :\ \K\langle\tau\rangle*\tau_1*...*\tau_n \\ 
 
-    \mathtt{x.m}<[\tau/\mathtt{`t}]>(\mathtt{g},\mathtt{arg_1,..,arg_n}) & \exists \mathtt{m} \in \mathtt{x}\ .\ \mathtt{m}\ :\ \K<\mathtt{`t}>*\tau_1*...*\tau_n \\ & \wedge\ \mathtt{m.Name} \equiv \mathtt{Method} \\ & \wedge\ \mathtt{g}\ :\ \K<\tau> \\
+    \mathtt{x.Monofold}\langle[\tau/\mathtt{`t}]\rangle(\mathtt{g},\mathtt{arg_1,..,arg_n}) & \mathtt{g}\ :\ \K\langle\tau\rangle \\
 
-    \mathtt{x.m}(\mathtt{g},\mathtt{arg_1,..,arg_n}) & \exists \mathtt{m} \in \mathtt{x}\ .\ \mathtt{m}\ :\ \Id<\tau>*\tau_1*...*\tau_n \\ & \wedge\ \mathtt{m.Name} \equiv \mathtt{Method} \\
+    \mathtt{x.Monofold}(\mathtt{g},\mathtt{arg_1,..,arg_n}) & \mathtt{g}\ :\ \Id\langle\tau\rangle \\
+    \mathtt{x.Monofold}(\mathtt{g},\mathtt{arg_1,..,arg_n}) & \mathtt{g}\ :\ \U \\
   \end{array}
 \right.
 \]
@@ -701,9 +728,15 @@ types.
 \label{fig:selector}
 \end{figure*}
 
-The method overload selection mechanism of |GMap| (or any other
-generic method created with the generic provider) is described in
-\ref{fig:selector}. In this figure:
+In the previous section, the existence of a |Monofold| function with
+type |Meta*(Employee->Employee) -> Meta| was assumed. Since |Meta| is an
+abstract class, the actual role of the function is to select the
+|Monofold| overload that corresponds to the provided argument. The
+typeclasses mechanism in Haskell selects the overload by type-level
+computations that occur during the type-checking process. However, F\#
+lacks such mechanism. To solve the problem, reflection is used. The
+selection criteria is done as described in figure \ref{fig:selector}.
+The elements in this figure are the following:
 \begin{itemize}
 \item $\tau$ and $\tau_i$ represent type variables which can be any
   concrete type (like |int| or |string|).
@@ -714,132 +747,109 @@ generic method created with the generic provider) is described in
 \item $\mathtt{v}\ :\ \tau$ denotes the typing relation $\mathtt{v}$ is of type $\tau$.
 \item $\mathtt{m}\in\mathtt{x}$ denotes a method |m| of object |x|.
 \end{itemize}
-This selection mechanism selects a method based on the type of the
-representation provided to the generic function (|gmap| in the
-running example). The selection mechanism matches methods by type in
+This selection mechanism selects an |Monofold| overload based
+on the type representation provided to the method. 
+The selection mechanism matches methods by type in
 order to select the correct overload. The whole process can be
 summarized as follows:
 \begin{itemize}
 \item There exists an overload whose type exactly matches the
-  arguments given to the generic function. For example: |gmap| is
+  arguments given to the generic function. For example: |Monofold| is
   called with a value |v : K<<Employee>> *tau1*..*taun| and there exists a
-  |gmap| overload of type
+  |Monofold| overload of type
   |K<<Employee>> *tau1*..*taun|.
 \item There exists an overload that accepts the same representation
-  type and contains a generic type argument. For example: |gmap|
+  type and contains a generic type argument. For example: |Monofold|
   is called with a value |v :  K<<Employee>> *tau1*..*taun| and there exists a
-  |gmap| overload that accepts the type |K<<vart>> *tau1*..*taun|
+  |Monofold| overload that accepts the type |K<<vart>> *tau1*..*taun|
   as argument.
-\item No overload matches the rules above.
 \end{itemize}
-To take care of the last item. The type provider requires that the
-provided types as first argument to the constructor a default function
-$f:\ \Meta*\tau_1*..*\tau_n\rightarrow \tau$. This function will be invoked when no
-overloads are found. The definition now looks as follows:
-\begin{code}
-let defaultAction m f = m
+Since |Monofold| is an abstract class, any implementation of the class
+requires it to define a minimal set of methdos such that there always
+will be a method for every possible type representation.
 
-type GMap<<vart>>() = class
-  inherit GMapBase(defaultAction)
-end
-\end{code}
-This definition (although correct) contains type information whose
-origin has still not been explained. Recall that the second static
-parameter of the type provider is the number of extra arguments of the
-generic function. But how does the type provider know what is the type
-of the extra arguments? Unfortunately, currently there is no way to
-know so all extra arguments will be of type |obj|. The next
-sections will discuss more in depth the problem and possible
-solutions. Nevertheless, due to this limitation it is more convenient
-to include the function arguments of |gmap| at the class level
-for more type safety and define a |gmap| overload of type
-$\Meta\rightarrow\Meta$ and use it for recursive calls:
-\begin{code}
-type GMapBase = Generic<<"gmap",0>>()
+For type safety, the |Monofold| class contains several type
+arguments. Given the definition |Monofold<<vart,tau,tau1,...,taun>>|,
+the type arguemts are the following:
+\begin{itemize}
+\item |vart|: The type on which the function operates. A value of
+  this type is the one that gets translated into the representation
+  that is later provided to the |Monofold| function. For example
+  |Company| for the increase salary function.
+\item |tau|: The return type of all of the generic methods. |Meta|
+  in the case of the |GMap| function since a representation with
+  the new values is produced by the generic function.
+\item |tau1| ... |taun|: The type of the additional arguments
+  accepted by the generic function. In the |GMap| function, there is
+  a single argument of type |Empolyee -> Employee|.
+\end{itemize}
+With these types in place, the library can apply a generic function
+to any ADT and the definition of the generic function does not require
+any casting or reflection. That functionality is abstracted away by
+using a common representation for all types.
 
-type GMap<<vart,varf>>(f : varf-> varf) = class
-    inherit GMapBase(defaultAction)
-
-    member x.gmap(v : Meta) =
-      base.gmap(v) :?> Meta
-  end
-\end{code}
-In this overload, the |gmap| definition of |GMapBase| is invoked.
-This definition selects the correct overload and applies it or
-it applies |defaultAction| to the argument when no suitable
-overload has been defined. The result is assigned
-dynamically the type |Meta|.
-\section{A ``better'' Generic Provider}
-\label{sec:better-providers}
-In principle, what is wrong with the current generic provider is that
-it lacks type information of some types. These types are:
-\begin{enumerate}
-\item The type of each of the extra arguments accepted by the generic function.
-\item The return type of the generic function.
-\end{enumerate}
-Limitation 1 is not a big problem because it can be partially
-eliminated by having the arguments on the class level (as our example)
-but limitation 3 would be nice to solve. There are two places where
-the type provider could accept type arguments:
-\begin{enumerate}
-\item As a static parameter of a member function
-\item As a static parameter during the invocation of the type provider.
-\item As a generic type parameter passed to the provided type when invoking the constructor.
-\end{enumerate}
-Option 1 is the only one that is currently possible in F\#. An
-implementation of the generic provider using that option is in
-development but there are some details on how .Net handles generic
-argumetns that need to be addressed. In any case, the basic idea
-is moving the default action from the constructor of the generic
-type to the generic method. Take for instance [GMap] which could
-be re-written as follows:
+\section{A ``better'' Monofold Type}
+\label{sec:better-monofold}
+A major disadvantage of the current implementation is that
+all the overloads of |Monofold| must return a value of the
+same type for all generic functions. Other DGP libraries
+use some dependent typeing (through typeclasses or type-families)
+or other advanced type system features to generalize over the
+possible return types. This library lacks such mechanism and
+it can be particularly dangerous. For example, consider the
+overload:
 \begin{code}
-type GMap<<vart,varf>>(f : varf->varf) = class
-  inherit GMapBase()
-  member x.GMap(m) =
-    base.GMap<<Meta>>(id,m)
+member x.Monofold(v : K<<Employee>>) = 
+  K(f v.Elem) :> Meta
 \end{code}
-Here the [Meta] type argument provided to the [GMap] call is the
-one that determines its return type. In addition, the type of the
-first argument ([id]) must accept a value of type [Meta] and produce
-a value of the same type as the type argument for [GMap], in this case
-[Meta]. This approach is type safe in the sense it no longer requires
-unsafe casts.
-
-With option 1, the selection mechanism (described in \ref{sec:conversion})
-will never select a method that results in a runtime type error
-because it knows what the return type of the generic function should be
-because of the extra argument. However, if the user made a type error,
-he will not see any warnings, errors or runtime errors indicating
-he did. The program will simply call the default action in situations
-where the user was expecting a generic method to be called.
-
-Option 2 would allow very powerful type extensions to the language 
-but would require significant changes
-to the implementation of type providers because a |Type| object
-would need to be constructed to run the type provider's code. Option 3
-which is more feasible has been requested at \cite{genericTypeArgs}
-would also benefit type providers in large. For example, one could
-modify the SQLProvider \cite{SQLProvider} such that one can specify
-how to map database types to .NET types. The provided |GMapBase|
-type would have the following interface:
+At type level, it is completely fine to change the
+function to:
 \begin{code}
-type GMapBase<<vart>>(f : Meta->vart) =
-  member GMap : Meta->vart
+member x.Monofold(v : K<<Employee>>) = 
+  K("I am not an Employee!!") :> Meta
 \end{code}
-and could be used as follows to define the |GMap| class:
+since any instance of |K| is a sub-type of |Meta|. This
+could be prevented by extending the |Monofold| class
+with more type parameters, one for each overload:
 \begin{code}
-type GMap<<vart,varf>>(f : varf->varf) = class
-    inherit GMapBase<<Meta>>(defaultAction)
-  end
+type Monofold<<
+  vart, -- Generic\ type
+  `m, -- Return\ type\ Meta\ overload
+  `s, -- Return\ type\ Sum\ overload
+  `p, -- Return\ type\ Prod\ overload
+  `id, -- Return\ type\ Id\ overload
+  `k, -- Return\ type\ K\ overload
+  `u, -- Return\ type\ U\ overload
+  >>
 \end{code}
-This imporved type provider is able to
-determine that the return type of |gmap|
-is |Meta|. Compared to option 1, this one has the
-advantage that the |override| keyword could be used
-to define the custom generic methods. That way the
-type must match at compile time or an error is porduced
-instead of a call to the default function.
+However, recursive calls to |Monofold| expect it to
+return a value of type |Meta|. This means that the
+generics would need to be constrained to be a
+sub-class of |Meta|. Such constraint is possible,
+but the |Monofold| function should be able to return
+any type, not just sub-types of |Meta|. This means
+we require a more general constraint like:
+\begin{code}
+type Monofold<<
+  -- [...]
+  when `s :> `m
+  and `p :> `m
+  and `id :> `m
+  and `k :> `m
+  and `u :> `m
+  >>
+\end{code}
+Unfortunately, type constraints can only work when types
+are constrainted to be a sub-class of a concrete type,
+not a type variable.
+
+The power F\# might also consider type providers as an
+alternative to implement the meta-programming required
+to generate these types. However, Type-Providers cannot
+accept types as static argumetns and the provided types
+have many restrictions (such as forbbiding generic methods)
+which makes them inapropiate for this application.
+
 \section{Example}
 \label{sec:uniplate}
 To further explore the usefulness of the library, some
@@ -878,70 +888,89 @@ To define the function, two auxiliary generic functions will be
 created. The first one is |Collect| which obtains the list
 of recursive childs:
 \begin{code}
-type CollectBase = Generics.Provided.Generics<<"Collect",0>>
-
 type Collect<<vart>>() =
-  inherit CollectBase(fun m->(([] : vart list) trRg obj)
+  inherit Monofold<<vart,vart list>>()
 
-  member x.Collect(m : Meta) =
-    base.Collect m :?> vart list
-
-  member x.Collect<<varx>>(
-    c : Sum<varx,Meta,Meta>) =
+  member x.Monofold(
+    c : Sum<<vart,Meta,Meta>>) =
     match c with
     | L m -> x.Collect m
     | R m -> x.Collect m
 
-  member x.Collect(c : Prod<<Meta,Meta>>) =
+  member x.Monofold(
+    c : Sum<<unit,Meta,Meta>>) =
+    match c with
+    | L m -> x.Collect m
+    | R m -> x.Collect m
+
+  override x.Monofold<<`x>>(
+    s : Sum<<`x,Meta,Meta>>) = []
+
+  override x.Monofold(c : Prod<<Meta,Meta>>) =
     List.concat<<vart>> [x.Collect c.E1;x.Collect c.E2]
 
-  member x.Collect(i : Id<<vart>>) =
+  override x.Monofold<<varx>>(_ : K<<varx>>) = []
+
+  override x.Monofold(_ : U) = []
+
+  override x.Monofold(i : Id<<vart>>) =
     [i.Elem]
 \end{code}
 The function is straightforward to understand. Every time
 the |Id| constructor is reached, its content is added
 to a list. The results of products are simply joined
-together into a larger list. An explicit type is given
-to the default action (|`t list|) because otherwise
-F\# assigns |obj list| as default type to lists of
-ambigous type (ie. all lists are a subclass of |obj|).
+together into a larger list. Three overloads for the
+|Sum| constructor are required but only two of them
+(which are identical) do recursion. This is because
+this function only collects the direct childs that
+appear in the type constructors of |vart|. Recall,
+that the first type argument of |Sum| 
 The second generic function is |Instantiate| which is
 defined as follows:
 \begin{code}
-type InstantiateBase = Generics.Provided.Generic<<
-  "Instantiate",0>>
 
 type Instantiate<<vart>>(values` : vart list) =
-  inherit InstantiateBase(fun m -> m -> obj)
+  inherit Monofold<vart,Meta>()
   let mutable values = values`
 
   let pop () = match values with
                 | x::xs -> values <- xs;Some x
                 | [] -> None
 
-  member x.Instantiate(m : Meta) =
-    base.Instantiate m :?> Meta
-
-  member x.Instantiate(
+  member x.Monofold(
     s : Sum<<vart,Meta,Meta>>) =
     match s with
     | L m -> Sum<<vart,Meta,Meta>>(
-      x.Instantiate m |> Choice1Of2)
+      x.Monofold m |> Choice1Of2)
     | R m -> Sum<<vart,Meta,Meta>>(
-      x.Instantiate m |> Choice2Of2)
+      x.Monofold m |> Choice2Of2)
+    :> Meta
 
-  member x.Instantiate(
+  member x.Monofold(
     s : Sum<<unit,Meta,Meta>>) =
     match s with
-    | L m -> Sum<<`t,Meta,Meta>>(
-      x.Instantiate m |> Choice1Of2)
-    | R m -> Sum<<`t,Meta,Meta>>(
-      x.Instantiate m |> Choice2Of2)
+    | L m -> Sum<<unit,Meta,Meta>>(
+      x.Monofold m |> Choice1Of2)
+    | R m -> Sum<<unit,Meta,Meta>>(
+      x.Monofold m |> Choice2Of2)
+    :> Meta
 
-  member x.Instantiate(i : Id<<vart>>) =
+  override x.Monofold(i : Id<<vart>>) =
     match pop () with
     | Some x -> Id x
     | None -> failwith "Not enough args"
+    :> Meta
+  
+  override x.Monofold<<`x>>(s : Sum<<`x,Meta,Meta>>) =
+    s :> Meta
+
+  override x.Monofold(p: Prod<<Meta,Meta>>) =
+    Prod(x.Monofold p.E1,x.Monofold p.E2) :> Meta
+
+  override x.Monofold(u : Unit) = u :> Meta
+
+  override x.Monofold<<`x>>(k : K<<`x>>) = k :> Meta
+  
 
 \end{code}
 This function is provided with a list of values and
