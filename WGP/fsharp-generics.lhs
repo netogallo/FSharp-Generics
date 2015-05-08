@@ -507,7 +507,10 @@ arguments, |vara| and |varb|, are the arguments to the sum type. The
 |Choice| type in F\# is analagous to Haskell's |Either| type. It has
 two constructors: |Choice1Of2| and |Choice2Of2|. Note that both |vara|
 and |varb| have the constraint that |vara| and |varb| are subtypes of
-the |Meta| class. \wouter{Why do we need the t in the Sum type?}
+the |Meta| class. \wouter{Why do we need the t in the Sum type?} \ernesto{
+  To distinguish the type (if any) that is represented by that sum. Now that
+  I think about it, I guess Meta sould have the `t type argument instead.
+  See the uniplate example to understand more}
 
 
 The second subclass of |Meta| is |Prod|, corresponding to the product
@@ -555,7 +558,7 @@ type ElemsRep =
         U>>,
     U>>
 \end{code}
-\wouter{Can you double check this example? I may have screwed it up during reformatting.}
+\wouter{Can you double check this example? I may have screwed it up during reformatting.} \ernesto{Checked.}
 
 This example shows how the |Sum| type constructor takes three
 arguments: the first stores meta-information about the type being
@@ -624,7 +627,13 @@ This example uses several F\# specific constructs:
   and not type constructors, the left and right cases of |Sum| must be
   constructed with its class constructor. \wouter{And
     why do we need to use active patterns here? And what are they
-    exactly?}
+    exactly?} \ernesto{We don't. We could pattern match over the
+    choice type if we wanted. They are only for convenience. As it says
+    there, they are functions that can be used to distinguish values when
+    pattern matching. When the function distinguishes a value, it returns
+    the relevant parts of the value that are of interest. They however are
+    not type constructors. It is a type safe alternative to if-statements. They are
+    used a lot in F\# to get an FP feel when using class types.}
 \end{itemize}
 The definition itself is fairly unremarkable: it pattern matches on
 its argument and applies the |Monofold| function to the values
