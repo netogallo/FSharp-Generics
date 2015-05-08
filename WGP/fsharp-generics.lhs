@@ -110,7 +110,7 @@ alone, there are numerous tools and libraries for data type generic
 programming, including amongst others PolyP~\cite{polyp}, Generic
 Haskell~\cite{GenericHaskell}, Scrap your boilerplate~\cite{SYB},
 RepLib~\cite{RepLib}, Uniplate~\cite{Uniplate},
-Regular~\cite{Regular}, Multi-Rec~\cite{MultiRec}, and Instant
+Regular~\cite{Regular}, Multi-Rec~\cite{multirec}, and Instant
 Generics~\cite{instant2}.
 
 Many of these libraries are implemented in the same fashion. They
@@ -288,7 +288,7 @@ type generic(Company)(t) with
 \end{code}
 \wouter{Ernesto -- is the code above still right? I remember I changed the
   formatting and may also have changed its semantics}
-
+\wouter{Say something about classe being passed by reference}
 
 In the later sections we will show how the |GMap| function may be
 derived automatically from the type definitions we saw
@@ -350,48 +350,48 @@ runtime exception. Nevertheless, the reflection mechanism is actively
 used in libraries such as FsPickler~\cite{FsPickler}, a general
 purpose .NET serializer.
 
-\paragraph{Type Providers}
-One language feature particular to F\# is \emph{type
-  providers}~\cite{typeProviders}. Type providers in F\# allow types
-to be defined by running code at compile time. They were designed to
-provide typed access to external data sources, such as a database or
-XML file. The type provider generates type declarations at compile
-time, allowing you to manipulate of such external data in a type safe
-manner. For example, you might define a type provider that parses the
-header of a file containing comma separated values and subsequently
-generates an type describing the columns of the data stored in that
-file. 
+% \paragraph{Type Providers}
+% One language feature particular to F\# is \emph{type
+%   providers}~\cite{typeProviders}. Type providers in F\# allow types
+% to be defined by running code at compile time. They were designed to
+% provide typed access to external data sources, such as a database or
+% XML file. The type provider generates type declarations at compile
+% time, allowing you to manipulate of such external data in a type safe
+% manner. For example, you might define a type provider that parses the
+% header of a file containing comma separated values and subsequently
+% generates an type describing the columns of the data stored in that
+% file. 
 
-Writing your own type providers is fairly technical and we will ignore
-many of the implementation details in this paper. We will give a brief
-example of how type providers may be invoked in F\#.
-\begin{code}
-type T = NameProvider<<"TypeA","TypeB">>
+% Writing your own type providers is fairly technical and we will ignore
+% many of the implementation details in this paper. We will give a brief
+% example of how type providers may be invoked in F\#.
+% \begin{code}
+% type T = NameProvider<<"TypeA","TypeB">>
 
--- prints "TypeA"
-printf "%s" typeof <<T.TypeA>> .Name
+% -- prints "TypeA"
+% printf "%s" typeof <<T.TypeA>> .Name
 
--- prints "AnotherType"
-printf "%s" typeof <<T.TypeB>> .Name
-\end{code}
-Here we define the type |T| to be the result of invoking the type
-provider |NameProvider| with two |string| arguments.  The
-|NameProvider| is a simple type provider that, given |string|
-arguments, creates a type with a field for each
-argument. \wouter{Ernesto: could you read this section again? I
-  changed a few things and want to make sure I haven't introduced any
-  falsehoods. Also, I'm not sure what the type provider is doing
-  exactly. What would the type T look like if you wrote it by hand?}
+% -- prints "AnotherType"
+% printf "%s" typeof <<T.TypeB>> .Name
+% \end{code}
+% Here we define the type |T| to be the result of invoking the type
+% provider |NameProvider| with two |string| arguments.  The
+% |NameProvider| is a simple type provider that, given |string|
+% arguments, creates a type with a field for each
+% argument. \wouter{Ernesto: could you read this section again? I
+%   changed a few things and want to make sure I haven't introduced any
+%   falsehoods. Also, I'm not sure what the type provider is doing
+%   exactly. What would the type T look like if you wrote it by hand?}
 
-From a users perspective, types genererated by type providers are
-indistinguishable from types defined by hand.  The implementation of a
-type provider is quite involved and requires boilerplate code to
-process the information provided by the F\# compiler. For more
-details, the reader is advised to read the existing documentation on
-writing type providers~\cite{TypeProviderTutorial}.
+% From a users perspective, types genererated by type providers are
+% indistinguishable from types defined by hand.  The implementation of a
+% type provider is quite involved and requires boilerplate code to
+% process the information provided by the F\# compiler. For more
+% details, the reader is advised to read the existing documentation on
+% writing type providers~\cite{TypeProviderTutorial}.
 
-\wouter{Can we scrap this section If we're not using type
-  providers anymore?}
+% \wouter{Can we scrap this section If we're not using type
+%   providers anymore?}
 
 \section{Type Representations in F\#}
 \label{sec:representation}
@@ -558,7 +558,6 @@ type ElemsRep =
         U>>,
     U>>
 \end{code}
-\wouter{Can you double check this example? I may have screwed it up during reformatting.} \ernesto{Checked.}
 
 This example shows how the |Sum| type constructor takes three
 arguments: the first stores meta-information about the type being
@@ -678,6 +677,7 @@ obtain the desired representation, we need to define the type
 member x.To : vart -> Meta
 member x.From : Meta -> vart
 \end{code}
+\wouter{Generic uses .NET reflection mechanism to generate}
 With that class it is now possible to extract the contents of |Id|,
 call the |Monofold| function and convert the result back to the original
 type. We can define the |Monofold| instance for the
@@ -774,7 +774,7 @@ conventions:
   instantiated to |tau|.
 \item By convention, the variable |x| will refer the object on which
   the methods are being invoked.
-\item We write |m elem x| to refer to the method |m| of object
+\item We write |m hasmethod x| to refer to the method |m| of object
   |x|.
 \end{itemize}
 
@@ -820,73 +820,6 @@ abstracted away by using a common representation for all types.
 
 \wouter{So where is the conversion from ADT to Meta handled? We
   haven't said this clearly enough yet...}
-
-\section{Limitations of the |Monofold| class}
-\label{sec:better-monofold}
-A major limitation of the current implementation is that all the
-overloads of |Monofold| must return a value of the same type. More
-advanced libraries for data type generic programming use some limited
-form of dependent types, possibly through type classes or type
-families, to enable generic functions to return types of different
-values. The |Monofold| class lacks such mechanism as it can be used to
-subvert the F\# type system. Consider the following example:
-\begin{code}
-member x.Monofold(v : K<<Employee>>) = 
-  K(f v.Elem) :> Meta
-\end{code}
-The type checker would not object to changing the
-function as follows:
-\begin{code}
-member x.Monofold(v : K<<Employee>>) = 
-  K("I am not an Employee!!") :> Meta
-\end{code}
-This changes the type of value stored in the |K| constructor. This is
-type correct since any instance of |K| is a subtype of
-|Meta|. \wouter{Yet what goes wrong? Conversion from meta to adt fails
-  dynamically?}
-
-Such errors could be prevented by revisiting the previous definition
-of the |Monofold| class, adding an additional type parameters for each
-overload:
-\begin{code}
-type Monofold<<
-  vart,  -- Generic\ type
-  `m,    -- Return\ type\ of\ the\ Meta\ overload
-  `s,    -- Return\ type\ of\ the\ Sum\ overload
-  `p,    -- Return\ type\ of\ the\ Prod\ overload
-  `i,    -- Return\ type\ of\ the\ Id\ overload
-  `k,    -- Return\ type\ of\ the\ K\ overload
-  `u,    -- Return\ type\ of\ the\ U\ overload
-  >>
-\end{code}
-However, recursive calls to |Monofold| still expect it to
-return a value of type |Meta|.\wouter{Why?} This means that the
-generics would need to be constrained to be a
-subtype of the |Meta| class. Such constraint is possible,
-but the |Monofold| function should be able to return
-any type, not just subtypes of |Meta|. We would, ideally, like
-to require a more general constraints:
-\begin{code}
-type Monofold<<
-  -- [...]
-  when `s :> `m
-  and `p :> `m
-  and `i :> `m
-  and `k :> `m
-  and `u :> `m
-  >>
-\end{code}
-Unfortunately, type constraints can only be used to enforce that a
-type must be a subclass of a \emph{concrete} type, not a type
-variable.
-
-Readers familiar with F\# might also consider type providers as an
-alternative approach to the meta-programming required to generate
-these types. However, type providers cannot accept types as static
-arguments and the provided types have many restrictions (such as
-forbidding generic methods) which makes them inapropiate.
-
-\wouter{What about defining a 'real' generic gmap function?}
 
 \section{Case study: uniplate}
 \label{sec:uniplate}
@@ -1038,6 +971,76 @@ let uniplate<<vart>> (x : vart) =
 % manually implement some caching mechanism to achieve better performance.
 
 % =======
+
+\section{Limitations of the |Monofold| class}
+\label{sec:better-monofold}
+A major limitation of the current implementation is that all the
+overloads of |Monofold| must return a value of the same type. More
+advanced libraries for data type generic programming use some limited
+form of dependent types, possibly through type classes or type
+families, to enable generic functions to return types of different
+values. The |Monofold| class lacks such mechanism as it can be used to
+subvert the F\# type system. Consider the following example:
+\begin{code}
+member x.Monofold(v : K<<Employee>>) = 
+  K(f v.Elem) :> Meta
+\end{code}
+The type checker would not object to changing the
+function as follows:
+\begin{code}
+member x.Monofold(v : K<<Employee>>) = 
+  K("I am not an Employee!!") :> Meta
+\end{code}
+This changes the type of value stored in the |K| constructor. This is
+type correct since any instance of |K| is a subtype of
+|Meta|. \wouter{Yet what goes wrong? Conversion from meta to adt fails
+  dynamically?}
+
+Such errors could be prevented by revisiting the previous definition
+of the |Monofold| class, adding an additional type parameters for each
+overload:
+\begin{code}
+type Monofold<<
+  vart,  -- Generic\ type
+  `m,    -- Return\ type\ of\ the\ Meta\ overload
+  `s,    -- Return\ type\ of\ the\ Sum\ overload
+  `p,    -- Return\ type\ of\ the\ Prod\ overload
+  `i,    -- Return\ type\ of\ the\ Id\ overload
+  `k,    -- Return\ type\ of\ the\ K\ overload
+  `u,    -- Return\ type\ of\ the\ U\ overload
+  >>
+\end{code}
+However, recursive calls to |Monofold| still expect it to
+return a value of type |Meta|.\wouter{Why?} This means that the
+generics would need to be constrained to be a
+subtype of the |Meta| class. Such constraint is possible,
+but the |Monofold| function should be able to return
+any type, not just subtypes of |Meta|. We would, ideally, like
+to require a more general constraints:
+\begin{code}
+type Monofold<<
+  -- [...]
+  when `s :> `m
+  and `p :> `m
+  and `i :> `m
+  and `k :> `m
+  and `u :> `m
+  >>
+\end{code}
+Unfortunately, type constraints can only be used to enforce that a
+type must be a subclass of a \emph{concrete} type, not a type
+variable.
+
+Readers familiar with F\# might also consider type providers as an
+alternative approach to the meta-programming required to generate
+these types. However, type providers cannot accept types as static
+arguments and the provided types have many restrictions (such as
+forbidding generic methods) which makes them inapropiate.
+
+\wouter{What about defining a 'real' generic gmap function?}
+\wouter{Explicit subtyping by manual casts}
+
+
 \section{Discussion}
 Datatype generic programming is a well tested solid approach
 to write generic algorithms. It offers a lot of expressiveness compared
