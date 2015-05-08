@@ -960,18 +960,6 @@ let uniplate<<vart>> (x : vart) =
   (xs, \ xs' -> Instantiate<<vart>>(xs').Monofold<<vart>>(rep) |> g.From)
 \end{code}
 
-% \section{Discussion}
-
-% In the context of F\# (and .NET in general), the traditional
-% approach to define algorithms generically is reflection. Although
-% reflection is very powerful, it defeats the purpose of type
-% safety since type correctness must entirely be checked dynamically.
-% Since reflection is too general, it can't offer a general optimization
-% mechanism and every function specified using reflection must
-% manually implement some caching mechanism to achieve better performance.
-
-% =======
-
 \section{Limitations of the |Monofold| class}
 \label{sec:better-monofold}
 A major limitation of the current implementation is that all the
@@ -1040,108 +1028,92 @@ forbidding generic methods) which makes them inapropiate.
 \wouter{What about defining a 'real' generic gmap function?}
 \wouter{Explicit subtyping by manual casts}
 
-
 \section{Discussion}
-Datatype generic programming is a well tested solid approach
-to write generic algorithms. It offers a lot of expressiveness compared
-to combinator based libraries but has the cost of being
-harder to use and requiring powerful type systems. The approach
-has been tested and implemented in F\#. Although safety had
-to be compromised due to the absense of type system infrastructure
-in F\#, a useful tool could still be produced. Even though
-not completely safe, it is more type safe than reflection since
-only a minimal part of the algorithms require unchecked
-(or dynamically checked) type operations. In practice, it is
-much more pleasant having theese unsafe runtime 
-operations in F\# than in languages like Haskell or Scala
-because the .Net runtime can provide rich information
-about how/when/why the operation failed. This would result
-in a segmentation fault in Haskell or a stacktrace with
-erased types in Scala.
+Datatype generic programming is a well tested solid approach to write
+generic algorithms. It offers a lot of expressiveness compared to
+combinator based libraries but has the cost of being harder to use and
+requiring powerful type systems. The approach has been tested and
+implemented in F\#. Although safety had to be compromised due to the
+absense of type system infrastructure in F\#, a useful tool could
+still be produced. Even though not completely safe, it is more type
+safe than reflection since only a minimal part of the algorithms
+require unchecked (or dynamically checked) type operations. In
+practice, it is much more pleasant having theese unsafe runtime
+operations in F\# than in languages like Haskell or Scala because the
+.Net runtime can provide rich information about how/when/why the
+operation failed. This would result in a segmentation fault in Haskell
+or a stacktrace with erased types in Scala.
 
-The library is on its first release so no optimizations have
-been done (since a stable api is desired first) but it is
-clear that DGP opens doors for automated caching of operations
-which would need to be done manually with reflection. In particular,
-the approach is referentially transparent when it comes to the type
-of the arguments. In other words, the same overload will be selected
-when the arguments given to the method selector have the same type.
-This means reflection only needs to be used once to select the
-method and next time a call with the same types is done, the
-right method can automatically be dispatched. \todo{Is this
-clear or should I rather give an example about how this works?}
+The library is on its first release so no optimizations have been done
+(since a stable api is desired first) but it is clear that DGP opens
+doors for automated caching of operations which would need to be done
+manually with reflection. In particular, the approach is referentially
+transparent when it comes to the type of the arguments. In other
+words, the same overload will be selected when the arguments given to
+the method selector have the same type.  This means reflection only
+needs to be used once to select the method and next time a call with
+the same types is done, the right method can automatically be
+dispatched. \todo{Is this clear or should I rather give an example
+  about how this works?}
 
 Compared to existing DGP libraries, the lack of type system
-infrastructure makes it very inconvenient to write a class
-of generic functions. Theese are the functions that produce
-values out of data. The best example is the \verb+read+ function
-from Haskell. The problem is that as the funciton parses the
-string, it must generate a representation. But in this library,
-all type representations are a subclass of \verb+Meta+ so it is
-hard to statically check that the algorithm is correct. A
-possible way to address the problem is having a type provider
-that can be given a type and it produces a new type that
-is the exact type for the representation. Then the \verb+read+
-or any other function must produce a representation with
-that same type (instead of only a sub-type of \verb+Meta+) and
-would be reasonable for the F\# compiler to check the correctness
-of the algorithm. Unfortunately, type
-providers can't accept types as static arguments.
-of the algorithm. \ernesto{This last statement is 
-  still relevant in spite of no longer using
-  type providers}
+infrastructure makes it very inconvenient to write a class of generic
+functions. Theese are the functions that produce values out of
+data. The best example is the \verb+read+ function from Haskell. The
+problem is that as the funciton parses the string, it must generate a
+representation. But in this library, all type representations are a
+subclass of \verb+Meta+ so it is hard to statically check that the
+algorithm is correct. A possible way to address the problem is having
+a type provider that can be given a type and it produces a new type
+that is the exact type for the representation. Then the \verb+read+ or
+any other function must produce a representation with that same type
+(instead of only a sub-type of \verb+Meta+) and would be reasonable
+for the F\# compiler to check the correctness of the
+algorithm. Unfortunately, type providers can't accept types as static
+arguments.  of the algorithm. \ernesto{This last statement is still
+  relevant in spite of no longer using type providers}
 
 \section{Conclusions}
-Datatype generic programming was successfully implemented for
-the F\# programming languages. In spite of the absecne of
-higher-rank polymorphism, it was still possible to reclaim
-some of the functionality using reflection and abstract 
-classes to enforce certain static assurances. The result is
-a library wich can define various generic functions.
+Datatype generic programming was successfully implemented for the F\#
+programming languages. In spite of the absecne of higher-rank
+polymorphism, it was still possible to reclaim some of the
+functionality using reflection and abstract classes to enforce certain
+static assurances. The result is a library wich can define various
+generic functions.
 
-The main advantage of this approach compared to ordinary
-reflection is type safety. Even though the implementation
-performs many unsafe dynamic type checks, they are masked
-behind a type-safe interface. It is not possible that
-a generic method is invoked with a representation of
-a type that is not supported by the method. Another
-minor advantage of this approach is providing a structured
-way to specify how the generic methods should be selected
-through reflection. This opens opportunities for automatic
-optimization since reflection only needs to be used once
-and the method selection can be cached automatically.
+The main advantage of this approach compared to ordinary reflection is
+type safety. Even though the implementation performs many unsafe
+dynamic type checks, they are masked behind a type-safe interface. It
+is not possible that a generic method is invoked with a representation
+of a type that is not supported by the method. Another minor advantage
+of this approach is providing a structured way to specify how the
+generic methods should be selected through reflection. This opens
+opportunities for automatic optimization since reflection only needs
+to be used once and the method selection can be cached automatically.
 
-The main disatvantage of this library compared to other
-DTG libraries is the reduced type safety of the approach.
-That has practical disatvantages which make it hard to
-define generic functions similar to |read|. Although a
-type error cannot occur when invoking generic methods and
-obtaining the result, the user can still experience 
-unexpected behavior if he defines a generic function
-with the wrong type. This type error will simply be
-ignored by the compiler and the selector and
-resulting in the wrong overload of |Monofold| being
+The main disatvantage of this library compared to other DTG libraries
+is the reduced type safety of the approach.  That has practical
+disatvantages which make it hard to define generic functions similar
+to |read|. Although a type error cannot occur when invoking generic
+methods and obtaining the result, the user can still experience
+unexpected behavior if he defines a generic function with the wrong
+type. This type error will simply be ignored by the compiler and the
+selector and resulting in the wrong overload of |Monofold| being
 selected by the selector.
 
-Compared to reflection, this approach is much
-less general. In the context of F\#, mutually
-recursive types are still not supported. The reason
-is that the |Id| constructor would require an
-additional type argument for every extra type
-in the recursion. Advanced DGP libraries using
-advanced type systems have solved the problem
-in various ways \cite{multirec}. Generally, the
-idea consists of using type level functions to
-define types that can be used as indexes for
-other types. Then each type of the mutual
-recursion can be assigned an index. If type
-providers in F\# could produce generic types,
-it might be possible to lazyly construct the
-types required for every type present in a
-mutual recurison. Another advantage of
-reflection is that it can be used with
-any .Net type. This library only works
-for algebraic data types.
+Compared to reflection, this approach is much less general. In the
+context of F\#, mutually recursive types are still not supported. The
+reason is that the |Id| constructor would require an additional type
+argument for every extra type in the recursion. Advanced DGP libraries
+using advanced type systems have solved the problem in various ways
+\cite{multirec}. Generally, the idea consists of using type level
+functions to define types that can be used as indexes for other
+types. Then each type of the mutual recursion can be assigned an
+index. If type providers in F\# could produce generic types, it might
+be possible to lazyly construct the types required for every type
+present in a mutual recurison. Another advantage of reflection is that
+it can be used with any .Net type. This library only works for
+algebraic data types.
 
 
 
