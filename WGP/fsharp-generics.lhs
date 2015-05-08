@@ -41,7 +41,7 @@
 \newcommand{\ernesto}[1]{
 \ifthenelse
   {\boolean{showNotes}}
-  {\marginNote{\textcolor{blue}{\textbf{Ernesto:~}#1}}}
+  {\marginNote{\textcolor{green}{\textbf{Ernesto:~}#1}}}
   {}}
 
 
@@ -577,6 +577,9 @@ will be \emph{generated} using .NET's reflection mechanism. To keep
 the generation process as simple as possible, we have chosen not to
 optimize the representation types.
 
+\todo{Explain the Generic type, embedding projection pairs, use of
+  reflection, etc. here}
+
 \section{Generic Functions}
 \label{sec:generic-functions}
 
@@ -662,6 +665,9 @@ This example uses several F\# specific constructs:
     the relevant parts of the value that are of interest. They however are
     not type constructors. It is a type safe alternative to if-statements. They are
     used a lot in F\# to get an FP feel when using class types.}
+
+  \wouter{So maybe it is better to avoid the active patterns entirely
+    for the purpose of this paper. It's one more thing we need to explain...}
 \end{itemize}
 The definition itself is fairly unremarkable: it pattern matches on
 its argument and applies the |FoldMeta| function to the values
@@ -760,7 +766,11 @@ function.
 \section{The FoldMeta class}
 
 \wouter{Ernesto -- could you convert the figure 5 to use lhs2TeX --
-  that way the paper is a bit more consistent...}
+  that way the paper is a bit more consistent...}  \wouter{Actually,
+  maybe we can get rid of it entirely. It doesn't add much, and seemed
+  to cause quite a bit of confusion in the Reading club. Perhaps it
+  would be better to restrict ourselves to the description in the text
+  at the moment. What do you think?}
 \label{sec:conversion}
 \begin{figure*}
 \[
@@ -1162,7 +1172,7 @@ algorithm. Unfortunately, type providers can't accept types as static
 arguments.  of the algorithm. \ernesto{This last statement is still
   relevant in spite of no longer using type providers}
 
-\section{Conclusions}
+\subsection*{Conclusions}
 Datatype generic programming was successfully implemented for the F\#
 programming languages. In spite of the absecne of higher-rank
 polymorphism, it was still possible to reclaim some of the
