@@ -38,4 +38,7 @@
 %format taun = "\tau_n"
 %format AbstractClass = "[\langle\mathbf{AbstractClass}\rangle]"
 %format SumConstr = Sum
-%subst comment a	= "\mathtt{// " a "}        "
+%subst comment a	= "\mathtt{//\; " a "}        "
+%format elem = "\in"
+%format tau = "\tau"
+%format tau_i = "\tau_i"
