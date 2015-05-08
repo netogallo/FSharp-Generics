@@ -284,11 +284,15 @@ Using |GMap|,  the |IncreaseSalary| function can be defined as follows:
 \begin{code}
 type generic(Company)(t) with
   member self.IncreaseSalary(v) =
-    self.GMap (fun e -> e.Salary <- e.Salary + v)
+    self.GMap (
+      fun e -> e.Salary <- e.Salary + v;e)
 \end{code}
-\wouter{Ernesto -- is the code above still right? I remember I changed the
-  formatting and may also have changed its semantics}
-\wouter{Say something about classe being passed by reference}
+Here the |Employee| instance is passed by reference. Due to
+the sub-typeing relation, it is not possible to determine
+the exact class that the passed value belongs to. So the only
+way to update it is to directly mutate the value and return
+the same value. It will be packed inside a fesh value of
+type |Company|.
 
 In the later sections we will show how the |GMap| function may be
 derived automatically from the type definitions we saw
@@ -399,18 +403,18 @@ purpose .NET serializer.
 \begin{figure*}
 \centering
 \begin{subfigure}[t]{0.3\textwidth}
-\begin{code}
+\begin{code} 
 AbstractClass
-type Meta() = class end
+type Meta<<`t>>() = class end
 \end{code}
 \begin{code}
-type U() =
+type U<<`t>>() =
   class
     inherit Meta()
   end
 \end{code}
 \begin{code}
-type K<<varx>>(elem:varx) =
+type K<<`t,varx>>(elem:varx) =
   class
     inherit Meta()
     member self.Elem 
@@ -431,7 +435,7 @@ type Id<<vart>>(elem:vart) =
 \begin{code}
 type Sum<<vart,vara,varb
                 when vara :> Meta 
-                and varb :> Meta>>(
+                and varb :> Meta(
                 elem : Choice<<vara,varb>>) =
   class
 
@@ -448,7 +452,7 @@ type Sum<<vart,vara,varb
 \end{subfigure}
 \begin{subfigure}[t]{0.3\textwidth}
 \begin{code}
-type Prod<<vara,varb
+type Prod<<`t,vara,varb
            when vara :> Meta
            and varb :> Meta>>(
            e1:vara,e2:varb) =
@@ -483,11 +487,14 @@ statically. For these reasons, we will need to adapt the Haskell
 approach slightly.
 
 We will define an abstract class, |Meta|, that can will be used to
-define type representations. Its purpose is to impose type constraints
-on type variables. These constraints serve as an alternative to
-typeclass constraints that are used in Regular. For example, (a slight
-variation of) the following instance is defined in the Regular
-library:
+define type representations. The |Meta| class takes one type argument
+which either is the type being represented by the representation (i.e
+|Employee|) or |unit| in the case that type is being used as an
+intermediate building block of a type representation. Its purpose is
+to impose type constraints on type variables. These constraints serve
+as an alternative to typeclass constraints that are used in
+Regular. For example, (a slight variation of) the following instance
+is defined in the Regular library:
 
 \begin{code}
 instance (GMap f, GMap g) => 
@@ -501,23 +508,23 @@ that these types themselves are subtypes of the |Meta| class.
 In the remainder of this section, we will present the concrete
 subtypes of the |Meta| class defined in our library. The first
 subclass of |Meta| is |Sum|, that represents the sum of two types.
-The |Sum| takes three type arguments: |t|,|a| and |b|. The first one
-indicates the type that this representation encodes. The remaining
-arguments, |vara| and |varb|, are the arguments to the sum type. The
-|Choice| type in F\# is analagous to Haskell's |Either| type. It has
-two constructors: |Choice1Of2| and |Choice2Of2|. Note that both |vara|
-and |varb| have the constraint that |vara| and |varb| are subtypes of
-the |Meta| class. \wouter{Why do we need the t in the Sum type?} \ernesto{
-  To distinguish the type (if any) that is represented by that sum. Now that
-  I think about it, I guess Meta sould have the `t type argument instead.
-  See the uniplate example to understand more}
+The |Sum| takes two extra type arguments: |a| and |b|. They indicate
+the inner instances of |Meta| that they encode and are contained
+inside a |Chocie| type. The |Choice| type in F\# is analagous to
+Haskell's |Either| type. It has two constructors: |Choice1Of2| and
+|Choice2Of2|. Note that both |vara| and |varb| have the constraint
+that |vara| and |varb| are subtypes of the |Meta| class. \wouter{Why
+  do we need the t in the Sum type?} \ernesto{ To distinguish the type
+  (if any) that is represented by that sum. Now that I think about it,
+  I guess Meta sould have the `t type argument instead.  See the
+  uniplate example to understand more}
 
 
 The second subclass of |Meta| is |Prod|, corresponding to the product
-of two types. The |Prod| type accepts two type arguments: |vara| and
-|varb|. Once again, we require both |vara| and |varb| to be subtypes
-of the |Meta| class. Besides products, we will use the class |U :>
-Meta| to represent the unit type.
+of two types. The |Prod| type accepts two extra type arguments: |vara|
+and |varb|. Once again, we require both |vara| and |varb| to be
+subtypes of the |Meta| class. Besides products, we will use the class
+|U :> Meta| to represent the unit type.
 
 Next, the subclass |K| of |Meta| is used to represent a type that is
 not defined to be an algebraic data type. This can be used to
@@ -551,12 +558,13 @@ type ElemsRep =
     Elem<<int>>,
     Sum<<
       unit,
-      Prod<<K<<int>>,Prod<<Id<<Elem<<int>> >>,U>> >>,
+      Prod<<unit,K<<unit,int>>,
+        Prod<<Id<<Elem<<int>> >>,U<<unit>> >> >>,
       Sum<<
         unit,
-        Prod<<K << int >>, U>>,
-        U>>,
-    U>>
+        Prod<<K << unit,int >>, U<<unit>> >>,
+        U<<unit>> >>,
+    U<<unit>> >>
 \end{code}
 
 This example shows how the |Sum| type constructor takes three
@@ -571,6 +579,24 @@ optimize the representation types.
 
 \section{Generic Functions}
 \label{sec:generic-functions}
+
+\begin{figure*}
+\begin{code}
+AbstractClass
+type FoldMeta<`t,`in,`out>()
+
+abstract FoldMeta : Meta * `in -> `out
+abstract FoldMeta<<`a>> : Sum<<`a,Meta,Meta>> * `in -> `out
+abstract FoldMeta<<`a>> : Prod<<`a,Meta,Meta>> * `in -> `out
+abstract FoldMeta<<`a,`x>> : K<<`a,`x>> * `in -> `out
+abstract FoldMeta : Id<<`t>> -> `in -> `out
+abstract FoldMeta<<`a>> : U<<`a>> * `in -> `out
+\end{code}
+\caption{Definition of the |Meta| abstract class for 
+  generic functions taking one argument.}
+\label{fig:def-meta}
+\end{figure*}
+
 The purpose of type representations is to provide an interface that
 the programmer can use to define generic functions. Once a function is
 defined on all the subtypes of the |Meta| class, it can be executed on
@@ -582,38 +608,41 @@ function of type $\tau\to\tau$ and applies the function to every value
 of type $\tau$ in a ADT. In Regular, a generic function is defined as
 a typeclass. In our library, we define |GMap| as a .NET class:
 \begin{code}
-type GMap<<vart>>() = 
+type GMap<<`t,`x>>() = 
   class 
   inherit Monofold<<
-    vart,Meta,
-    Employee -> Employee>>()
+    `t,Meta,
+    `x -> `x>>()
   -- [...] Implementation [...]
   end
 \end{code}
-\wouter{Should we say that we are defining GMap specifically for
-  mapping Employee to Employee functions? Or can we be more general
-  and define a version of gmap that is generic in the type of the
-  function being applied?}  All classes that define generic functions
-inherit from the class |Monofold|. This is an abstract class that
+inherit from the class |FoldMeta|. This is an abstract class that
 specifies the minimal implementation required to define a generic
-function. This minimal implementation consists of a method,
-|Monofold|, for all the different subtypes of our |Meta| class. By
-overriding these |Monofold| methods in the concrete |GMap| class, we
-can then define the desired map operation. The |Monofold| class and
-its member functions will explained in detail in Section
-\ref{sec:conversion}.
+function. Its definition is given in figure \ref{fig:def-meta} and it
+will be explained in detail in section \ref{sec:conversion}.  This
+minimal implementation consists of a method, |FoldMeta|, for all the
+different subtypes of our |Meta| class. By overriding these |Monofold|
+methods in the concrete |GMap| class, we can then define the desired
+map operation. The |FoldMeta| class and its member functions will
+explained in detail in Section \ref{sec:conversion}.
 
 The first method we override in the of |GMap| class handles the |Sum|
 type constructor:
+% Type `a does de universal quantification over all
+% representable types.
+% Type `x is the type parameter given as an argument
+% to the GMap function
 \begin{code}
-override x.Monofold<<varx>>
-  (v : Sum<<vart,Meta,Meta>>
-  ,f : Employee -> Employee) =
-    match v with
-    | L m -> Sum<<varx,Meta,Meta>>(
-               x.Monofold(m,f) |> Choice1Of2)
-    | R m -> Sum<<varx,Meta,Meta>>(
-               x.Monofold(m,f) |> Choice2Of2)
+override x.FoldMeta<<`a>>
+  (v : Sum<<`a,Meta,Meta>>
+  ,f : `x -> `x) =
+    match v.Elem with
+    | Choice1Of2 m -> 
+      Sum<<`a,Meta,Meta>>(
+      x.FoldMeta(m,f) |> Choice1Of2)
+    | Choice2Of2 m -> 
+      Sum<<`a,Meta,Meta>>(
+      x.FoldMeta(m,f) |> Choice2Of2)
     :> Meta
 \end{code}
 This example uses several F\# specific constructs:
@@ -635,41 +664,41 @@ This example uses several F\# specific constructs:
     used a lot in F\# to get an FP feel when using class types.}
 \end{itemize}
 The definition itself is fairly unremarkable: it pattern matches on
-its argument and applies the |Monofold| function to the values
+its argument and applies the |FoldMeta| function to the values
 contained in the |Sum| type. It then reconstructs a |Sum| instance
 with the results of the recursive call, before casting the result back
-to a value of type |Meta|. We then call the |Monofold| method on
+to a value of type |Meta|. We then call the |FoldMeta| method on
 values of type |Meta|. We defer the description of the member function
-|Monofold : Meta * Employee -> Employee| of the |Monofold| class to
+|FoldMeta : Meta * `x -> `x| of the |FoldMeta| class to
 the next section.
 
 The next definition handles products:
 \begin{code}
-override x.Monofold
-  (v : Prod<<Meta,Meta>>
-  ,f : Employee -> Employee) =
+override x.FoldMeta<<`a>>
+  (v : Prod<<`a,Meta,Meta>>
+  ,f : `x -> `x) =
     Prod<<Meta,Meta>>(
-      x.Monofold(v.E1,f),
-      x.Monofold(v.E2,f))
+      x.FoldMeta(v.E1,f),
+      x.FoldMeta(v.E2,f))
     :> Meta
 \end{code}
 The type |Prod| contains the properties |E1| and |E2|, storing the two
 constituent elements of the product. Once again, we recursively invoke
 |Monofold| on these values.
 
-The next case handles the type |K<<Employee>>|. This is where the
-argument function is applied to the |<<Employee>>|s:
+The next case handles the type |K<<`a,`x>>|. This is where the
+argument function is applied to the |<<`a,`x>>|s:
 \begin{code}
-member x.Monofold(v : K<<Employee>>) = 
+member x.FoldMeta<<`a>>(v : K<<`a,`x>>) = 
   K(f v.Elem) :> Meta
 \end{code}
 The property |Elem| of the |K| constructor returns the value that is
 being represented by |K|. Besides this instance, we will need another
-instances handling other possible types, |K<<vart>>|, which we will
+instances handling other possible types, |K<<`a,`t>>|, which we will
 revisit later.
 
 The case for the |Id| constructor is a bit more involved. Remember
-that |Id| contains a property called |Elem : vart|. This property
+that |Id| contains a property called |Elem : `t|. This property
 contains a value, and not a representation of type |Meta|. In order to
 obtain the desired representation, we need to define the type
 |generic(Generic)(t)|, containing the following two member functions:
@@ -683,41 +712,44 @@ call the |Monofold| function and convert the result back to the original
 type. We can define the |Monofold| instance for the
 |Id| constructor as follows:
 \begin{code}
-override x.Monofold
-  (v : Id<<vart>>
-  ,f : Employee -> Employee) =
-    let g = Generic<<vart>>()
-    Id<<vart>>(x.Monofold(
+override x.FoldMeta
+  (v : Id<<`t>>
+  ,f : `x -> `x) =
+    let g = Generic<<`t>>()
+    Id<<`t>>(x.FoldMeta(
       g.To c.Elem,f) |> g.From)
     :> Meta
 \end{code}
 
 To complete our definiton we override the following two functions:
 \begin{code}
-override x.Monofold(u : U,
-                   ,f : Employee -> Employee) = u :> Meta
+override x.FoldMeta<<`a>>(u : U<<`a>>,
+                   ,f : `x -> `x) = u :> Meta
 
-override x.Monofold<<varx>>(k : K<<varx>>
-                         ,f : Employee -> Employee) = k :> K<<varx>>
+override x.FoldMeta<<`a,`t>>(k : K<<`a,`t>>
+                         ,f : `x -> `x) = k :> Meta
 \end{code}
 Unit values and constants of some type distinct from |Employee| are
 left untouched by |GMap|.
 
 This class contains two definitions for the |K| constructor: one
-overrides the generic method |Monofold<<varx>>|; the other defines a
-member function on |K<<Employee>>|. The |Monofold| class only requires
-the generic definition; but we also add the more specific member
-function handling employees. By carefully handling overloaded
-functions, we will ensure the most specific choice is always made when
-faced with such ambiguity. We will cover the precise rules in greater
-detail in the next section.
+overrides the generic method |Monofold<<`a>>|; the other defines a
+member function on |K<<`x>>|. Notice that <<`x>> will be instantiated
+when the |GMap| class is instantiated because it is a type argument on
+the class level. This means that when |GMap| is instantiated, |`x|
+will be a concrete type and <<`a>> will be a type variable.  The
+|Monofold| class only requires the generic definition; but we also add
+the more specific member function handling <<`x>>. By carefully
+handling overloaded functions, we will ensure the most specific choice
+is always made when faced with such ambiguity. We will cover the
+precise rules in greater detail in the next section.
 
 Using the |GMap : Monofold| class, we can now define the following
 |gmap| function:
 \begin{code}
-member x.gmap(x : vart,
-             f : Employee -> Employee) =
-    let gen = Generic<<vart>>()
+member x.gmap<`x>(x : vart,
+             f : `x -> `x) =
+    let gen = Generic<`x>>()
     x.Monofold(gen.To x,f)
     |> gen.From
 \end{code}
@@ -725,7 +757,7 @@ Calling this function, however, requires dispatching on the
 representation type, which is handled by the |Monofold| and its member
 function.
 
-\section{The Monofold class}
+\section{The FoldMeta class}
 
 \wouter{Ernesto -- could you convert the figure 5 to use lhs2TeX --
   that way the paper is a bit more consistent...}
@@ -754,16 +786,74 @@ function.
 \label{fig:selector}
 \end{figure*}
 
-In the previous section, we assumed the existence of a |Monofold|
-function with type |Meta * (Employee->Employee) -> Meta|. This function
-uses reflection to call the corresponding |Monofold| function for
-the concrete subclasses of |Meta|. In Haskell, the resolution of
-overloading is handled by the type class mechanism; in F\#, we have
-had to implement our own mechanism using reflection.
 
-The dispatching mechanism we have implemented is summarized in
-Figure~\ref{fig:selector}. This figure adopts the following
-conventions:
+
+In the previous section, we assumed the existence of a |FoldMeta|
+function with type |Meta * (`x->`x) -> Meta|. Before getting into
+the details of this function, it will be explained the problem it
+intends to solve. Consider the two instances of a possible |gmap|
+implementation using regular which is restricted to integers for
+simplicity:
+\begin{code}
+instance (GMap a,GMap b) => 
+  GMap (a :+: b) where
+  gmap (L a) f = L (gmap a f)
+  gmap (R b) f = R (gmap a f)
+
+instance GMap (K x) where
+  gmap k _ = k
+
+instance GMap (K Int) where
+  gmap (K i) f = K (f i)
+\end{code}
+Suppose gmap is invoked with a value of type |K int :+: K String|.
+Under the hood, the Haskell compiler looks for the definition of
+|gmap| that is of a suitable type, and replaces the type variables
+accordingly. In this case, |a| is replaced by |K Int| and |b| is
+replaced by |K String|. After doing that replacement, the compiler is
+able to figure out that for the |L| branch, the |gmap| overload being
+invoked is |gmap : K Int -> (Int -> Int) -> K Int| and for the |R|
+branch it must invoke |gmap : K String -> (Int -> Int) -> K String|.
+All this calculations are done at compile time by the Haskell
+compiler. One could consider a similar approach in F\#:
+\begin{code}
+
+member x.FoldMeta<<`x,`a,`b>>(
+  s : Sum<<`x,`a,`b>>, f : int -> int) =
+  match s.Elem with
+  | Choice1Of2 a -> 
+    Sum<<`x,`a,`b>>(
+      x.FoldMeta(a,f) |> Choice1Of2)
+  | Choice2Of2 b ->
+    Sum<<`x,`a,`b>>(
+      x.FoldMeta(b,f) |> Choice1Of2)
+
+instance x.FoldMeta<<`x,`a>>(
+  k : K<<`a>>,f : int -> int) = k
+
+instance x.FoldMeta<`x>(
+  k : K<<int>>,f : int -> int) = K (f k)
+\end{code}
+However, in F\# this code dosen't compile. The reason is that it
+is unclear wether the overload taking one, two or three arguments
+of |FoldMeta| should be invoked in the |Sum| case. This is because
+all of the three overloads could be invoked depending on the type
+of the arguments given to |FoldMeta| but F\# lacks the type level
+computations necessary for this.
+
+The solution adopted by this library is to have a |FoldMeta| overload
+of type |Meta*`in -> `out|. Since any type representation is a subclass
+of |Meta|, this overload can be invoked regardles of what |`a| and |`b|
+are since they have the constraint |`a,`b :> Meta| in the definition of
+|Sum|. From this, it is clear that the |FoldMeta| overload for the
+|Meta| case performs at runtime what Haskell is doing at compile time:
+selecting the overload that should be invoked based on the type.
+
+To achive this automatically, reflection is used. The |FoldMeta| class
+provides a default implementation of the |FoldMeta| member responsible
+for this job. The dispatching mechanism we have implemented by such
+member is summarized in Figure~\ref{fig:selector}. This figure 
+adopts the following conventions:
 \begin{itemize}
 \item Greek variables, such as |tau| and |tau_i|, refer to a
   concrete type, such as |int| or |string|.
@@ -778,27 +868,26 @@ conventions:
   |x|.
 \end{itemize}
 
-Since |Monofold| is an abstract class, any concrete subclass requires
+Since |FoldMeta| is an abstract class, any concrete subclass requires
 a minimal set of methods that ensure the existence of a method for
 every possible type representation, i.e., every concrete subclass of
-the |Meta| type. The |Monofold| method of the abstract |Monofold|
+the |Meta| type. The |FoldMeta| method of the abstract |FoldMeta|
 class essentially calls the method associated with the representation
 type it is passed as an argument.
 
 Using .NET's reflection mechanism, we can inspect the type of the
-argument passed to the |Monofold| method. If we have exactly the right
-method at our disposal, for example when calling |Monofold| on |g :
-K<<Employee>>| in our example, we call that |Monofold| instance. Only
-when there is no specific match, do we instantiate generic type
-variables. For example, our example did not define a |Monofold|
-instance for the |K<<int>>| class; when encountering an |int|, we call
-the instance for |K<<vart>>|, instantiating |vart| to |int|.
+argument passed to the |FoldMeta| method. If we have exactly the right
+method at our disposal, for example if one has the instance
+|GMap<<List<Employee>>,<<Employee -> Employee>>| of the |GMap| class,
+when calling |FoldMeta| on |g : K<<`x,Employee>>| in our example, we call
+that |FoldMeta| instance. Only when there is no specific match, do we
+instantiate generic type variables. For example, our example did not
+define a |Monofold| instance for the |K<<`x,int>>| class; when
+encountering an |int|, we call the instance for |K<<`x,`a>>|,
+instantiating |`a| to |int|.
 
-\wouter{So why do sum types take three arguments? I still haven't seen
-good motivation...}
-
-For type safety, the |Monofold| class is parametrized by several type
-arguments. The type |Monofold <<vart,tau,tau1,...,taun>>| has the
+For type safety, the |FoldMeta| class is parametrized by several type
+arguments. The type |FoldMeta <<vart,tau,`in1,...,taun>>| has the
 the following type variables:
 \begin{itemize}
 \item The type |vart| refers to the algebraic data type on which the

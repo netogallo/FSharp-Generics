@@ -25,6 +25,7 @@
 %format << = "\langle"
 %format >> = "\rangle"
 %format :*: = ":\!\!*\!\!:"
+%format :+: = ":\!\!+\!\!:"
 %format trRg = "\triangleright"
 %format :?> = "\precsim"
 %format mTrRg = "{?}{\triangleright}"
