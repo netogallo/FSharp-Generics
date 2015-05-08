@@ -11,6 +11,7 @@
 \usepackage{listings}
 \usepackage{caption}
 \usepackage{subcaption}
+\usepackage{multirow}
 \DeclareCaptionType{copyrightbox}
 
 %% TODO notes
@@ -586,14 +587,14 @@ optimize the representation types.
 \begin{figure*}
 \begin{code}
 AbstractClass
-type FoldMeta<`t,`in,`out>()
+type FoldMeta<`t,varin,`out>()
 
-abstract FoldMeta : Meta * `in -> `out
-abstract FoldMeta<<`a>> : Sum<<`a,Meta,Meta>> * `in -> `out
-abstract FoldMeta<<`a>> : Prod<<`a,Meta,Meta>> * `in -> `out
-abstract FoldMeta<<`a,`x>> : K<<`a,`x>> * `in -> `out
-abstract FoldMeta : Id<<`t>> -> `in -> `out
-abstract FoldMeta<<`a>> : U<<`a>> * `in -> `out
+abstract FoldMeta : Meta * varin -> `out
+abstract FoldMeta<<`a>> : Sum<<`a,Meta,Meta>> * varin -> `out
+abstract FoldMeta<<`a>> : Prod<<`a,Meta,Meta>> * varin -> `out
+abstract FoldMeta<<`a,`x>> : K<<`a,`x>> * varin -> `out
+abstract FoldMeta : Id<<`t>> * varin -> `out
+abstract FoldMeta<<`a>> : U<<`a>> * varin -> `out
 \end{code}
 \caption{Definition of the |Meta| abstract class for 
   generic functions taking one argument.}
@@ -772,29 +773,33 @@ function.
   would be better to restrict ourselves to the description in the text
   at the moment. What do you think?}
 \label{sec:conversion}
-\begin{figure*}
-\[
-\mathtt{x.Monofold(g,a_1:\tau_1,..,a_n:\tau_n)} =
-\left\{
-  \begin{array}{ll}
-    \mathtt{x.Monofold}(\mathtt{g},\mathtt{arg_1,..,arg_n}) & \mathtt{g} : \Sum\langle\tau,\Meta,\Meta\rangle \\ & \wedge \exists\ \mathtt{Monofold}\ \in\ \mathtt{x} : \Sum\langle\tau,\Meta,\Meta\rangle*\tau_1*...*\tau_n \\
-    
-    \mathtt{x.Monofold}\langle\mathtt{[\tau/`t]}\rangle(\mathtt{g},\mathtt{arg_1,..,arg_n}) & \mathtt{g}\ :\ \Sum\langle\tau,\Meta,\Meta\rangle \\ % & \exists \mathtt{x}.\mathtt{Monofold}<\mathtt{`t}>\ : \Sum<\mathtt{`t},\Meta,\Meta>*\tau_1*...*\tau_n \\
-    
-    \mathtt{x.Monofold}(\mathtt{g},\mathtt{arg_1,..,arg_n}) & \mathtt{g}\ :\ \Prod\langle\Meta,\Meta\rangle*\tau_1*...*\tau_n \\
-    
-    \mathtt{x.Monofold}(\mathtt{g},\mathtt{arg_1,..,arg_n}) & \mathtt{g}\ :\ \K\langle\tau\rangle \\ & \wedge\exists\ \mathtt{Monofold}\in\mathtt{x}\ :\ \K\langle\tau\rangle*\tau_1*...*\tau_n \\ 
-
-    \mathtt{x.Monofold}\langle[\tau/\mathtt{`t}]\rangle(\mathtt{g},\mathtt{arg_1,..,arg_n}) & \mathtt{g}\ :\ \K\langle\tau\rangle \\
-
-    \mathtt{x.Monofold}(\mathtt{g},\mathtt{arg_1,..,arg_n}) & \mathtt{g}\ :\ \Id\langle\tau\rangle \\
-    \mathtt{x.Monofold}(\mathtt{g},\mathtt{arg_1,..,arg_n}) & \mathtt{g}\ :\ \U \\
-  \end{array}
-\right.
-\]
-\caption{Selection criteria of the generic provider when using reflection to select an overload.}
+\begin{table*}
+\begin{tabular}{cccc}
+  \multirow{15}{*}{|o.FoldMeta(m : Meta)|} & \multirow{15}{*}{$=\left\{\begin{array}{c} \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \end{array}\right.$} & \multirow{2}{*}{|o.FoldMeta(x)|} & |exists o.FoldMeta : tau->tau1|  \\
+  & & & |m : tau| \\
+  & & & \\
+  & & \multirow{3}{*}{|o.FoldMeta<<tau_a>>(x)|} & |o.FoldMeta<<`t>> : tau'->tau1| \\
+  & & & $\wedge$ |m : tau<<tau_a,Meta,Meta>>| \\
+  & & & $\wedge$ |[tau_a/`t]tau' = tau<<tau_a,Meta,Meta>>| \\
+  & & & \\
+  & & \multirow{3}{*}{|o.FoldMeta<<tau_b>>(x)|} & |exists o.FoldMeta<<`t>> : tau'->tau1| \\
+  & & & $\wedge$ |m : tau<<tau_a,tau_b>>|\\
+  & & & $\wedge$ |[tau_b/`t]tau' = tau<<tau_a,tau_b>>|\\
+  & & & \\
+  & & \multirow{3}{*}{|o.FoldMeta<<tau_a,tau_b>>(x)|} & |o.FoldMeta<<`t,`u>> : tau'->tau1| \\
+  & & & $\wedge$ |m : tau<<tau_a,tau_b>>|\\
+  & & & $\wedge$ |[tau_a/`t][tau_b/`u]tau' = tau<<tau_a,tau_b>>|\\
+  & & & \\
+  %% & & | = o.Sum(x : Sum<<tau,Meta,Meta>>,v1 : tau1,...,vn : taun)| \\
+  %% & & |o.Sum(x : Meta,v1 : tau1,...,vn : taun)| \\
+  %% & & | = o.Sum<<tau>>(x : Sum<<tau,Meta,Meta>>,v_1 : tau1,...,v_n : taun)|
+\end{tabular}
+\caption{Selection criteria of the generic provider when using reflection to select an overload.
+This is the criteria when |FoldMeta| takes no extra arguments but the selection works the same
+way since only the sub-types of |Meta| are inspected to select the overload as long as the types
+of the extra arguments are consistent.}
 \label{fig:selector}
-\end{figure*}
+\end{table*}
 
 
 
@@ -852,7 +857,7 @@ of the arguments given to |FoldMeta| but F\# lacks the type level
 computations necessary for this.
 
 The solution adopted by this library is to have a |FoldMeta| overload
-of type |Meta*`in -> `out|. Since any type representation is a subclass
+of type |Meta*varin -> `out|. Since any type representation is a subclass
 of |Meta|, this overload can be invoked regardles of what |`a| and |`b|
 are since they have the constraint |`a,`b :> Meta| in the definition of
 |Sum|. From this, it is clear that the |FoldMeta| overload for the
@@ -897,20 +902,23 @@ encountering an |int|, we call the instance for |K<<`x,`a>>|,
 instantiating |`a| to |int|.
 
 For type safety, the |FoldMeta| class is parametrized by several type
-arguments. The type |FoldMeta <<vart,tau,`in1,...,taun>>| has the
+arguments. The type |FoldMeta <<vart,varin1,...,varinn,`out>>|has the
 the following type variables:
 \begin{itemize}
 \item The type |vart| refers to the algebraic data type on which the
   function operates. Values of this type are translated to a generic
   representation, that is later handed off to the |Monofold|
-  function. 
-\item The type |tau| refers to the return type of all of the generic
+  function.
+\item The type |`out| refers to the return type of all of the generic
   methods. In our |GMap| example, we returned a value of type |Meta|,
   corresponding to the algebraic data type resulting from the map.
-\item The remaining type variables, |tau1| ... |taun|, refer to any
-  additional parameters of the generic function being defined. In the
-  |GMap| function, there is a single argument of type |Empolyee ->
-  Employee|.
+\item The remaining type variables, |varin1| ... |varinn|, refer to
+  any additional parameters of the generic function being defined. In
+  the |GMap| function, there is a single argument of type |Empolyee ->
+  Employee|. Types in F\# must take a specific number of arguments but
+  the language allows multiple types with the same name to be
+  defined. So a variants of |FoldMeta| are defined taking from 0 to 5
+  type input type argumetns.
 \end{itemize}
 With these types in place, the library can apply a generic function to
 any ADT. Furthermore, the definition of a new generic function does
