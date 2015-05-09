@@ -56,6 +56,7 @@
 %format tau_b = "\tau_b"
 %format tau_m1 = "\tau_{m1}"
 %format tau_m2 = "\tau_{m2}"
+%format tau_ty = "\tau_{ty}"
 %format tau' = "\tau\prime"
 %format precM = "\prec_{Meta}"
 %format spc = "\ "
