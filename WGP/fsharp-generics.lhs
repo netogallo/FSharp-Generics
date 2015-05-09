@@ -590,15 +590,14 @@ inductively defined over the representations. However, they are not
 much help if the user has to define a representation for every type
 she uses. Regular relies on Template Haskell \cite{TemplateHaskell}
 for the job. The Glassgow Haskell Compiler and Utrecht Haskell
-Compiler (among others) have a built in mechanism called Generic
-Haskell \cite{GenericHaskell} for this. The F\# language lacks a tool
-comparable to Template Haskell for metaprograming\footnote{The F\#
-  user might cosider type providers a comparable alternative, however
-  they were carefully considered and we concluded they are not
-  suitable for the job.} but can use .Net's runtime capabilities to do
-the job via relfection.
+Compiler have a built in mechanism\cite{GenericDeriving} for this. The
+F\# language lacks a tool comparable to Template Haskell for
+metaprograming\footnote{The F\# user might cosider type providers a
+  comparable alternative, however they were carefully considered and
+  we concluded they are not suitable for the job.} but can use .NET's
+runtime capabilities to do the job via relfection.
 
-The |Object| class of .Net has a method called |GetType : unit ->
+The |Object| class of .NET has a method called |GetType : unit ->
 Type| which returns a value that contains all the information about
 the type of the value on which it is invoked\footnote{Due to
   sub-typeing, multiple types can be assigned to a value in .Net.
@@ -705,7 +704,7 @@ This example uses the following F\# specific constructs:
 \item The |override| keyword. It serves the same purpose as |member|
   but the results in a compile time error if no matching |member| is
   found in the superclass.
-\item A method preceded by a type variable denotes universal
+\item A method followed by a type variable denotes universal
   quantification. In this case in this case |self.FoldMeta<<`ty>>|
   universally quantifies over the type variable |`ty|. In some cases,
   the quantification is implicit and the compiler can do it
@@ -839,7 +838,7 @@ introduced in section \ref{sec:background}.
   %% & & |self.Sum(x : Meta,v1 : tau1,...,vn : taun)| \\
   %% & & | = o.Sum<<tau>>(x : Sum<<tau,Meta,Meta>>,v_1 : tau1,...,v_n : taun)|
 \end{tabular}
-\caption{Selection criteria of the generic provider when using reflection to select an overload.
+\caption{Selection criteria of the |FoldMeta| class when using reflection to select an overload.
 This is the criteria when |FoldMeta| takes no extra arguments but the selection works the same
 way since only the sub-types of |Meta| are inspected to select the overload as long as the types
 of the extra arguments are consistent.}
@@ -1208,7 +1207,7 @@ type FoldMeta<<
 Unfortunately, type constraints in F\# can only be used to enforce
 that a type must be a subclass of a \emph{concrete} type, not a type
 variable. One alternative is to make the sub-typeing relation explicit
-with the help of member constraints \footnote{The reader might consider using interfaces but the problem with them is that a type can only implement an interface once. See \cite{InterfaceLims}}:
+with the help of member constraints \footnote{The reader might consider using interfaces but the problem with them is that a type can only implement an interface once \cite{InterfaceLims}.}:
 \begin{code}
 type FoldMeta<<
   -- [...]

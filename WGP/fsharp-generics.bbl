@@ -1,4 +1,4 @@
-\begin{thebibliography}{12}
+\begin{thebibliography}{13}
 \providecommand{\natexlab}[1]{#1}
 \providecommand{\url}[1]{\texttt{#1}}
 \expandafter\ifx\csname urlstyle\endcsname\relax
@@ -34,6 +34,16 @@ R.~L\"{a}mmel and S.~Peyton~Jones.
 \newblock ISSN 0362-1340.
 \newblock \doi{10.1145/640136.604179}.
 \newblock URL \url{http://doi.acm.org/10.1145/640136.604179}.
+
+\bibitem[Magalh\~{a}es et~al.(2010)Magalh\~{a}es, Dijkstra, Jeuring, and
+  L\"{o}h]{GenericDeriving}
+J.~P. Magalh\~{a}es, A.~Dijkstra, J.~Jeuring, and A.~L\"{o}h.
+\newblock A generic deriving mechanism for haskell.
+\newblock In \emph{Proceedings of the Third ACM Haskell Symposium on Haskell},
+  Haskell '10, pages 37--48, New York, NY, USA, 2010. ACM.
+\newblock ISBN 978-1-4503-0252-4.
+\newblock \doi{10.1145/1863523.1863529}.
+\newblock URL \url{http://doi.acm.org/10.1145/1863523.1863529}.
 
 \bibitem[Magalh{\~a}es and Jeuring(2011)]{instant2}
 J.~P. Magalh{\~a}es and J.~Jeuring.
