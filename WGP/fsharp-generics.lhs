@@ -1036,29 +1036,33 @@ child nodes:
 type Collect<<vart>>() =
   inherit FoldMeta<<vart,vart list>>()
 
-  member x.FoldMeta(
+  member self.FoldMeta(
     c : Sum<<vart,Meta,Meta>>) =
     match c with
-    | L m -> x.Collect m
-    | R m -> x.Collect m
+    | L m -> self.Collect m
+    | R m -> self.Collect m
 
-  member x.FoldMeta(
+  member self.FoldMeta(
     c : Sum<<unit,Meta,Meta>>) =
     match c with
-    | L m -> x.Collect m
-    | R m -> x.Collect m
+    | L m -> self.Collect m
+    | R m -> self.Collect m
 
-  override x.FoldMeta<<`x>>(
-    s : Sum<<`x,Meta,Meta>>) = []
+  override self.FoldMeta<<`ty>>(
+    s : Sum<<`ty,Meta,Meta>>) = []
 
-  override x.FoldMeta(c : Prod<<Meta,Meta>>) =
-    List.concat<<vart>> [x.Collect c.E1;x.Collect c.E2]
+  override self.FoldMeta<<`ty>>(
+    c : Prod<<`ty,Meta,Meta>>) =
+    List.concat<<vart>> [
+      self.Collect c.E1
+      ;self.Collect c.E2]
 
-  override x.FoldMeta<<varx,`a>>(_ : K<<varx,`a>>) = []
+  override self.FoldMeta<<`ty,`a>>(
+    _ : K<<`ty,`a>>) = []
 
-  override x.FoldMeta<<`a>>(_ : U<<`a>>) = []
+  override self.FoldMeta<<`ty>>(_ : U<<`ty>>) = []
 
-  override x.FoldMeta(i : Id<<vart>>) =
+  override self.FoldMeta(i : Id<<vart>>) =
     [i.Elem]
 \end{code}
 The function is straightforward to understand. Values of the |Sum|
@@ -1066,11 +1070,10 @@ type are processed recursively; the results of products are combined
 by concatenating the resulting lists. Constants and unit types return
 an empty list. The only interesting case is that for the |Id| type
 constructor, which returns a singleton list with its associated
-value. Three overloads for the |Sum| constructor are required but only
-two of them (which are identical) do recursion. This is because this
-function only collects the direct children that appear in the type
-constructors of |vart|. \wouter{I don't understand the explanation
-  about |Sum| types}
+value. 
+
+Three overloads for the |Sum| constructor are required but only
+two of them (which are identical) do recursion. This is because values of type |Sum| where the first argument is different to |`t| are representations of internal values of |`t|. For example, the |Company| type introduced above contains sums of type |Sum<<Company<< _ >>,_,_>>| and |Sum<<Department<< _ >>,_,_ >>| among other sums. When uniplate is called with |`t| instantiated to |Company|, only the sums of type |Company| should be recursively traversed.
 
 The second generic function is |Instantiate|, defined as
 follows:
@@ -1084,59 +1087,52 @@ type Instantiate<<vart>>(values` : vart list) =
                 | x::xs -> values <- xs;Some x
                 | [] -> None
 
-  member x.FoldMeta(
+  member self.FoldMeta(
     s : Sum<<vart,Meta,Meta>>) =
     match s with
     | L m -> Sum<<vart,Meta,Meta>>(
-      x.FoldMeta m |> Choice1Of2)
+      self.FoldMeta m |> Choice1Of2)
     | R m -> Sum<<vart,Meta,Meta>>(
-      x.FoldMeta m |> Choice2Of2)
+      self.FoldMeta m |> Choice2Of2)
     :> Meta
 
-  member x.FoldMeta(
+  member self.FoldMeta(
     s : Sum<<unit,Meta,Meta>>) =
     match s with
     | L m -> Sum<<unit,Meta,Meta>>(
-      x.FoldMeta m |> Choice1Of2)
+      self.FoldMeta m |> Choice1Of2)
     | R m -> Sum<<unit,Meta,Meta>>(
-      x.FoldMeta m |> Choice2Of2)
+      self.FoldMeta m |> Choice2Of2)
     :> Meta
 
-  override x.FoldMeta(i : Id<<vart>>) =
+  override self.FoldMeta(i : Id<<vart>>) =
     match pop () with
     | Some x -> Id x
     | None -> failwith "Not enough args"
     :> Meta
   
-  override x.FoldMeta<<`x>>(
-    s : Sum<<`x,Meta,Meta>>) =
+  override self.FoldMeta<<`ty>>(
+    s : Sum<<`ty,Meta,Meta>>) =
     s :> Meta
 
-  override x.FoldMeta(p: Prod<<Meta,Meta>>) =
-    Prod(x.FoldMeta p.E1,x.FoldMeta p.E2) 
+  override self.FoldMeta<<`ty>>(
+    p: Prod<<`ty,Meta,Meta>>) =
+    Prod(self.FoldMeta p.E1,self.FoldMeta p.E2) 
     :> Meta
 
-  override x.FoldMeta<<`a>>(u : U<<`a>>) = 
+  override self.FoldMeta<<`a>>(u : U<<`a>>) = 
     u :> Meta
 
-  override x.FoldMeta<<`x,`a>>(k : K<<`x,`a>>) = 
+  override self.FoldMeta<<`ty,`a>>(k : K<<`ty,`a>>) = 
     k :> Meta
 \end{code}
-This function is provided with a list of values and
-when applied to a type representation it will replace
-all the recursive values within the representation
-by values of the provided list. The overloaded
-definition for the |Sum| case is necessary.
-Recall that the first argument of |Sum| is either
-the type being represented by the |Sum| or
-|unit| if that |Sum| is a intermediate
-representation. Since uniplate only deals with
-recursive values that occur on the first level,
-the |Sum| where the first argument is different
-from |`t| (or the generic type to which |uniplate|
-has been applied) should not be recursively traversed.
-To wrap both pieces together the |Uniplate| function
-is now defined:
+This function is provided with a list of values and when applied to a
+type representation it will replace all the recursive values within
+the representation by values of the provided list. The traversal
+proceeds in the same way as done by the |Collect| function but instead
+of adding values to a list, the values get removed from the input list
+using the |pop| function and replaced in the input representation.  To
+wrap both pieces together the |Uniplate| function is now defined:
 \begin{code}
 let uniplate<<vart>> (x : vart) =
   let g = Generic<<vart>>()
@@ -1158,13 +1154,13 @@ families, to enable generic functions to return types of different
 values. The |FoldMeta| class lacks such mechanism as it can be used to
 subvert the F\# type system. Consider the following example:
 \begin{code}
-member x.FoldMeta(v : K<<Employee>>) = 
+member self.FoldMeta(v : K<<Employee>>) = 
   K(f v.Elem) :> Meta
 \end{code}
 The type checker would not object to changing the
 function as follows:
 \begin{code}
-member x.FoldMeta(v : K<<Employee>>) = 
+member self.FoldMeta(v : K<<Employee>>) = 
   K("I am not an Employee!!") :> Meta
 \end{code}
 This changes the type of value stored in the |K| constructor. This is
