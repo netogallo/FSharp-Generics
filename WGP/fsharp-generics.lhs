@@ -101,7 +101,7 @@
 \category{D.1.1}{Applicative (Functional) Programming}{}
 \category{D.3.3}{Language constructs and features}{}
 \keywords
-data-type generic programming, reflection, F\#, type providers
+data-type generic programming, reflection, F\#
 
 \section{Introduction}
 
@@ -578,8 +578,49 @@ will be \emph{generated} using .NET's reflection mechanism. To keep
 the generation process as simple as possible, we have chosen not to
 optimize the representation types.
 
-\todo{Explain the Generic type, embedding projection pairs, use of
-  reflection, etc. here}
+\section{The Generic Class}
+\label{sec:generic-class}
+Type representations are a useful tool to represent values of a family
+of types and allow functions over that family of types to be
+inductively defined over the representations. However, they are not
+much help if the user has to define a representation for every type
+she uses. Regular relies on Template Haskell \cite{TemplateHaskell}
+for the job. The Glassgow Haskell Compiler and Utrecht Haskell
+Compiler (among others) have a built in mechanism called Generic
+Haskell \cite{GenericHaskell} for this. The F\# language lacks a tool
+comparable to Template Haskell for metaprograming\footnote{The F\#
+  user might cosider type providers a comparable alternative, however
+  they were carefully considered and we concluded they are not
+  suitable for the job.} but can use .Net's runtime capabilities to do
+the job via relfection.
+
+The |Object| class of .Net has a method called |GetType : unit ->
+Type| which returns a value that contains all the information about
+the type of the value on which it is invoked\footnote{Due to
+  sub-typeing, multiple types can be assigned to a value in .Net.
+  However, |GetType| returns the lowest type of the sub-typeing
+  relation.}. Since |Type| is an abstract class, every .NET hosted
+language can implemented in whatever way it finds it suitable. This
+allows the F\# compiler to include metadata that can be used to query
+what are the type constructors and parameters of such constructors of
+any ADT at runtime.  
+
+The .NET runtime type information is used to fold
+over the |Type| value of the value that is being represented. By
+folding over the structure of the |Type|, it is possible to
+automatically do the conversion from/to values and representations,
+similarly to the way it is done in Haskell. Even though reflection
+seems to impose an overhead, performacne is comparable at the long run
+since reflection only needs to be used the first time a type gets
+mapped to a representation. Afterwards a optimizer representation for
+that type is constructed which allows to quickly fold more quickly on
+subsequent calls. This functionality is implemented by the
+|Generic<<`t>>| class which contains the following memebers:
+\begin{code}
+type Generic<<`t>>() =
+  member x.To : vart -> Meta
+  member x.From : Meta -> vart
+\end{code}
 
 \section{Generic Functions}
 \label{sec:generic-functions}
@@ -614,7 +655,7 @@ a typeclass. In our library, we define |GMap| as a .NET class:
 \begin{code}
 type GMap<<`t,`x>>() = 
   class 
-  inherit Monofold<<
+  inherit FoldMeta<<
     `t,Meta,
     `x -> `x>>()
   -- [...] Implementation [...]
@@ -625,7 +666,7 @@ specifies the minimal implementation required to define a generic
 function. Its definition is given in figure \ref{fig:def-meta} and it
 will be explained in detail in section \ref{sec:conversion}.  This
 minimal implementation consists of a method, |FoldMeta|, for all the
-different subtypes of our |Meta| class. By overriding these |Monofold|
+different subtypes of our |Meta| class. By overriding these |FoldMeta|
 methods in the concrete |GMap| class, we can then define the desired
 map operation. The |FoldMeta| class and its member functions will
 explained in detail in Section \ref{sec:conversion}.
@@ -691,7 +732,7 @@ override x.FoldMeta<<`a>>
 \end{code}
 The type |Prod| contains the properties |E1| and |E2|, storing the two
 constituent elements of the product. Once again, we recursively invoke
-|Monofold| on these values.
+|FoldMeta| on these values.
 
 The next case handles the type |K<<`a,`x>>|. This is where the
 argument function is applied to the |<<`a,`x>>|s:
@@ -706,18 +747,11 @@ revisit later.
 
 The case for the |Id| constructor is a bit more involved. Remember
 that |Id| contains a property called |Elem : `t|. This property
-contains a value, and not a representation of type |Meta|. In order to
-obtain the desired representation, we need to define the type
-|generic(Generic)(t)|, containing the following two member functions:
-\begin{code}
-member x.To : vart -> Meta
-member x.From : Meta -> vart
-\end{code}
-\wouter{Generic uses .NET reflection mechanism to generate}
-With that class it is now possible to extract the contents of |Id|,
-call the |Monofold| function and convert the result back to the original
-type. We can define the |Monofold| instance for the
-|Id| constructor as follows:
+contains a value, and not a representation of type |Meta|.  With the
+|Generic<<`t>>| class it is possible to extract the contents of |Id|,
+call the |FoldMeta| function and convert the result back to the
+original type. We can define the |FoldMeta| instance for the |Id|
+constructor as follows:
 \begin{code}
 override x.FoldMeta
   (v : Id<<`t>>
@@ -740,28 +774,28 @@ Unit values and constants of some type distinct from |Employee| are
 left untouched by |GMap|.
 
 This class contains two definitions for the |K| constructor: one
-overrides the generic method |Monofold<<`a>>|; the other defines a
+overrides the generic method |FoldMeta<<`a>>|; the other defines a
 member function on |K<<`x>>|. Notice that <<`x>> will be instantiated
 when the |GMap| class is instantiated because it is a type argument on
 the class level. This means that when |GMap| is instantiated, |`x|
 will be a concrete type and <<`a>> will be a type variable.  The
-|Monofold| class only requires the generic definition; but we also add
+|FoldMeta| class only requires the generic definition; but we also add
 the more specific member function handling <<`x>>. By carefully
 handling overloaded functions, we will ensure the most specific choice
 is always made when faced with such ambiguity. We will cover the
 precise rules in greater detail in the next section.
 
-Using the |GMap : Monofold| class, we can now define the following
+Using the |GMap : FoldMeta| class, we can now define the following
 |gmap| function:
 \begin{code}
 member x.gmap<`x>(x : vart,
              f : `x -> `x) =
     let gen = Generic<`x>>()
-    x.Monofold(gen.To x,f)
+    x.FoldMeta(gen.To x,f)
     |> gen.From
 \end{code}
 Calling this function, however, requires dispatching on the
-representation type, which is handled by the |Monofold| and its member
+representation type, which is handled by the |FoldMeta| and its member
 function.
 
 \section{The FoldMeta class}
@@ -775,18 +809,19 @@ function.
 \label{sec:conversion}
 \begin{table*}
 \begin{tabular}{cccc}
-  \multirow{15}{*}{|o.FoldMeta(m : Meta)|} & \multirow{15}{*}{$=\left\{\begin{array}{c} \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \end{array}\right.$} & \multirow{2}{*}{|o.FoldMeta(x)|} & |exists o.FoldMeta : tau->tau1|  \\
-  & & & |m : tau| \\
+  \multirow{15}{*}{|o.FoldMeta(m : Meta)|} & \multirow{15}{*}{$=\left\{\begin{array}{c} \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \end{array}\right.$} & \multirow{2}{*}{|o.FoldMeta(m)|} & |exists o.FoldMeta : tau->tau1|  \\
+  & & & $\wedge$ |m : tau| \\
   & & & \\
-  & & \multirow{3}{*}{|o.FoldMeta<<tau_a>>(x)|} & |o.FoldMeta<<`t>> : tau'->tau1| \\
-  & & & $\wedge$ |m : tau<<tau_a,Meta,Meta>>| \\
+  & & \multirow{4}{*}{|o.FoldMeta<<tau_a>>(m.Cast())|} & |o.FoldMeta<<`t>> : tau'->tau1| \\
+  & & & $\wedge$ |m : tau<<tau_a,tau_m1,tau_m2>>| \\
+  & & & $\wedge$ |tau_m1 :> Meta| $\wedge$ |tau_m2 :> Meta| \\
   & & & $\wedge$ |[tau_a/`t]tau' = tau<<tau_a,Meta,Meta>>| \\
   & & & \\
-  & & \multirow{3}{*}{|o.FoldMeta<<tau_b>>(x)|} & |exists o.FoldMeta<<`t>> : tau'->tau1| \\
+  & & \multirow{3}{*}{|o.FoldMeta<<tau_b>>(m)|} & |exists o.FoldMeta<<`t>> : tau'->tau1| \\
   & & & $\wedge$ |m : tau<<tau_a,tau_b>>|\\
   & & & $\wedge$ |[tau_b/`t]tau' = tau<<tau_a,tau_b>>|\\
   & & & \\
-  & & \multirow{3}{*}{|o.FoldMeta<<tau_a,tau_b>>(x)|} & |o.FoldMeta<<`t,`u>> : tau'->tau1| \\
+  & & \multirow{3}{*}{|o.FoldMeta<<tau_a,tau_b>>(m)|} & |o.FoldMeta<<`t,`u>> : tau'->tau1| \\
   & & & $\wedge$ |m : tau<<tau_a,tau_b>>|\\
   & & & $\wedge$ |[tau_a/`t][tau_b/`u]tau' = tau<<tau_a,tau_b>>|\\
   & & & \\
@@ -800,8 +835,6 @@ way since only the sub-types of |Meta| are inspected to select the overload as l
 of the extra arguments are consistent.}
 \label{fig:selector}
 \end{table*}
-
-
 
 In the previous section, we assumed the existence of a |FoldMeta|
 function with type |Meta * (`x->`x) -> Meta|. Before getting into
@@ -866,22 +899,45 @@ selecting the overload that should be invoked based on the type.
 
 To achive this automatically, reflection is used. The |FoldMeta| class
 provides a default implementation of the |FoldMeta| member responsible
-for this job. The dispatching mechanism we have implemented by such
+for this job. The dispatching mechanism implemented by such
 member is summarized in Figure~\ref{fig:selector}. This figure 
 adopts the following conventions:
 \begin{itemize}
 \item Greek variables, such as |tau| and |tau_i|, refer to a
-  concrete type, such as |int| or |string|.
+  concrete type, such as |int| or |string|. They can be contrete
+  types that take generic arguments such as |K<<`t,`a>>|.
 \item As is conventional in F\#, generic type variables are prefixed
   with an apostrophe, such as |`t|. These type variables may still be
   instantiated to a concrete type. We will use the usual notation for
-  substitution, writing |[tau / vart]| when the variable |vart| is
-  instantiated to |tau|.
-\item By convention, the variable |x| will refer the object on which
+  substitution, writing |[tau / vart]tau'| when the variable |vart| is
+  instantiated to |tau| in type |tau'|.
+\item By convention, the variable |o| will refer the object on which
   the methods are being invoked.
-\item We write |m hasmethod x| to refer to the method |m| of object
-  |x|.
+\item The |exists o.FoldMeta : tau| indicates a case were an override 
+  of |FoldMeta| with type |tau| is optional, in other words it's not an 
+  abstract member of the |FoldMeta| abstract class. Conversly, when
+  the the overload is a required to be defined in the abstract class,
+  we omit the |exists| and only write |o.FoldMeta : tau|.
+\item For the |Sum| and |Prod| case, a member function called |Cast|
+  is invoked. This function is necessary because |tau<<tau_a,tau_m1,tau_m2>> !:> tau<<tau_a,Meta,Meta>>| in spite of |tau_m1:>Meta| and |tau_m2:>Meta|. This function is defined below.
 \end{itemize}
+\begin{code}
+type Sum<<`t,`a,`b>> with
+  member Cast : unit -> Sum<<`t,Meta,Meta>>
+  member x.Cast() = 
+  match x.Elem with
+  | Choice1Of2 m -> 
+    Sum<<`t,Meta,Meta>>(Choice1Of2 (m :> Meta))
+  | Choice2Of2 m -> 
+    Sum<<`t,Meta,Meta>>(Choice2Of2 (m :> Meta))
+\end{code}
+\begin{code}
+type Prod<<`t,`a,`b>> with
+  member Cast : unit -> Prod<<`t,Meta,Meta>>
+  member x.Cast() = 
+    Prod<<`t,Meta,Meta>>(
+     x.E1 :> Meta,x.E2 :> Meta)
+\end{code}
 
 Since |FoldMeta| is an abstract class, any concrete subclass requires
 a minimal set of methods that ensure the existence of a method for
@@ -893,40 +949,37 @@ type it is passed as an argument.
 Using .NET's reflection mechanism, we can inspect the type of the
 argument passed to the |FoldMeta| method. If we have exactly the right
 method at our disposal, for example if one has the instance
-|GMap<<List<Employee>>,<<Employee -> Employee>>| of the |GMap| class,
+|GMap << List<<Employee>> , <<Employee -> Employee>>| of the |GMap| class,
 when calling |FoldMeta| on |g : K<<`x,Employee>>| in our example, we call
 that |FoldMeta| instance. Only when there is no specific match, do we
 instantiate generic type variables. For example, our example did not
-define a |Monofold| instance for the |K<<`x,int>>| class; when
+define a |FoldMeta| instance for the |K<<`x,int>>| class; when
 encountering an |int|, we call the instance for |K<<`x,`a>>|,
 instantiating |`a| to |int|.
 
 For type safety, the |FoldMeta| class is parametrized by several type
-arguments. The type |FoldMeta <<vart,varin1,...,varinn,`out>>|has the
-the following type variables:
+arguments. The type |FoldMeta <<vart,varin1,...,varinn,`out>>|
+consists of the follwing arguments:
 \begin{itemize}
 \item The type |vart| refers to the algebraic data type on which the
   function operates. Values of this type are translated to a generic
-  representation, that is later handed off to the |Monofold|
+  representation, that is later handed off to the |FoldMeta|
   function.
 \item The type |`out| refers to the return type of all of the generic
   methods. In our |GMap| example, we returned a value of type |Meta|,
   corresponding to the algebraic data type resulting from the map.
 \item The remaining type variables, |varin1| ... |varinn|, refer to
   any additional parameters of the generic function being defined. In
-  the |GMap| function, there is a single argument of type |Empolyee ->
-  Employee|. Types in F\# must take a specific number of arguments but
+  the |GMap| function, there is a single argument of type |`x ->
+  `x|. Types in F\# must take a specific number of arguments but
   the language allows multiple types with the same name to be
   defined. So a variants of |FoldMeta| are defined taking from 0 to 5
-  type input type argumetns.
+  input type argumetns.
 \end{itemize}
 With these types in place, the library can apply a generic function to
 any ADT. Furthermore, the definition of a new generic function does
 not require any casting or reflection. That functionality is
 abstracted away by using a common representation for all types.
-
-\wouter{So where is the conversion from ADT to Meta handled? We
-  haven't said this clearly enough yet...}
 
 \section{Case study: uniplate}
 \label{sec:uniplate}
@@ -950,40 +1003,43 @@ type Arith =
   | Neg of Arith
   | Val of int
   
-let (c,f) = uniplate (Op ("add",Neg (Val 5),Val 8))
-printf "%A" c -- [Neg (Val 5);Val 8]
-printf "%A" (f [Val 1;Val 2]) -- Op ("add",Val 1,Val 2)
+let (c,f) = uniplate (
+  Op ("add",Neg (Val 5),Val 8))
+-- prints [Neg (Val 5);Val 8]
+printf "%A" c
+-- prints Op ("add",Val 1,Val 2)
+printf "%A" (f [Val 1;Val 2]) 
 \end{code}
 To define the function, we will define two auxiliary generic
 functions. The first is |Collect| which computes the list of
 child nodes:
 \begin{code}
 type Collect<<vart>>() =
-  inherit Monofold<<vart,vart list>>()
+  inherit FoldMeta<<vart,vart list>>()
 
-  member x.Monofold(
+  member x.FoldMeta(
     c : Sum<<vart,Meta,Meta>>) =
     match c with
     | L m -> x.Collect m
     | R m -> x.Collect m
 
-  member x.Monofold(
+  member x.FoldMeta(
     c : Sum<<unit,Meta,Meta>>) =
     match c with
     | L m -> x.Collect m
     | R m -> x.Collect m
 
-  override x.Monofold<<`x>>(
+  override x.FoldMeta<<`x>>(
     s : Sum<<`x,Meta,Meta>>) = []
 
-  override x.Monofold(c : Prod<<Meta,Meta>>) =
+  override x.FoldMeta(c : Prod<<Meta,Meta>>) =
     List.concat<<vart>> [x.Collect c.E1;x.Collect c.E2]
 
-  override x.Monofold<<varx>>(_ : K<<varx>>) = []
+  override x.FoldMeta<<varx,`a>>(_ : K<<varx,`a>>) = []
 
-  override x.Monofold(_ : U) = []
+  override x.FoldMeta<<`a>>(_ : U<<`a>>) = []
 
-  override x.Monofold(i : Id<<vart>>) =
+  override x.FoldMeta(i : Id<<vart>>) =
     [i.Elem]
 \end{code}
 The function is straightforward to understand. Values of the |Sum|
@@ -1002,47 +1058,50 @@ follows:
 \begin{code}
 
 type Instantiate<<vart>>(values` : vart list) =
-  inherit Monofold<<vart,Meta>>()
+  inherit FoldMeta<<vart,Meta>>()
   let mutable values = values`
 
   let pop () = match values with
                 | x::xs -> values <- xs;Some x
                 | [] -> None
 
-  member x.Monofold(
+  member x.FoldMeta(
     s : Sum<<vart,Meta,Meta>>) =
     match s with
     | L m -> Sum<<vart,Meta,Meta>>(
-      x.Monofold m |> Choice1Of2)
+      x.FoldMeta m |> Choice1Of2)
     | R m -> Sum<<vart,Meta,Meta>>(
-      x.Monofold m |> Choice2Of2)
+      x.FoldMeta m |> Choice2Of2)
     :> Meta
 
-  member x.Monofold(
+  member x.FoldMeta(
     s : Sum<<unit,Meta,Meta>>) =
     match s with
     | L m -> Sum<<unit,Meta,Meta>>(
-      x.Monofold m |> Choice1Of2)
+      x.FoldMeta m |> Choice1Of2)
     | R m -> Sum<<unit,Meta,Meta>>(
-      x.Monofold m |> Choice2Of2)
+      x.FoldMeta m |> Choice2Of2)
     :> Meta
 
-  override x.Monofold(i : Id<<vart>>) =
+  override x.FoldMeta(i : Id<<vart>>) =
     match pop () with
     | Some x -> Id x
     | None -> failwith "Not enough args"
     :> Meta
   
-  override x.Monofold<<`x>>(s : Sum<<`x,Meta,Meta>>) =
+  override x.FoldMeta<<`x>>(
+    s : Sum<<`x,Meta,Meta>>) =
     s :> Meta
 
-  override x.Monofold(p: Prod<<Meta,Meta>>) =
-    Prod(x.Monofold p.E1,x.Monofold p.E2) 
+  override x.FoldMeta(p: Prod<<Meta,Meta>>) =
+    Prod(x.FoldMeta p.E1,x.FoldMeta p.E2) 
     :> Meta
 
-  override x.Monofold(u : Unit) = u :> Meta
+  override x.FoldMeta<<`a>>(u : U<<`a>>) = 
+    u :> Meta
 
-  override x.Monofold<<`x>>(k : K<<`x>>) = k :> Meta
+  override x.FoldMeta<<`x,`a>>(k : K<<`x,`a>>) = 
+    k :> Meta
 \end{code}
 This function is provided with a list of values and
 when applied to a type representation it will replace
@@ -1063,27 +1122,30 @@ is now defined:
 let uniplate<<vart>> (x : vart) =
   let g = Generic<<vart>>()
   let rep = g.To x
-  let xs = rep |> Collect().Monofold
-  (xs, \ xs' -> Instantiate<<vart>>(xs').Monofold<<vart>>(rep) |> g.From)
+  let xs = rep |> Collect().FoldMeta
+  let inst xs = 
+    xs |> Instantiate<<vart>>(xs').FoldMeta<<vart>>
+    |> g.From
+  (xs, inst)
 \end{code}
 
-\section{Limitations of the |Monofold| class}
+\section{Limitations of the |FoldMeta| class}
 \label{sec:better-monofold}
 A major limitation of the current implementation is that all the
-overloads of |Monofold| must return a value of the same type. More
+overloads of |FoldMeta| must return a value of the same type. More
 advanced libraries for data type generic programming use some limited
 form of dependent types, possibly through type classes or type
 families, to enable generic functions to return types of different
-values. The |Monofold| class lacks such mechanism as it can be used to
+values. The |FoldMeta| class lacks such mechanism as it can be used to
 subvert the F\# type system. Consider the following example:
 \begin{code}
-member x.Monofold(v : K<<Employee>>) = 
+member x.FoldMeta(v : K<<Employee>>) = 
   K(f v.Elem) :> Meta
 \end{code}
 The type checker would not object to changing the
 function as follows:
 \begin{code}
-member x.Monofold(v : K<<Employee>>) = 
+member x.FoldMeta(v : K<<Employee>>) = 
   K("I am not an Employee!!") :> Meta
 \end{code}
 This changes the type of value stored in the |K| constructor. This is
@@ -1092,10 +1154,10 @@ type correct since any instance of |K| is a subtype of
   dynamically?}
 
 Such errors could be prevented by revisiting the previous definition
-of the |Monofold| class, adding an additional type parameters for each
+of the |FoldMeta| class, adding an additional type parameters for each
 overload:
 \begin{code}
-type Monofold<<
+type FoldMeta<<
   vart,  -- Generic\ type
   `m,    -- Return\ type\ of\ the\ Meta\ overload
   `s,    -- Return\ type\ of\ the\ Sum\ overload
@@ -1105,15 +1167,15 @@ type Monofold<<
   `u,    -- Return\ type\ of\ the\ U\ overload
   >>
 \end{code}
-However, recursive calls to |Monofold| still expect it to
+However, recursive calls to |FoldMeta| still expect it to
 return a value of type |Meta|.\wouter{Why?} This means that the
 generics would need to be constrained to be a
 subtype of the |Meta| class. Such constraint is possible,
-but the |Monofold| function should be able to return
+but the |FoldMeta| function should be able to return
 any type, not just subtypes of |Meta|. We would, ideally, like
 to require a more general constraints:
 \begin{code}
-type Monofold<<
+type FoldMeta<<
   -- [...]
   when `s :> `m
   and `p :> `m
@@ -1205,7 +1267,7 @@ to |read|. Although a type error cannot occur when invoking generic
 methods and obtaining the result, the user can still experience
 unexpected behavior if he defines a generic function with the wrong
 type. This type error will simply be ignored by the compiler and the
-selector and resulting in the wrong overload of |Monofold| being
+selector and resulting in the wrong overload of |FoldMeta| being
 selected by the selector.
 
 Compared to reflection, this approach is much less general. In the
