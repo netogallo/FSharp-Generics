@@ -124,11 +124,13 @@ corresponding representation. This enables users to call generic
 functions on custom data types, without having to implement the
 underlying conversions manually.
 
-Yet this approach has not been as widely adopted in other
-languages. In this paper, we will attempt to address this by
-implementing a library for data type generic programming in F\#. More
-specifically, we make the following contributions:
-
+The approach has been adapted for other languages like
+Scala\cite{scala-jfp}, but it relies heavily on advanced type system
+features. In this paper we will try implementing a simpler variant of
+the approach suitable for simpler languages. In this paper, the F\#
+language is used because it adopted .NET's type system which is shared
+by a family of languages. Specifically, we make the following
+contributions:
 \begin{itemize}
 \item The type system of F\# may not be as rich as that of Haskell,
   but there are numerous features, including reflection, subtyping,
@@ -160,8 +162,7 @@ specifically, we make the following contributions:
 
 We hope that porting the ideas from the data type generic programming
 community to F\# will pave the way for the wider adoption of these
-ideas in other, more mainstream, functional languages such as Scala or
-Swift.
+ideas in other, more mainstream, functional languages such as Swift.
 
 \section{Background}
 \label{sec:background}
