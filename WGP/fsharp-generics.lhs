@@ -354,7 +354,7 @@ not type-safe in general, since the information gained through
 reflection is only available at run-time. Any errors will cause a
 runtime exception. Nevertheless, the reflection mechanism is actively
 used in libraries such as FsPickler~\cite{FsPickler}, a general
-purpose .NET serializer, or Nancy\cite{Nancy}, a .NET web framework.
+purpose .NET serializer, or Nancy, a .NET web framework.
 
 % \paragraph{Type Providers}
 % One language feature particular to F\# is \emph{type
@@ -1154,19 +1154,21 @@ families, to enable generic functions to return types of different
 values. The |FoldMeta| class lacks such mechanism as it can be used to
 subvert the F\# type system. Consider the following example:
 \begin{code}
-member self.FoldMeta(v : K<<Employee>>) = 
-  K(f v.Elem) :> Meta
+member self.FoldMeta<<`ty>>(
+  v : K<<`ty,Employee>>) = 
+  K(v.Elem) :> Meta
 \end{code}
 The type checker would not object to changing the
 function as follows:
 \begin{code}
-member self.FoldMeta(v : K<<Employee>>) = 
+member self.FoldMeta<<`ty>>(
+  v : K<<`ty,Employee>>) = 
   K("I am not an Employee!!") :> Meta
 \end{code}
 This changes the type of value stored in the |K| constructor. This is
-type correct since any instance of |K| is a subtype of
-|Meta|. \wouter{Yet what goes wrong? Conversion from meta to adt fails
-  dynamically?}
+type correct since any instance of |K| is a subtype of |Meta|. If this
+result was used by the |From| function of the |Generic| class it would
+produce a runtime error.
 
 Such errors could be prevented by revisiting the previous definition
 of the |FoldMeta| class, adding an additional type parameters for each
@@ -1182,13 +1184,17 @@ type FoldMeta<<
   `u,    -- Return\ type\ of\ the\ U\ overload
   >>
 \end{code}
-However, recursive calls to |FoldMeta| still expect it to
-return a value of type |Meta|.\wouter{Why?} This means that the
-generics would need to be constrained to be a
-subtype of the |Meta| class. Such constraint is possible,
-but the |FoldMeta| function should be able to return
-any type, not just subtypes of |Meta|. We would, ideally, like
-to require a more general constraints:
+However, to perform recursive calls, all overloads invoke the overload
+for type |Meta| which dispatches the apropiate overload as discussed
+in section \ref{sec:conversion}. Since the current implementation
+requires all the overloads to have the same type, the method must not
+check that the return type of the overload it selects is correct. If
+additional return types are introduced, this will no longer be the
+case. The dispatch could fail at runtime if the selected overload
+returns a different type. The problem can be solved by enforcing that
+all overloads return values which are a sub-type of some other type,
+in this case |`m|, so the dispatcher can safely cast the result to
+this type. This can be enforced with additional type constraints:
 \begin{code}
 type FoldMeta<<
   -- [...]
@@ -1199,9 +1205,25 @@ type FoldMeta<<
   and `u :> `m
   >>
 \end{code}
-Unfortunately, type constraints can only be used to enforce that a
-type must be a subclass of a \emph{concrete} type, not a type
-variable.
+Unfortunately, type constraints in F\# can only be used to enforce
+that a type must be a subclass of a \emph{concrete} type, not a type
+variable. One alternative is to make the sub-typeing relation explicit
+with the help of member constraints \footnote{The reader might consider using interfaces but the problem with them is that a type can only implement an interface once. See \cite{InterfaceLims}}:
+\begin{code}
+type FoldMeta<<
+  -- [...]
+  when `s : (member Cast : unit -> `m)
+  and `p : (member Cast : unit -> `m)
+  and `i : (member Cast : unit -> `m)
+  and `k : (member Cast : unit -> `m)
+  and `u : (member Cast : unit -> `m)
+  >>
+\end{code}
+A member constraint imposes the requirement that a member function of
+the specified type to be present in the type being instantiated by a
+variable. This way the dispatcher |FoldMeta| member can safely cast
+the result into type |`m| by calling the |Cast| method of the type
+which is required to be present.
 
 Readers familiar with F\# might also consider type providers as an
 alternative approach to the meta-programming required to generate
@@ -1211,7 +1233,7 @@ forbidding generic methods) which makes them inapropiate.
 
 \wouter{What about defining a 'real' generic gmap function?}
 \wouter{Explicit subtyping by manual casts}
-
+\ernesto{I don't understand what you mean here}
 \section{Discussion}
 Datatype generic programming is a well tested solid approach to write
 generic algorithms. It offers a lot of expressiveness compared to
