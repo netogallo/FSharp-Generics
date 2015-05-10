@@ -1325,7 +1325,8 @@ algebraic data types.
 \todo{Fix overfull hboxes}
 \todo{Extend bibliograhpy}
 
-% \acks
+%\acks
+% We would like to thank Ruud Koot and the computer science reading club for their
 
 % Acknowledgments, if needed.
 
