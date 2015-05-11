@@ -1039,6 +1039,16 @@ forbidding generic methods) which makes them inapropiate.
 \wouter{Explicit subtyping by manual casts}
 
 \section{Discussion}
+\wouter{I think we need to make the following points:
+  \begin{itemize}
+  \item limited type safety when defining generic functions;
+  \item type safe calling of generic functions;
+  \item automated EP pairs using .NET reflection.
+  \item limited possibility to generate generic types (like read) for
+    now.
+  \end{itemize}
+}
+
 Datatype generic programming is a well tested solid approach to write
 generic algorithms. It offers a lot of expressiveness compared to
 combinator based libraries but has the cost of being harder to use and
@@ -1084,32 +1094,12 @@ arguments.  of the algorithm. \ernesto{This last statement is still
   relevant in spite of no longer using type providers}
 
 \subsection*{Conclusions}
-Datatype generic programming was successfully implemented for the F\#
-programming languages. In spite of the absecne of higher-rank
-polymorphism, it was still possible to reclaim some of the
-functionality using reflection and abstract classes to enforce certain
-static assurances. The result is a library wich can define various
-generic functions.
-
-The main advantage of this approach compared to ordinary reflection is
-type safety. Even though the implementation performs many unsafe
-dynamic type checks, they are masked behind a type-safe interface. It
-is not possible that a generic method is invoked with a representation
-of a type that is not supported by the method. Another minor advantage
-of this approach is providing a structured way to specify how the
-generic methods should be selected through reflection. This opens
-opportunities for automatic optimization since reflection only needs
-to be used once and the method selection can be cached automatically.
-
-The main disatvantage of this library compared to other DTG libraries
-is the reduced type safety of the approach.  That has practical
-disatvantages which make it hard to define generic functions similar
-to |read|. Although a type error cannot occur when invoking generic
-methods and obtaining the result, the user can still experience
-unexpected behavior if he defines a generic function with the wrong
-type. This type error will simply be ignored by the compiler and the
-selector and resulting in the wrong overload of |Monofold| being
-selected by the selector.
+We have presented a library for datatype generic programming,
+implemented in F\#. In spite of the lack of higher-order kinds, it was
+still possible to reclaim some of the functionality using reflection,
+abstract classes, and subtyping to provide some static guarantees. The
+resulting library can be used to define various generic functions
+familiar from Haskell libraries such as Uniplate and Regular.
 
 Compared to reflection, this approach is much less general. In the
 context of F\#, mutually recursive types are still not supported. The
@@ -1122,7 +1112,7 @@ types. Then each type of the mutual recursion can be assigned an
 index. If type providers in F\# could produce generic types, it might
 be possible to lazyly construct the types required for every type
 present in a mutual recurison. Another advantage of reflection is that
-it can be used with any .Net type. This library only works for
+it can be used with any .NET type. This library only works for
 algebraic data types.
 
 
