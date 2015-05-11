@@ -1,19 +1,9 @@
-\begin{thebibliography}{13}
+\begin{thebibliography}{12}
 \providecommand{\natexlab}[1]{#1}
 \providecommand{\url}[1]{\texttt{#1}}
 \expandafter\ifx\csname urlstyle\endcsname\relax
   \providecommand{\doi}[1]{doi: #1}\else
   \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
-
-\bibitem[d.~S.~Oliveira and Gibbons(2010)]{scala-jfp}
-B.~C. d.~S.~Oliveira and J.~Gibbons.
-\newblock Scala for generic programmers.
-\newblock \emph{Journal of Functional Programming}, 20\penalty0 (3,4):\penalty0
-  303--352, 2010.
-\newblock \doi{10.1017/S0956796810000171}.
-\newblock URL
-  \url{http://www.comlab.ox.ac.uk/jeremy.gibbons/publications/scalagp-jfp.pdf}.
-\newblock Revised version of the WGP2008 paper.
 
 \bibitem[Hinze and Jeuring(2003)]{GenericHaskell}
 R.~Hinze and J.~Jeuring.
