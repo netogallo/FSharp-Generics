@@ -372,7 +372,7 @@ purpose .NET serializer, or Nancy, a .NET web framework. \todo{add citation for 
 \begin{subfigure}[t]{0.3\textwidth}
 \begin{code} 
 AbstractClass
-type Meta<<`ty>>() = class end
+type Meta() = class end
 \end{code}
 \begin{code}
 type U<<`ty>>() =
@@ -583,11 +583,10 @@ type Generic<<`t>>() =
   member x.To : vart -> Meta
   member x.From : Meta -> vart
 \end{code}
-\wouter{Shouldn't this be |Meta<<t>>|?}  Note that these conversions
-are generated \emph{dynamically}, in contrast to most Haskell
-approaches to generic programming. Using memoization, however, we can
-record the results of the |Generic| class and limit the performance
-penalty that this induces.
+Note that these conversions are generated \emph{dynamically}, in
+contrast to most Haskell approaches to generic programming. Using
+memoization, however, we can record the results of the |Generic| class
+and limit the performance penalty that this induces.
 
 \section{Generic functions}
 \label{sec:generic-functions}
@@ -602,7 +601,7 @@ abstract FoldMeta<<`ty>> : Sum<<`ty,Meta,Meta>> * varin -> `out
 abstract FoldMeta<<`ty>> : Prod<<`ty,Meta,Meta>> * varin -> `out
 abstract FoldMeta<<`ty,`a>> : K<<`ty,`a>> * varin -> `out
 abstract FoldMeta : Id<<`t>> * varin -> `out
-abstract FoldMeta<<`a>> : U<<`a>> * varin -> `out
+abstract FoldMeta<<`ty>> : U<<`ty>> * varin -> `out
 \end{code}
 \caption{Definition of the |Meta| abstract class for 
   generic functions taking one argument.}
@@ -623,23 +622,60 @@ a typeclass. In our library, we define |GMap| as a .NET class:
 type GMap<<`t,`x>>() = 
   class 
   inherit FoldMeta<<
-    `t,Meta,
-    `x -> `x>>()
+    `t,
+    `x -> `x,
+    Meta>>()
   -- [...] Implementation [...]
   end
 \end{code}
 Every generic function in our library is a subclass of the |FoldMeta|
 class.  This is an abstract class that specifies the minimal
 implementation required to define a generic function. Its definition
-is given in Figure \ref{fig:def-meta}. The minimal implementation
-consists of a method, |FoldMeta|, for all the different subtypes of
-our |Meta| class. By overriding these |FoldMeta| methods in the
-concrete |GMap| class, we can then define the desired map
-operation. The |FoldMeta| class and its member functions will
-explained in detail in Section \ref{sec:foldmeta}.
+is given in Figure \ref{fig:def-meta}. It contains three type
+arguments: |`t| which is the type on which the generic functions are
+invoked, |`varin| which is the input type of the function, |`x->`x| in
+this case, and |`out| which is the return type of the generic
+function, in this case |Meta|. 
 
-The first method we override in the of |GMap| class handles the |Sum|
-type constructor:
+\ernesto{Explain `t and `ty} The Meta class specifies the minimum
+functionality to fold over representations. That is a method for each
+representation type. Furthermore, all those methods are universally
+quantified over the representation's type arguments to ensure that a
+suitable overload is available in every case. The only exception is
+the |Id| since it represents recursion, all ocurrences of |Id| in a
+representation are the type it represents. To illustrate why this is
+necessary, consider invoking the |GMap| function on the |Company|
+type. This type contains nested |Department| values. This means that
+the intermediate |Sum| constructors in some cases are of type
+|Sum<<Department,_,_>>| and other cases of type |Sum<<Company,_,_>>|
+(among others). This means that in order to handle both (and any
+others), the |`ty| argument of the |Sum| type must be universally
+quantified. For clarity, this section adopts the convention that |`t|
+always refers to the type of the value being applied to a generic
+function and |`ty| universally quantifies over the type that a
+representation represents. The |Meta| class is explained more in depth
+in section \cite{sec:foldmeta}.
+
+%% The minimal implementation consists of
+%% a method, |FoldMeta|, for all the different subtypes of our |Meta|
+%% class. Note that |`t| and |`ty| are distinct type variables. In the
+%% |FoldMeta| class, |`t| refers to the type that corresponds to the
+%% representation being traversed and |`ty| universially quantifies over
+%% any type that an intermediate representation represents. For example
+%% consider an instance of |FoldMeta| where |`t| is instantiated to
+%% |Company|. Since |Department| is a nested type in |Company| there are
+%% some ocassions in which |FoldMeta| will be ivoked with a
+%% representation of type |Sum<<Department,_,_>>| and some occassions
+%% where it will be invoked with a representation of type
+%% |Sum<<Company,_,_>>|. Hence one needs to universally quantify in order
+%% for a single function to handle this two (and possibly many other)
+%% cases. That is the purpose of |`ty|.
+
+By overriding these |FoldMeta| methods in the concrete |GMap| class,
+we can then define the desired map operation. The |FoldMeta| class and
+its member functions will explained in detail in Section
+\ref{sec:foldmeta}. The first method we override in the of |GMap|
+class handles the |Sum| type constructor:
 % Type `a does de universal quantification over all
 % representable types.
 % Type `x is the type parameter given as an argument
@@ -738,13 +774,28 @@ the most specific choice is always made when faced with
 ambiguity. We will cover the precise rules in greater detail in the
 next section.
 
-The case for the |Id| constructor is a bit more involved. Remember
-that |Id| contains a property called |Elem : `ty|. This property
-contains a value, and not a representation of type |Meta|.  With the
-|Generic<<`ty>>| class it is possible to extract the contents of |Id|,
-call the |FoldMeta| function and convert the result back to the
+\ernesto{Tried to make clearer the difference between `t and `ty} The
+case for the |Id| constructor is a bit more involved. The |Id| case of
+the abstract |FoldMeta| member instantiates the |`ty| argument of the
+|Id| constructor to |`t|. This means that the |Id| case only needs to
+be specified for the type |`t|, the type to which the generic function
+is being applied, instead of universally quantifying over all
+types. Recall that |Id| is used to represent recursion within a
+type. To do so, it contains the value of the recursive occurence of
+|`t| in itself. That value can be accessed with the |Elem|
+property. However, the proeprty contains a value of type |`t| and not
+|Meta|, so it cannot be used for recursive calls to |FoldMeta|. With
+the |Generic<<`ty>>| class it is possible to extract the contents of
+|Id|, call the |FoldMeta| function and convert the result back to the
 original type. We can define the |FoldMeta| instance for the |Id|
 constructor as follows:
+
+%% Remember that |Id| contains a property called |Elem : `t|. This
+%% property contains a value, and not a representation of type |Meta|.
+%% With the |Generic<<`ty>>| class it is possible to extract the contents
+%% of |Id|, call the |FoldMeta| function and convert the result back to
+%% the original type. We can define the |FoldMeta| instance for the |Id|
+%% constructor as follows:
 \begin{code}
 override x.FoldMeta
   (v : Id<<`t>>
