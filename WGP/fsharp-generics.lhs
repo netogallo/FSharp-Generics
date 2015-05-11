@@ -776,34 +776,34 @@ introduced in the introduction.
 
 \section{The FoldMeta class}
 \label{sec:foldmeta}
-\begin{table*}
-\begin{tabular}{cccc}
-  \multirow{15}{*}{|self.FoldMeta(m : Meta)|} & \multirow{15}{*}{$=\left\{\begin{array}{c} \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \end{array}\right.$} & \multirow{2}{*}{|self.FoldMeta(m)|} & |exists self.FoldMeta : tau->tau1|  \\
-  & & & $\wedge$ |m : tau| \\
-  & & & \\
-  & & \multirow{4}{*}{|self.FoldMeta<<tau_a>>(m.Cast())|} & |self.FoldMeta<<`ty>> : tau'->tau1| \\
-  & & & $\wedge$ |m : tau<<tau_ty,tau_m1,tau_m2>>| \\
-  & & & $\wedge$ |tau_m1 :> Meta| $\wedge$ |tau_m2 :> Meta| \\
-  & & & $\wedge$ |[tau_ty/`ty]tau' = tau<<tau_a,Meta,Meta>>| \\
-  & & & \\
-  & & \multirow{3}{*}{|self.FoldMeta<<tau_a>>(m)|} & |exists self.FoldMeta<<`a>> : tau'->tau1| \\
-  & & & $\wedge$ |m : tau<<tau_ty,tau_a>>|\\
-  & & & $\wedge$ |[tau_a/`a]tau' = tau<<tau_ty,tau_a>>|\\
-  & & & \\
-  & & \multirow{3}{*}{|self.FoldMeta<<tau_ty,tau_a>>(m)|} & |self.FoldMeta<<`ty,`a>> : tau'->tau1| \\
-  & & & $\wedge$ |m : tau<<tau_ty,tau_a>>|\\
-  & & & $\wedge$ |[tau_ty/`t][tau_a/`a]tau' = tau<<tau_ty,tau_a>>|\\
-  & & & \\
-  %% & & | = o.Sum(x : Sum<<tau,Meta,Meta>>,v1 : tau1,...,vn : taun)| \\
-  %% & & |self.Sum(x : Meta,v1 : tau1,...,vn : taun)| \\
-  %% & & | = o.Sum<<tau>>(x : Sum<<tau,Meta,Meta>>,v_1 : tau1,...,v_n : taun)|
-\end{tabular}
-\caption{Selection criteria of the |FoldMeta| class when using reflection to select an overload.
-This is the criteria when |FoldMeta| takes no extra arguments but the selection works the same
-way since only the sub-types of |Meta| are inspected to select the overload as long as the types
-of the extra arguments are consistent.}
-\label{fig:selector}
-\end{table*}
+% \begin{table*}
+% \begin{tabular}{cccc}
+%   \multirow{15}{*}{|self.FoldMeta(m : Meta)|} & \multirow{15}{*}{$=\left\{\begin{array}{c} \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \end{array}\right.$} & \multirow{2}{*}{|self.FoldMeta(m)|} & |exists self.FoldMeta : tau->tau1|  \\
+%   & & & $\wedge$ |m : tau| \\
+%   & & & \\
+%   & & \multirow{4}{*}{|self.FoldMeta<<tau_a>>(m.Cast())|} & |self.FoldMeta<<`ty>> : tau'->tau1| \\
+%   & & & $\wedge$ |m : tau<<tau_ty,tau_m1,tau_m2>>| \\
+%   & & & $\wedge$ |tau_m1 :> Meta| $\wedge$ |tau_m2 :> Meta| \\
+%   & & & $\wedge$ |[tau_ty/`ty]tau' = tau<<tau_a,Meta,Meta>>| \\
+%   & & & \\
+%   & & \multirow{3}{*}{|self.FoldMeta<<tau_a>>(m)|} & |exists self.FoldMeta<<`a>> : tau'->tau1| \\
+%   & & & $\wedge$ |m : tau<<tau_ty,tau_a>>|\\
+%   & & & $\wedge$ |[tau_a/`a]tau' = tau<<tau_ty,tau_a>>|\\
+%   & & & \\
+%   & & \multirow{3}{*}{|self.FoldMeta<<tau_ty,tau_a>>(m)|} & |self.FoldMeta<<`ty,`a>> : tau'->tau1| \\
+%   & & & $\wedge$ |m : tau<<tau_ty,tau_a>>|\\
+%   & & & $\wedge$ |[tau_ty/`t][tau_a/`a]tau' = tau<<tau_ty,tau_a>>|\\
+%   & & & \\
+%   %% & & | = o.Sum(x : Sum<<tau,Meta,Meta>>,v1 : tau1,...,vn : taun)| \\
+%   %% & & |self.Sum(x : Meta,v1 : tau1,...,vn : taun)| \\
+%   %% & & | = o.Sum<<tau>>(x : Sum<<tau,Meta,Meta>>,v_1 : tau1,...,v_n : taun)|
+% \end{tabular}
+% \caption{Selection criteria of the |FoldMeta| class when using reflection to select an overloaded function.
+% This is the criteria when |FoldMeta| takes no extra arguments but the selection works the same
+% way since only the sub-types of |Meta| are inspected to select the overloaded function as long as the types
+% of the extra arguments are consistent.}
+% \label{fig:selector}
+% \end{table*}
 
 In the previous section, we assumed the existence of a |FoldMeta|
 function with type |Meta * (`x->`x) -> Meta|. Before getting into the
@@ -824,12 +824,14 @@ instance GMap (K Int) where
 \end{code}
 The two instance definitions for the type constructor |K|
 \emph{overlap}. When invoking |gmap| on a value of type |K Int|, the
-second instance is used, even if the first instance is also a valid
-choice. Haskell extensions allowing overlapping instances, have a
-precise set of rules specifying which instance definition should be
-chosen when there is more than one alternative available.
+second instance is used, even if the first instance would also have
+been a valid choice. Haskell extensions that allow overlapping
+instances define a precise set of rules specifying which instance
+definition should be chosen when there is more than one alternative
+available.
 
-We could try to adopt a similar approach in F\#:
+We could try to adopt a similar approach in F\#, by defining the
+following member functions:
 \begin{code}
 
 member x.FoldMeta<<`ty,`a,`b>>(
@@ -848,105 +850,100 @@ member x.FoldMeta<<`ty,`a>>(
 member x.FoldMeta<<`ty>>(
   k : K<<int>>,f : int -> int) = K (f k)
 \end{code}
-However, in F\# this code does not compile. The |Sum| constructor
-makes two a recursive calls. When this function is defined, it is
-still unclear which member function will be called, and more
-importantly whether that member function is generic in one, two or
-three arguments type variables. As a result, the F\# rejects this
-definition, even if we can determine this for any \emph{fixed} type.
+However, this code is rejected by the F\# compiler. The |Sum|
+constructor makes two a recursive calls. When this function is
+defined, it is still unclear how to resolve these recursive calls. In
+particular, whether these calls are generic in one, two or three type
+variables. As a result, the F\# rejects this definition, even if we
+can determine this for any call to |FoldMeta| for a fixed type.
 
-The solution adopted by this library is to define a single |FoldMeta|
-overload of type |Meta*varin -> `out|.  This overload can also be
+We resolved this problem by defining a |FoldMeta|
+function of type |Meta*varin -> `out|.  This function can also be
 invoked by the recursive calls of the |Sum| or |Product| constructors,
 as these type constructors are parametrized by variables |`a,`b :>
-Meta|. This |FoldMeta| overload then selects the corresponding
-overload that should be invoked based on the type. Note that this is
-handled statically in Haskell, but must necessarily be done
-dynamically in F\#.
+Meta|. This |FoldMeta| function then selects the corresponding
+`instance' that should be invoked based on the type of its
+argument. Note that this is handled statically in Haskell, but must
+necessarily be done dynamically in F\#.
 
-To define the |FoldMeta| overload that dispatches based on its
-argument's type, we once again use the .NET's reflection
-mechanism. The |FoldMeta| overload inspects the type of its
-argument. If we have exactly the right method at our disposal, for
-example if one has the instance |GMap << List<<Employee>> , <<Employee
--> Employee>>| of the |GMap| class, when calling |FoldMeta| on |g :
-K<<`x,Employee>>| in our example, we call that |FoldMeta|
-instance. Only when there is no specific match, do we instantiate
-generic type variables. For example, our example did not define a
-|FoldMeta| instance for the |K<<`ty,int>>| class; when encountering an
-|int|, we call the instance for |K<<`ty,`a>>|, instantiating |`a| to
-|int|.
+To define the |FoldMeta| function that dispatches based on its
+argument's type, we once again use the .NET reflection mechanism. The
+|FoldMeta| function inspects the type of its argument. If we have
+exactly the right method at our disposal, we invoke that method. We
+only instantiate a more generic method when necessary. This ensures
+the desired behaviour for the two definitions of |GMap| for |K| that
+we saw previously.
 
-For type safety, the |FoldMeta| class is parametrized by several type
-arguments. The type |FoldMeta <<vart,varin1,...,varinn,`out>>|
-consists of the follwing arguments:
-\begin{itemize}
-\item The type |vart| refers to the algebraic datatype on which the
-  function operates. Values of this type are translated to a generic
-  representation, that is later handed off to the |FoldMeta|
-  function.
-\item The type |`out| refers to the return type of all of the generic
-  methods. In our |GMap| example, we returned a value of type |Meta|,
-  corresponding to the algebraic datatype resulting from the map.
-\item The remaining type variables, |varin1| ... |varinn|, refer to
-  any additional parameters of the generic function being defined. In
-  the |GMap| function, there is a single argument of type |`x ->
-  `x|. Types in F\# must take a specific number of arguments but
-  the language allows multiple types with the same name to be
-  defined. So a variants of |FoldMeta| are defined taking from 0 to 5
-  input type argumetns.
-\end{itemize}
-The |FoldMeta| class provides a default implementation of the
-|FoldMeta| member of type |Meta*varin1*...*varinn -> out|. This member
-implements the dispatching mechanism described above which is outlined
-in Figure~\ref{fig:selector}. This figure adopts the following
-conventions:
-\begin{itemize}
-\item Greek variables, such as |tau| and |tau_i|, refer to a
-  concrete type, such as |int| or |string|. They can be contrete
-  types that take generic arguments such as |K<<`t,`a>>|.
-\item As is conventional in F\#, generic type variables are prefixed
-  with an apostrophe, such as |`t|. These type variables may still be
-  instantiated to a concrete type. We will use the usual notation for
-  substitution, writing |[tau / vart]tau'| when the variable |vart| is
-  instantiated to |tau| in type |tau'|.
-\item By convention, the variable |self| will refer the object on which
-  the methods are being invoked.
-\item The |exists self.FoldMeta : tau| indicates a case were an
-  implementation of |FoldMeta| with type |tau| is optional, in other
-  words it's not an abstract member of the |FoldMeta| abstract
-  class. Conversly, when the the overload is a required to be defined
-  in the abstract class, we omit the |exists| and only write
-  |o.FoldMeta : tau|.
-\item For the |Sum| and |Prod| case, a member function called |Cast|
-  is invoked. This function is necessary because |tau<<tau_ty,tau_m1,tau_m2>> !:> tau<<tau_ty,Meta,Meta>>| in spite of |tau_m1:>Meta| and |tau_m2:>Meta|. This function is defined below.
-\end{itemize}
-\begin{code}
-type Sum<<`ty,`a,`b>> with
-  member Cast : unit -> Sum<<`t,Meta,Meta>>
-  member x.Cast() = 
-  match x.Elem with
-  | Choice1Of2 m -> 
-    Sum<<`ty,Meta,Meta>>(
-      Choice1Of2 (m :> Meta))
-  | Choice2Of2 m -> 
-    Sum<<`ty,Meta,Meta>>(
-      Choice2Of2 (m :> Meta))
-\end{code}
-\begin{code}
-type Prod<<`ty,`a,`b>> with
-  member Cast : unit -> Prod<<`t,Meta,Meta>>
-  member x.Cast() = 
-    Prod<<`ty,Meta,Meta>>(
-     x.E1 :> Meta,x.E2 :> Meta)
-\end{code}
-\ernesto{Maybe only the type is necessary and not the implementation.}
-Since |FoldMeta| is an abstract class, any concrete subclass requires
-a minimal set of methods that ensure the existence of a method for
-every possible type representation, i.e., every concrete subclass of
-the |Meta| type. The |FoldMeta| method of the abstract |FoldMeta|
-class essentially calls the method associated with the representation
-type it is passed as an argument.
+% For type safety, the |FoldMeta| class is parametrized by several type
+% arguments. The type |FoldMeta <<vart,varin1,...,varinn,`out>>|
+% consists of the follwing arguments:
+% \begin{itemize}
+% \item The type |vart| refers to the algebraic datatype on which the
+%   function operates. Values of this type are translated to a generic
+%   representation, that is later handed off to the |FoldMeta|
+%   function.
+% \item The type |`out| refers to the return type of all of the generic
+%   methods. In our |GMap| example, we returned a value of type |Meta|,
+%   corresponding to the algebraic datatype resulting from the map.
+% \item The remaining type variables, |varin1| ... |varinn|, refer to
+%   any additional parameters of the generic function being defined. In
+%   the |GMap| function, there is a single argument of type |`x ->
+%   `x|. Types in F\# must take a specific number of arguments but
+%   the language allows multiple types with the same name to be
+%   defined. So a variants of |FoldMeta| are defined taking from 0 to 5
+%   input type argumetns.
+% \end{itemize}
+% The |FoldMeta| class provides a default implementation of the
+% |FoldMeta| member of type |Meta*varin1*...*varinn -> out|. This member
+% implements the dispatching mechanism described above which is outlined
+% in Figure~\ref{fig:selector}. This figure adopts the following
+% conventions:
+% \begin{itemize}
+% \item Greek variables, such as |tau| and |tau_i|, refer to a
+%   concrete type, such as |int| or |string|. They can be contrete
+%   types that take generic arguments such as |K<<`t,`a>>|.
+% \item As is conventional in F\#, generic type variables are prefixed
+%   with an apostrophe, such as |`t|. These type variables may still be
+%   instantiated to a concrete type. We will use the usual notation for
+%   substitution, writing |[tau / vart]tau'| when the variable |vart| is
+%   instantiated to |tau| in type |tau'|.
+% \item By convention, the variable |self| will refer the object on which
+%   the methods are being invoked.
+% \item The |exists self.FoldMeta : tau| indicates a case were an
+%   implementation of |FoldMeta| with type |tau| is optional, in other
+%   words it's not an abstract member of the |FoldMeta| abstract
+%   class. Conversly, when the the overload is a required to be defined
+%   in the abstract class, we omit the |exists| and only write
+%   |o.FoldMeta : tau|.
+% \item For the |Sum| and |Prod| case, a member function called |Cast|
+%   is invoked. This function is necessary because |tau<<tau_ty,tau_m1,tau_m2>> !:> tau<<tau_ty,Meta,Meta>>| in spite of |tau_m1:>Meta| and |tau_m2:>Meta|. This function is defined below.
+% \end{itemize}
+% \begin{code}
+% type Sum<<`ty,`a,`b>> with
+%   member Cast : unit -> Sum<<`t,Meta,Meta>>
+%   member x.Cast() = 
+%   match x.Elem with
+%   | Choice1Of2 m -> 
+%     Sum<<`ty,Meta,Meta>>(
+%       Choice1Of2 (m :> Meta))
+%   | Choice2Of2 m -> 
+%     Sum<<`ty,Meta,Meta>>(
+%       Choice2Of2 (m :> Meta))
+% \end{code}
+% \begin{code}
+% type Prod<<`ty,`a,`b>> with
+%   member Cast : unit -> Prod<<`t,Meta,Meta>>
+%   member x.Cast() = 
+%     Prod<<`ty,Meta,Meta>>(
+%      x.E1 :> Meta,x.E2 :> Meta)
+% \end{code}
+% \ernesto{Maybe only the type is necessary and not the implementation.}
+% Since |FoldMeta| is an abstract class, any concrete subclass requires
+% a minimal set of methods that ensure the existence of a method for
+% every possible type representation, i.e., every concrete subclass of
+% the |Meta| type. The |FoldMeta| method of the abstract |FoldMeta|
+% class essentially calls the method associated with the representation
+% type it is passed as an argument.
 
 
 With these types in place, the library can apply a generic function to
@@ -956,20 +953,18 @@ abstracted away by using a common representation for all types.
 
 \section{Case study: uniplate}
 \label{sec:uniplate}
-To further demonstrate our library, we will implement the |uniplate|
-function from the Haskell library with the same name. Using this
-function, it is possible to define a broad collection of generic
-functions. In Haskell, the |uniplate| function has the following type
-signature:
+To further demonstrate how generic functions may be defined using our
+library, we will implement the |uniplate| function from the Haskell
+library with the same name. In Haskell, the |uniplate| function has
+the following type signature:
 
 > uniplate : Uniplate a => a -> ([a], [a] -> a)
 
-Given a value as an argument and returns
-a list of all the children with the same type
-as the argument and a function that allows to re-construct
-a value with the same structure using new children. The
-F\# variant of the function should work as the following
-example:
+Given an argument of type |a|, the |uniplate| function returns a list
+of all the immediate child nodes of type |a| and a function that can
+be used to reassemble the original value, given a list of child
+nodes. The F\# version of |uniplate|, that we will define shortly,
+should work as follows:
 \begin{code}
 type Arith =
   | Op of string*Arith*Arith
@@ -1026,11 +1021,24 @@ an empty list. The only interesting case is that for the |Id| type
 constructor, which returns a singleton list with its associated
 value. 
 
-Three overloads for the |Sum| constructor are required but only
-two of them (which are identical) do recursion. This is because values of type |Sum| where the first argument is different to |`t| are representations of internal values of |`t|. For example, the |Company| type introduced above contains sums of type |Sum<<Company<< _ >>,_,_>>| and |Sum<<Department<< _ >>,_,_ >>| among other sums. When uniplate is called with |`t| instantiated to |Company|, only the sums of type |Company| should be recursively traversed.
+Three overloads for the |Sum| constructor are required but only two of
+them (which are identical) do recursion. This is because values of
+type |Sum| where the first argument is different to |`t| are
+representations of internal values of |`t|. For example, the |Company|
+type introduced above contains sums of type |Sum<<Company<< _
+>>,_,_>>| and |Sum<<Department<< _ >>,_,_ >>| among other sums. When
+uniplate is called with |`t| instantiated to |Company|, only the sums
+of type |Company| should be recursively traversed.  \wouter{While this
+  is true, I think it's a confusing optimization to present at this
+  point. I'd argue for having a single definition for Sum, but in the
+  discussion mentioning that keeping track of the additional type
+  argument allows us to do more clever optimizations}
 
-The second generic function is |Instantiate|, defined as
-follows:
+
+The second generic function we define is |Instantiate|, that
+reconstructs the value of an algebraic datatype when passed the list
+of child nodes. We will store this list in a local, mutable variable
+|value|, to which each of the instance definitions below may refer.
 \begin{code}
 
 type Instantiate<<vart>>(values` : vart list) =
@@ -1041,6 +1049,34 @@ type Instantiate<<vart>>(values` : vart list) =
                 | x::xs -> values <- xs;Some x
                 | [] -> None
 
+...
+\end{code}
+To complete this definition, we need to define suitable instances for
+the subclasses of |Meta|. The most interesting case is that for the
+|Id| type constructor:
+\begin{code}
+  override self.FoldMeta(i : Id<<vart>>) =
+    match pop () with
+    | Some x -> Id x
+    | None -> failwith "Not enough args"
+    :> Meta
+\end{code}
+To produce the desired child, we |pop| it off the mutable list of
+children we have at our disposal. If no such child exists, we fail
+dynamically.
+
+The case for products simply makes two recursive calls and tuples the
+results:
+\begin{code}
+  override self.FoldMeta<<`ty>>(
+    p: Prod<<`ty,Meta,Meta>>) =
+    Prod(self.FoldMeta p.E1,self.FoldMeta p.E2) 
+    :> Meta
+\end{code}
+
+\wouter{Ernesto -- do you want to say something about sums here?}
+\wouter{Once again, I'd go for one case for Sum if we can...}
+\begin{code}
   member self.FoldMeta(
     s : Sum<<vart,Meta,Meta>>) =
     match s with
@@ -1059,34 +1095,23 @@ type Instantiate<<vart>>(values` : vart list) =
       self.FoldMeta m |> Choice2Of2)
     :> Meta
 
-  override self.FoldMeta(i : Id<<vart>>) =
-    match pop () with
-    | Some x -> Id x
-    | None -> failwith "Not enough args"
-    :> Meta
   
   override self.FoldMeta<<`ty>>(
     s : Sum<<`ty,Meta,Meta>>) =
     s :> Meta
-
-  override self.FoldMeta<<`ty>>(
-    p: Prod<<`ty,Meta,Meta>>) =
-    Prod(self.FoldMeta p.E1,self.FoldMeta p.E2) 
-    :> Meta
-
+\end{code}
+Finally, the cases for the type constructors |U| and |K| are trivial,
+as they do not need to modify the list of |values|.
+\begin{code}  
   override self.FoldMeta<<`a>>(u : U<<`a>>) = 
     u :> Meta
 
   override self.FoldMeta<<`ty,`a>>(k : K<<`ty,`a>>) = 
     k :> Meta
 \end{code}
-This function is provided with a list of values and when applied to a
-type representation it will replace all the recursive values within
-the representation by values of the provided list. The traversal
-proceeds in the same way as done by the |Collect| function but instead
-of adding values to a list, the values get removed from the input list
-using the |pop| function and replaced in the input representation.  To
-wrap both pieces together the |Uniplate| function is now defined:
+
+The |uniplate| function simply wraps both these results together and
+handles the conversions to our type representation:
 \begin{code}
 let uniplate<<vart>> (x : vart) =
   let g = Generic<<vart>>()
