@@ -471,12 +471,8 @@ types themselves are subtypes of the |Meta| class.
 In the remainder of this section, we will present the concrete
 subtypes of the |Meta| class defined in our library. All the
 subclasses of the |Meta| class are parametrized by at least one
-(phantom) type argument, |`ty|.  This argument is instantiated to
-|unit| in cases where the representation serves as an intermediate
-section of a larger representation. \wouter{I'm not sure I understand
-  this last sentence. Why not just pass the type around uniformly to
-  all parts of the representation? Why do we need to distinguish
-  where a type occurs?}
+(phantom) type argument, |`ty|.  This argument is instantiated to the
+type from which the representation was produced.
 
 The first subclass of |Meta| is |Sum|, that represents the sum of two
 types.  The |Sum| takes two extra type arguments: |`a| and |`b|. They
@@ -529,13 +525,13 @@ type ElemsRep =
     Elem<<int>>,
     Sum<<
       unit,
-      Prod<<unit,K<<unit,int>>,
-        Prod<<Id<<Elem<<int>> >>,U<<unit>> >> >>,
+      Prod<<Elem<<int>>,K<<Elem<<int>>,int>>,
+        Prod<<Id<<Elem<<int>> >>,U<<Elem<<int>> >> >> >>,
       Sum<<
         unit,
-        Prod<<K << unit,int >>, U<<unit>> >>,
-        U<<unit>> >>,
-    U<<unit>> >>
+        Prod<<K << Elem<<int>>,int >>, U<< Elem<<int>> >> >>,
+        U<<Elem<<int>> >> >>,
+    U<<Elem<<int>> >> >>
 \end{code}
 
 This example shows how the |Sum| type constructor takes three
@@ -642,19 +638,18 @@ functionality to fold over representations. That is a method for each
 representation type. Furthermore, all those methods are universally
 quantified over the representation's type arguments to ensure that a
 suitable overload is available in every case. The only exception is
-the |Id| since it represents recursion, all ocurrences of |Id| in a
+the |Id| case since it represents recursion, all ocurrences of |Id| in a
 representation are the type it represents. To illustrate why this is
 necessary, consider invoking the |GMap| function on the |Company|
 type. This type contains nested |Department| values. This means that
 the intermediate |Sum| constructors in some cases are of type
-|Sum<<Department,_,_>>| and other cases of type |Sum<<Company,_,_>>|
+|Sum<<Department<< _ >>,_,_ >>| and other cases of type |Sum<<Company<< _ >>,_,_ >>|
 (among others). This means that in order to handle both (and any
 others), the |`ty| argument of the |Sum| type must be universally
 quantified. For clarity, this section adopts the convention that |`t|
 always refers to the type of the value being applied to a generic
 function and |`ty| universally quantifies over the type that a
-representation represents. The |Meta| class is explained more in depth
-in section \cite{sec:foldmeta}.
+representation represents.
 
 %% The minimal implementation consists of
 %% a method, |FoldMeta|, for all the different subtypes of our |Meta|
@@ -748,7 +743,7 @@ override x.FoldMeta<<`ty>>(u : U<<`ty>>,
 
 We define two cases to handle the |K| type constructor:
 \begin{code}
-member x.FoldMeta<<`ty>>(v : K<<`ty,`x>>) = 
+member x.FoldMeta<<`ty>>(v : K<<`ty,`x>>, f : `x->`x) = 
   K(f v.Elem) :> Meta
 
 override x.FoldMeta<<`ty,`a>>(k : K<<`ty,`a>>
@@ -773,6 +768,29 @@ definition; but we also add the more specific member function handling
 the most specific choice is always made when faced with 
 ambiguity. We will cover the precise rules in greater detail in the
 next section.
+
+The override above can apply the function to non-representable types,
+but what if |f : `x->`x| were to be defined for an ADT? We need
+additional overloads to deal with that case:
+\begin{code}
+
+let mapper (f : `x->`x) (v : Meta) =
+  let g = Generic<<`x>>()
+  v |> g.From |> f |> g.To
+
+member x.FoldMeta(
+  u : U<<`x>>,f : `x->`x) = mapper f u
+member x.FoldMeta(
+  p : Prod<<`x,Meta,Meta>>,f : `x->`x) = mapper f p
+member x.FoldMeta(
+  s : Sum<<`x,Meta,Meta>>,f : `x->`x) = mapper f s
+
+\end{code}
+Recall that the all representation types have the |`ty|
+argument. Theese overloads instantiate that argument to |`x|; the type
+of the function being mapped. Next they convert the representation
+back to the type, apply the function and convert the result back to a
+representation.
 
 \ernesto{Tried to make clearer the difference between `t and `ty} The
 case for the |Id| constructor is a bit more involved. The |Id| case of
@@ -805,11 +823,6 @@ override x.FoldMeta
       g.To c.Elem,f) |> g.From)
     :> Meta
 \end{code}
-Note that the override uses |`t| insted of |`ty| here because the type
-argument of |Id| is the same as the type argument given to |GMap| at
-the class level.  \wouter{Why aren't these the same everywhere? Why
-  make the distinction again?}
-
 Using the |GMap :> FoldMeta| class, we can now define the following
 |gmap| function:
 \begin{code}
