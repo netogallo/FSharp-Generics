@@ -1247,11 +1247,11 @@ variable. This way the dispatcher |FoldMeta| member can safely cast
 the result into type |`m| by calling the |Cast| method of the type
 which is required to be present.
 
-Readers familiar with F\# might also consider type providers as an
-alternative approach to the meta-programming required to generate
-these types. However, type providers cannot accept types as static
-arguments and the provided types have many restrictions (such as
-forbidding generic methods) which makes them inapropiate.
+%% Readers familiar with F\# might also consider type providers as an
+%% alternative approach to the meta-programming required to generate
+%% these types. However, type providers cannot accept types as static
+%% arguments and the provided types have many restrictions (such as
+%% forbidding generic methods) which makes them inapropiate.
 
 \wouter{What about defining a 'real' generic gmap function?}
 \wouter{Explicit subtyping by manual casts}
@@ -1341,21 +1341,21 @@ serialize a value. This could bring significant performance improvements
 which are only possible thanks to the OO-approach -- which is an advantage
 over Regular or similar libraries.
 
-The F\# languages includes type providers\cite{export:173076} as a
-tool for metaprogramming. They can generate code during compilation
-time by executing arbitrary .NET code. They are very useful to provide
-typed access to external data soruces along with strongly typed
-functions to interact with such data. However, they are not a suitable
-alternative to datatype generic programming since they are very
-restrictive on the type information they can access and the types they
-can generate. Another metaprogramming tool of F\# is quotations
-\cite{export:147193}. They are a library that provides constructs to
-generate F\# programs at compile time. Even though every generic
-function of this library can be implemnted as a quotation generator
-for the input type, quotations don't give any improvements over
-reflection when it comes to inspecting and traversing a type. They can
-be used complementarily with this library to more easily generate F\#
-code at runtime.
+There are alternatives to datatype generic programming in the F\#
+language. Type providers\cite{export:173076} can generate code during
+compilation time by executing arbitrary .NET code. They are very
+useful to provide typed access to external data soruces along with
+strongly typed functions to interact with such data. However, they are
+not a suitable alternative to datatype generic programming since they
+are very restrictive on the type information they can access and the
+types they can generate. Another metaprogramming tool of F\# is
+quotations \cite{export:147193}. They are a library that provides
+constructs to generate F\# programs at compile time. Even though every
+generic function of this library can be implemnted as a quotation
+generator for the input type, quotations don't give any improvements
+over reflection when it comes to inspecting and traversing a
+type. They can be used complementarily with this library to more
+easily generate F\# code at runtime.
 
 \subsection*{Conclusions}
 
