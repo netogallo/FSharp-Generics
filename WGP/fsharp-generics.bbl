@@ -1,9 +1,19 @@
-\begin{thebibliography}{12}
+\begin{thebibliography}{17}
 \providecommand{\natexlab}[1]{#1}
 \providecommand{\url}[1]{\texttt{#1}}
 \expandafter\ifx\csname urlstyle\endcsname\relax
   \providecommand{\doi}[1]{doi: #1}\else
   \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[d.~S.~Oliveira and Gibbons(2010)]{scala-jfp}
+B.~C. d.~S.~Oliveira and J.~Gibbons.
+\newblock Scala for generic programmers.
+\newblock \emph{Journal of Functional Programming}, 20\penalty0 (3,4):\penalty0
+  303--352, 2010.
+\newblock \doi{10.1017/S0956796810000171}.
+\newblock URL \url{http://www.comlab.ox.ac.uk/ jeremy.gibbons/ publications/
+  scalagp-jfp.pdf}.
+\newblock Revised version of the WGP2008 paper.
 
 \bibitem[Hinze and Jeuring(2003)]{GenericHaskell}
 R.~Hinze and J.~Jeuring.
@@ -60,22 +70,55 @@ T.~v. Noort, A.~Rodriguez, S.~Holdermans, J.~Jeuring, and B.~Heeren.
 \newblock \doi{10.1145/1411318.1411321}.
 \newblock URL \url{http://doi.acm.org/10.1145/1411318.1411321}.
 
-\bibitem[Sheard and Jones(2002)]{TemplateHaskell}
+\bibitem[Sheard and Jones(2002)]{Sheard02templatemeta-programming}
 T.~Sheard and S.~P. Jones.
 \newblock Template meta-programming for haskell.
 \newblock In \emph{In Proceedings of the ACM SIGPLAN Workshop on Haskell},
   pages 1--16. ACM, 2002.
 
+\bibitem[Syme(2006)]{export:147193}
+D.~Syme.
+\newblock Leveraging .net meta-programming components from f{\#}: integrated
+  queries and interoperable heterogeneous execution.
+\newblock In \emph{Proceedings of the 2006 workshop on ML}. ACM, 2006.
+\newblock URL \url{http://research.microsoft.com/ apps/ pubs/ default.aspx?
+  id=147193}.
+
+\bibitem[Syme et~al.(2012{\natexlab{a}})Syme, Battocchi, Takeda, Malayeri,
+  Fisher, Hu, Liu, McNamara, Quirk, Taveggia, Chae, Matsveyeu, and
+  Petricek]{export:173076}
+D.~Syme, K.~Battocchi, K.~Takeda, D.~Malayeri, J.~Fisher, J.~Hu, T.~Liu,
+  B.~McNamara, D.~Quirk, M.~Taveggia, W.~Chae, U.~Matsveyeu, and T.~Petricek.
+\newblock F{\#}3.0 - strongly-typed language support for internet-scale
+  information sources.
+\newblock Technical Report MSR-TR-2012-101, September 2012{\natexlab{a}}.
+\newblock URL \url{http://research.microsoft.com/ apps/ pubs/
+  default.aspx?id=173076}.
+
+\bibitem[Syme et~al.(2012{\natexlab{b}})Syme, Granicz, and
+  Cisternino]{export:192596}
+D.~Syme, A.~Granicz, and A.~Cisternino.
+\newblock \emph{Expert F{\#} 3.0}.
+\newblock Apress, November 2012{\natexlab{b}}.
+\newblock URL \url{http://research.microsoft.com/ apps/ pubs/
+  default.aspx?id=192596}.
+
 \bibitem[Tihon()]{InterfaceLims}
 S.~Tihon.
 \newblock My first disappointment of the f\# type system.
-\newblock \url{https://sergeytihon.wordpress.com/
-  2013/03/29/my-first-disappointment-on-f-type-system/}.
+\newblock \url{https://sergeytihon.wordpress.com/ 2013/03/29/
+  my-first-disappointment-on-f-type-system/}.
 
 \bibitem[Tsarpalis(2013)]{FsPickler}
 E.~Tsarpalis.
 \newblock {FsPickler}.
-\newblock \url{http://nessos.github.io/FsPickler}, 2013.
+\newblock \url{http://nessos.github.io/ FsPickler}, 2013.
+
+\bibitem[Wadler(1989)]{Wadler89theoremsfor}
+P.~Wadler.
+\newblock Theorems for free!
+\newblock In \emph{FUNCTIONAL PROGRAMMING LANGUAGES AND COMPUTER ARCHITECTURE},
+  pages 347--359. ACM Press, 1989.
 
 \bibitem[Weirich(2006)]{RepLib}
 S.~Weirich.

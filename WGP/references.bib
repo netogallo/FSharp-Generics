@@ -95,7 +95,7 @@
   title = {{FsPickler}},
   author="Eirik Tsarpalis",
   year=2013,
-  howpublished = {\url{http://nessos.github.io/FsPickler}}
+  howpublished = {\url{http://nessos.github.io/ FsPickler}}
 }
 
 @misc{Nancy,
@@ -260,7 +260,7 @@ institution  = {Microsoft Research}
 @misc{InterfaceLims,
   author={Tihon, Sergey},
   title="My first disappointment of the F\# type system",
-  howpublished="\url{https://sergeytihon.wordpress.com/ 2013/03/29/my-first-disappointment-on-f-type-system/}",
+  howpublished="\url{https://sergeytihon.wordpress.com/ 2013/03/29/ my-first-disappointment-on-f-type-system/}",
   notes = {Recovered on May 9th, 2015}
 }
 
@@ -336,7 +336,95 @@ institution  = {Microsoft Research}
   note = "Revised version of the WGP2008 paper",
   number = "3,4",
   pages = "303-352",
-  url = "http://www.comlab.ox.ac.uk/jeremy.gibbons/publications/scalagp-jfp.pdf",
+  url = "http://www.comlab.ox.ac.uk/ jeremy.gibbons/ publications/ scalagp-jfp.pdf",
   volume = "20",
   doi = "10.1017/S0956796810000171",
+}
+
+@INPROCEEDINGS{Wadler89theoremsfor,
+    author = {Philip Wadler},
+    title = {Theorems for free!},
+    booktitle = {FUNCTIONAL PROGRAMMING LANGUAGES AND COMPUTER ARCHITECTURE},
+    year = {1989},
+    pages = {347--359},
+    publisher = {ACM Press}
+}
+
+@INPROCEEDINGS{Sheard02templatemeta-programming,
+    author = {Tim Sheard and Simon Peyton Jones},
+    title = {Template Meta-programming for Haskell},
+    booktitle = {In Proceedings of the ACM SIGPLAN Workshop on Haskell},
+    year = {2002},
+    pages = {1--16},
+    publisher = {ACM}
+}
+
+@TechReport {export:173076,
+abstract     = {<p>A growing trend in both the theory and practice of programming is the
+                interaction between programming and rich information spaces. From databases to
+                web services to the semantic web to cloud-based data, the need to integrate
+                programming with heterogeneous, connected, richly structured, streaming and
+                evolving information sources is ever-increasing. Most modern applications
+                incorporate one or more external information sources as integral components.
+                Providing strongly typed access to these sources is a key consideration for
+                strongly-typed programming languages, to insure low impedance mismatch in
+                information access. At this scale, information integration strategies based on
+                library design and code generation are manual, clumsy, and do not handle the
+                internet-scale information sources now encountered in enterprise, web and cloud
+                environments. In this report we describe the design and implementation of the
+                type provider mechanism in F{\#} 3.0 and its applications to typed programming with
+                web ontologies, web-services, systems management information, database mappings,
+                data markets, content management systems, economic data and hosted scripting.
+                Type soundness becomes relative to the soundness of the type providers and the
+                schema change in information sources, but the role of types in information-rich
+                programming tasks is massively expanded, especially through tooling that benefits
+                from rich types in explorative programming.</p>},
+author       = {Don Syme and Keith Battocchi and Kenji Takeda and Donna Malayeri and Jomo Fisher
+                and Jack Hu and Tao Liu and Brian McNamara and Daniel Quirk and Matteo Taveggia
+                and Wonseok Chae and Uladzimir Matsveyeu and Tomas Petricek},
+month        = {September},
+number       = {MSR-TR-2012-101},
+publisher    = {Microsoft Research},
+title        = {F{\#}3.0 - Strongly-Typed Language Support for Internet-Scale Information Sources},
+url          = {http://research.microsoft.com/ apps/ pubs/ default.aspx?id=173076},
+year         = {2012},
+}
+
+@Inproceedings {export:147193,
+abstract     = {<p>Language-integrated meta-programming and extensible compilation have been
+                recurring themes of programming languages since the invention of LISP. A recent
+                real-world application of these techniques is the use of small meta-programs to
+                specify database queries, as used in the Microsoft LINQ extensions for .NET. It
+                is important that .NET languages such as F{\#} are able to leverage the
+                functionality provided by LINQ and related components for heterogeneous
+                execution, both for pragmatic reasons and as a first step toward applying more
+                disciplined, formal approaches to these problems. This paper explores the use of
+                a modest meta-programming extension to F{\#} to access and leverage the
+                functionality of LINQ and other components. We do this by demonstrating an
+                implementation of language integrated SQL queries using the LINQ/SQLMetal
+                libraries. We also sketch two other applications: the execution of data-parallel
+                quoted F{\#} programs on a GPU via the Accelerator libraries, and dynamic
+                native-code compilation via LINQ.</p>},
+author       = {Donald Syme},
+booktitle    = {Proceedings of the 2006 workshop on ML},
+journal      = {Proceedings of the 2006 workshop on ML},
+publisher    = {ACM},
+title        = {Leveraging .NET meta-programming components from F{\#}: integrated queries and
+                interoperable heterogeneous execution},
+url          = {http://research.microsoft.com/ apps/ pubs/ default.aspx? id=147193},
+year         = {2006},
+}
+
+@Book {export:192596,
+abstract     = {<p>Expert F{\#} 3.0 is about practical programming in a beautiful language that puts
+                the power and elegance of data-rich functional programming into the hands of
+                professional developers and analytical programmers. Through simplicity and
+                interoperability, F{\#} achieves unrivalled levels of programmer productivity,
+                application performance and program clarity</p>},
+author       = {Don Syme and Adam Granicz and Antonio Cisternino},
+month        = {November},
+publisher    = {Apress},
+title        = {Expert F{\#} 3.0},
+url          = {http://research.microsoft.com/ apps/ pubs/ default.aspx?id=192596},
+year         = {2012},
 }

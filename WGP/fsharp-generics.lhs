@@ -108,7 +108,7 @@ datatype generic programming, reflection, F\#
 Over the last decade, datatype generic programming has emerged as an
 powerful mechanism for defining families of functions. In Haskell
 alone, there are numerous tools and libraries for datatype generic
-programming, including others PolyP~\cite{polyp}, Generic
+programming, including PolyP~\cite{polyp}, Generic
 Haskell~\cite{GenericHaskell}, Scrap your boilerplate~\cite{SYB},
 RepLib~\cite{RepLib}, Uniplate~\cite{Uniplate},
 Regular~\cite{Regular}, Multi-Rec~\cite{multirec}, Instant
@@ -126,7 +126,7 @@ underlying conversions manually.
 
 Yet this approach has not been as widely adopted in other
 languages. In this paper, we will attempt to address this by
-implementing a library for data type generic programming in F\#. More
+implementing a library for data type generic programming in F\# \cite{export:192596}. More
 specifically, we make the following contributions:
 
 \begin{itemize}
@@ -165,7 +165,10 @@ specifically, we make the following contributions:
 
 We hope that porting the ideas from the datatype generic programming
 community to F\# will pave the way for the wider adoption of these
-ideas in other languages such as C\#, Swift and Scala.
+ideas in other languages such as C\#, Swift and Scala. \ernesto{Should
+  we really say scala here? I mean it has been done in
+  \cite{scala-jfp}, in a similar fashion as in Haskell. Wouldn't this
+  show that we are not awere of the `relevant` work?}
 
 \section{Background}
 \label{sec:background}
@@ -556,7 +559,7 @@ representation type, we will sketch how we can automatically convert
 between F\# data types and their corresponding representation.
 
 Many Haskell libraries for generic programming, such as Regular, use
-Template Haskell\todo{add citation} to generate these
+Template Haskell~\cite{Sheard02templatemeta-programming} to generate these
 conversions. Some Haskell compilers have a built-in
 mechanism~\cite{GenericDeriving} for these conversions. While F\# does
 not have the same facilities for metaprogramming as Haskell, we can
@@ -1049,20 +1052,11 @@ child nodes:
 type Collect<<vart>>() =
   inherit FoldMeta<<vart,vart list>>()
 
-  member self.FoldMeta(
-    c : Sum<<vart,Meta,Meta>>) =
+  member self.FoldMeta<<`ty>>(
+    c : Sum<<`ty,Meta,Meta>>) =
     match c with
     | L m -> self.Collect m
     | R m -> self.Collect m
-
-  member self.FoldMeta(
-    c : Sum<<unit,Meta,Meta>>) =
-    match c with
-    | L m -> self.Collect m
-    | R m -> self.Collect m
-
-  override self.FoldMeta<<`ty>>(
-    s : Sum<<`ty,Meta,Meta>>) = []
 
   override self.FoldMeta<<`ty>>(
     c : Prod<<`ty,Meta,Meta>>) =
@@ -1085,19 +1079,18 @@ an empty list. The only interesting case is that for the |Id| type
 constructor, which returns a singleton list with its associated
 value. 
 
-Three overloads for the |Sum| constructor are required but only two of
-them (which are identical) do recursion. This is because values of
-type |Sum| where the first argument is different to |`t| are
-representations of internal values of |`t|. For example, the |Company|
-type introduced above contains sums of type |Sum<<Company<< _
->>,_,_>>| and |Sum<<Department<< _ >>,_,_ >>| among other sums. When
-uniplate is called with |`t| instantiated to |Company|, only the sums
-of type |Company| should be recursively traversed.  \wouter{While this
-  is true, I think it's a confusing optimization to present at this
-  point. I'd argue for having a single definition for Sum, but in the
-  discussion mentioning that keeping track of the additional type
-  argument allows us to do more clever optimizations}
-
+%% Three overloads for the |Sum| constructor are required but only two of
+%% them (which are identical) do recursion. This is because values of
+%% type |Sum| where the first argument is different to |`t| are
+%% representations of internal values of |`t|. For example, the |Company|
+%% type introduced above contains sums of type |Sum<<Company<< _
+%% >>,_,_>>| and |Sum<<Department<< _ >>,_,_ >>| among other sums. When
+%% uniplate is called with |`t| instantiated to |Company|, only the sums
+%% of type |Company| should be recursively traversed.  \wouter{While this
+%%   is true, I think it's a confusing optimization to present at this
+%%   point. I'd argue for having a single definition for Sum, but in the
+%%   discussion mentioning that keeping track of the additional type
+%%   argument allows us to do more clever optimizations}
 
 The second generic function we define is |Instantiate|, that
 reconstructs the value of an algebraic datatype when passed the list
@@ -1141,33 +1134,19 @@ results:
 \wouter{Ernesto -- do you want to say something about sums here?}
 \wouter{Once again, I'd go for one case for Sum if we can...}
 \begin{code}
-  member self.FoldMeta(
-    s : Sum<<vart,Meta,Meta>>) =
-    match s with
-    | L m -> Sum<<vart,Meta,Meta>>(
-      self.FoldMeta m |> Choice1Of2)
-    | R m -> Sum<<vart,Meta,Meta>>(
-      self.FoldMeta m |> Choice2Of2)
-    :> Meta
-
-  member self.FoldMeta(
-    s : Sum<<unit,Meta,Meta>>) =
-    match s with
-    | L m -> Sum<<unit,Meta,Meta>>(
-      self.FoldMeta m |> Choice1Of2)
-    | R m -> Sum<<unit,Meta,Meta>>(
-      self.FoldMeta m |> Choice2Of2)
-    :> Meta
-
-  
-  override self.FoldMeta<<`ty>>(
+  member self.FoldMeta<<`ty>>(
     s : Sum<<`ty,Meta,Meta>>) =
-    s :> Meta
+    match s with
+    | L m -> Sum<<`ty,Meta,Meta>>(
+      self.FoldMeta m |> Choice1Of2)
+    | R m -> Sum<<`ty,Meta,Meta>>(
+      self.FoldMeta m |> Choice2Of2)
+    :> Meta
 \end{code}
 Finally, the cases for the type constructors |U| and |K| are trivial,
 as they do not need to modify the list of |values|.
 \begin{code}  
-  override self.FoldMeta<<`a>>(u : U<<`a>>) = 
+  override self.FoldMeta<<`ty>>(u : U<<`ty>>) = 
     u :> Meta
 
   override self.FoldMeta<<`ty,`a>>(k : K<<`ty,`a>>) = 
@@ -1188,7 +1167,7 @@ let uniplate<<vart>> (x : vart) =
 \end{code}
 
 \section{Limitations of the |FoldMeta| class}
-\label{sec:better-monofold}
+\label{sec:better-meta}
 A major limitation of the current implementation is that all the
 overloads of |FoldMeta| must return a value of the same type. More
 advanced libraries for datatype generic programming use some limited
@@ -1286,60 +1265,171 @@ forbidding generic methods) which makes them inapropiate.
   \item limited possibility to generate generic types (like read) for
     now.
   \end{itemize}
-}
+} 
+This library was created to study the usability of datatype generic
+programming in F\#. In doing so, the existng approaches had to be
+adapted to suit F\#'s type system. Also, through the implementing of
+this library, the authors have uncovered pieces that have room for
+improvement. This section discusses what was learned form the process
+and what will be done for the next release of the library.
 
-Datatype generic programming is a well tested solid approach to write
-generic algorithms. It offers a lot of expressiveness compared to
-combinator based libraries but has the cost of being harder to use and
-requiring powerful type systems. The approach has been tested and
-implemented in F\#. Although safety had to be compromised due to the
-absense of type system infrastructure in F\#, a useful tool could
-still be produced. Even though not completely safe, it is more type
-safe than reflection since only a minimal part of the algorithms
-require unchecked (or dynamically checked) type operations. In
-practice, it is much more pleasant having theese unsafe runtime
-operations in F\# than in languages like Haskell or Scala because the
-.Net runtime can provide rich information about how/when/why the
-operation failed. This would result in a segmentation fault in Haskell
-or a stacktrace with erased types in Scala.
+First of all, due to the use of reflection, the representation types
+had to be defined as classes instead of algebraic data types as
+typically done in other libraries. This allowed the conversion of a
+type-class constraint, as used by Regular, to a sub-type
+constraint. However, due to the innate design of the OO-paradigm, a
+sub-type constraint ``abstracts away'' the universal quantification
+that allows Haskell to select a different overload of a function based
+on the instantiation of type variables at the application site of a
+function. This mechanism had to be replaced with reflection and is
+implemented in the |FoldMeta| class. Although this incurrs a runtime
+penalty, at the long run, it can be eliminated with a cache.
 
-The library is on its first release so no optimizations have been done
-(since a stable api is desired first) but it is clear that DGP opens
-doors for automated caching of operations which would need to be done
-manually with reflection. In particular, the approach is referentially
-transparent when it comes to the type of the arguments. In other
-words, the same overload will be selected when the arguments given to
-the method selector have the same type.  This means reflection only
-needs to be used once to select the method and next time a call with
-the same types is done, the right method can automatically be
-dispatched. \todo{Is this clear or should I rather give an example
-  about how this works?}
+The library still allows a family of generic functions to be defined.
+This is evidenced by defining the |uniplate| function which has been
+shown to be a very useful combinator for generic programming. Compared
+to reflection, the definition of |uniplate| with our library is much
+simpler, less error prone and can be automatically optimized by adding
+a cache of function calls. Even though reflection is much more
+powerful, the programer will benefit by using this library in cases
+where it is expressive enough for the desired task.
 
-Compared to existing DGP libraries, the lack of type system
-infrastructure makes it very inconvenient to write a class of generic
-functions. Theese are the functions that produce values out of
-data. The best example is the \verb+read+ function from Haskell. The
-problem is that as the funciton parses the string, it must generate a
-representation. But in this library, all type representations are a
-subclass of \verb+Meta+ so it is hard to statically check that the
-algorithm is correct. A possible way to address the problem is having
-a type provider that can be given a type and it produces a new type
-that is the exact type for the representation. Then the \verb+read+ or
-any other function must produce a representation with that same type
-(instead of only a sub-type of \verb+Meta+) and would be reasonable
-for the F\# compiler to check the correctness of the
-algorithm. Unfortunately, type providers can't accept types as static
-arguments.  of the algorithm. \ernesto{This last statement is still
-  relevant in spite of no longer using type providers}
+As a consequence of sub-typeing, it is no longer possible to
+statically check that representations generated by user code are
+faithful to what they should be (discussed in section
+\ref{sec:better-meta}). In Haskell, this is not a problem. Since the
+type variables are universally quantified (instead of just constrained
+to |Meta|), the code is not allowed to change the structure of the
+value it receives for universally quantified types. The paper
+``Theorems for Free'' deals this property in depth
+\cite{Wadler89theoremsfor}. However, the present library allows any
+arbitrary representation to be casted to the type |Meta|. It is
+possible that type safety can be improved here by defining |Meta| as
+an interface and forcing the overloads of |FoldMeta| to universally
+quantify over variables constrained to the |Meta| interface, but it is
+not clear how much value this would bring or wether the library will
+remain useful. A major consequence of this limitation is that producer
+generic functions, like |read|, are difficult to safely define with
+this library.
+
+To partially address the sub-typeing related problems, an extension of
+the |Meta| class, which requires sub-typeing to be made explicit, is
+presented. With this class, each generic overload can specify a
+different return type from the remaining overloads. Even though the
+approach does not eliminate the problem, it certainly reduces the
+situations where things can go wrong. The consequence is that the user
+has to provide a much bigger specification for the generic functions
+since that variant of the |FoldMeta| class contains one type variable
+per overload.
+
+The examples presented in this paper contain some overhead. The most
+notorious one is the |GMap| function when the argument maps over ADTs
+since conversion has to be done several times to apply the
+function. There is one potential improvement that will be tested in
+the upcomming months to amend this problem. It consists of taking
+advantage of the OO-approach and overloading the constructors for
+representation types such that they can take values of the represented
+type as arguments (like the |Id| constructor). Then when properties of
+the constructor are requested (like the |Elem| property of |Sum|), the
+input type will be deconstructed on demand instead of doing it eagarly
+by the |To| function of the |Generic| class. However, in the ADT case
+of |GMap|, the constructors could also have a property that directly
+returns the type used to build that representation. This would no longer
+have the cost of de-serializing the representation. Then once the mapping
+is applied, a new representation can be constructed withouth having to
+serialize a value. This could bring significant performance improvements
+which are only possible thanks to the OO-approach -- which is an advantage
+over Regular or similar libraries.
+
+The F\# languages includes type providers\cite{export:173076} as a
+tool for metaprogramming. They can generate code during compilation
+time by executing arbitrary .NET code. They are very useful to provide
+typed access to external data soruces along with strongly typed
+functions to interact with such data. However, they are not a suitable
+alternative to datatype generic programming since they are very
+restrictive on the type information they can access and the types they
+can generate. Another metaprogramming tool of F\# is quotations
+\cite{export:147193}. They are a library that provides constructs to
+generate F\# programs at compile time. Even though every generic
+function of this library can be implemnted as a quotation generator
+for the input type, quotations don't give any improvements over
+reflection when it comes to inspecting and traversing a type. They can
+be used complementarily with this library to more easily generate F\#
+code at runtime.
 
 \subsection*{Conclusions}
 
-We have presented a library for datatype generic programming,
-implemented in F\#. In spite of the lack of higher-order kinds, it was
-still possible to reclaim some of the functionality using reflection,
-abstract classes, and subtyping to provide some static guarantees. The
-resulting library can be used to define various generic functions
-familiar from Haskell libraries such as Uniplate and Regular.
+It is possible to use the ideas from datatype generic programming in
+order to provide a more structured alternative to reflection. It is
+still an open for discussion determining which api would be the best
+in order to bring the ideas to languages like F\#. In order to make
+DGP possible in F\#, ideas had to be adapted to suit F\#'s type system
+and tools. The use of sub-typeing could have performance benefits
+since values could be encoded as representations in such a way that
+the encoding/decoding only ocurrs if necesary. One might argue that
+Haskell lazyness already does this, but in the case of the |GMap|
+function, Haskell would still need to translate the value produced by
+the map into a representation (or else the program won't type-check),
+a step that could be skipped in F\#. However, there were consequences
+when adapting the library. The most notable one is that casting can be
+used to produce representations that are no longer faithful to the
+type they intend to represent. This will result in runtime
+errors. Fortunately, the richness of the type information provided by
+.NET at runtime and the debbuging tooling of F\#/.NET make this
+problem easier to correct.
+
+%% Datatype generic programming is a well tested solid approach to write
+%% generic algorithms. It offers a lot of expressiveness compared to
+%% combinator based libraries but has the cost of being harder to use and
+%% requiring powerful type systems. The approach has been tested and
+%% implemented in F\#. Although safety had to be compromised due to the
+%% absense of type system infrastructure in F\#, a useful tool could
+%% still be produced. Even though not completely safe, it is more type
+%% safe than reflection since only a minimal part of the algorithms
+%% require unchecked (or dynamically checked) type operations. In
+%% practice, it is much more pleasant having theese unsafe runtime
+%% operations in F\# than in languages like Haskell or Scala because the
+%% .Net runtime can provide rich information about how/when/why the
+%% operation failed. This would result in a segmentation fault in Haskell
+%% or a stacktrace with erased types in Scala.
+
+%% The library is on its first release so no optimizations have been done
+%% (since a stable api is desired first) but it is clear that DGP opens
+%% doors for automated caching of operations which would need to be done
+%% manually with reflection. In particular, the approach is referentially
+%% transparent when it comes to the type of the arguments. In other
+%% words, the same overload will be selected when the arguments given to
+%% the method selector have the same type.  This means reflection only
+%% needs to be used once to select the method and next time a call with
+%% the same types is done, the right method can automatically be
+%% dispatched. \todo{Is this clear or should I rather give an example
+%%   about how this works?}
+
+%% Compared to existing DGP libraries, the lack of type system
+%% infrastructure makes it very inconvenient to write a class of generic
+%% functions. Theese are the functions that produce values out of
+%% data. The best example is the \verb+read+ function from Haskell. The
+%% problem is that as the funciton parses the string, it must generate a
+%% representation. But in this library, all type representations are a
+%% subclass of \verb+Meta+ so it is hard to statically check that the
+%% algorithm is correct. A possible way to address the problem is having
+%% a type provider that can be given a type and it produces a new type
+%% that is the exact type for the representation. Then the \verb+read+ or
+%% any other function must produce a representation with that same type
+%% (instead of only a sub-type of \verb+Meta+) and would be reasonable
+%% for the F\# compiler to check the correctness of the
+%% algorithm. Unfortunately, type providers can't accept types as static
+%% arguments.  of the algorithm. \ernesto{This last statement is still
+%%   relevant in spite of no longer using type providers}
+
+% \subsection*{Conclusions}
+
+%% We have presented a library for datatype generic programming,
+%% implemented in F\#. In spite of the lack of higher-order kinds, it was
+%% still possible to reclaim some of the functionality using reflection,
+%% abstract classes, and subtyping to provide some static guarantees. The
+%% resulting library can be used to define various generic functions
+%% familiar from Haskell libraries such as Uniplate and Regular.
 
 % Datatype generic programming was successfully implemented for the F\#
 % programming languages. In spite of the absecne of higher-rank
@@ -1368,19 +1458,19 @@ familiar from Haskell libraries such as Uniplate and Regular.
 % selector and resulting in the wrong overload of |FoldMeta| being
 % selected by the selector.
 
-Compared to reflection, this approach is much less general. In the
-context of F\#, mutually recursive types are still not supported. The
-reason is that the |Id| constructor would require an additional type
-argument for every extra type in the recursion. Advanced DGP libraries
-using advanced type systems have solved the problem in various ways
-\cite{multirec}. Generally, the idea consists of using type level
-functions to define types that can be used as indexes for other
-types. Then each type of the mutual recursion can be assigned an
-index. If type providers in F\# could produce generic types, it might
-be possible to lazyly construct the types required for every type
-present in a mutual recurison. Another advantage of reflection is that
-it can be used with any .NET type. This library only works for
-algebraic datatypes.
+%% Compared to reflection, this approach is much less general. In the
+%% context of F\#, mutually recursive types are still not supported. The
+%% reason is that the |Id| constructor would require an additional type
+%% argument for every extra type in the recursion. Advanced DGP libraries
+%% using advanced type systems have solved the problem in various ways
+%% \cite{multirec}. Generally, the idea consists of using type level
+%% functions to define types that can be used as indexes for other
+%% types. Then each type of the mutual recursion can be assigned an
+%% index. If type providers in F\# could produce generic types, it might
+%% be possible to lazyly construct the types required for every type
+%% present in a mutual recurison. Another advantage of reflection is that
+%% it can be used with any .NET type. This library only works for
+%% algebraic datatypes.
 
 
 %  The approach has been adapted for other languages
