@@ -90,12 +90,12 @@
 \maketitle
 
 \begin{abstract}
-  Datatype generic programming (DGP) enable programmers to define
-  functions by induction over the structure of types on which they
-  operate. This paper presents a type-safe library for DGP in F\#,
-  built on top of the .NET reflection mechanism. The generic functions
-  defined using this library can be called by any other language
-  running on the .NET platform. 
+  Datatype generic programming enable programmers to define functions
+  by induction over the structure of types on which they operate. This
+  paper presents a type-safe library for datatype generic programming
+  in F\#, built on top of the .NET reflection mechanism. The generic
+  functions defined using this library can be called by any other
+  language running on the .NET platform.
 \end{abstract}
 
 \category{D.1.1}{Applicative (Functional) Programming}{}
@@ -153,7 +153,7 @@ specifically, we make the following contributions:
   type-based dispatch, F\#'s overloading mechanism is too limited for
   our purposes. To address this, we will implement our own system of
   ad-hoc polymorphism using the .NET reflection mechanism
-  (Section~\ref{sec:overloading})
+  (Section~\ref{sec:foldmeta})
 
 \item Finally, we will show how how functions from other Haskell
   libraries such as Uniplate, may be readily implemented using the
@@ -308,7 +308,7 @@ In the later sections we will show how the |MapEmployee| function may
 be derived automatically by defining a more general |GMap| function
 for the type definitions we saw previously. Before doing so, however,
 we would like to give a brief overview of some of the relevant
-features of F\# and the .NET platform.
+features of the .NET platform.
 
 \subsection{The .NET platform}
 The .NET platform is a common runtime environment supporting a family
@@ -348,11 +348,11 @@ automatically to generic types: that is, the implication $\tau_a \prec
 To handle all type operations and collect type information, the .NET
 platform defines the abstract class |Type|. Instances of the class
 |Type| encode all the type information about values. When F\# is
-compiled to the .NET intermediate language of, CLR, an
-instance of the |Type| class is generated for every typed defined in
-the F\# code. The .NET platform makes this type information 
-available at runtime. Every object has the method
-|GetType| which returns the value of type |Type|.
+compiled to the .NET intermediate language, CIL, an instance of the
+|Type| class is generated for every typed defined in the F\# code. The
+.NET platform makes this type information available at runtime. Every
+object has the method |GetType| which returns the value of type
+|Type|.
 
 The |Type| class is not sealed. Languages can extend it with any
 information they want. This allows F\# to include specific metadata
@@ -365,7 +365,7 @@ not type-safe in general, since the information gained through
 reflection is only available at run-time. Any errors will cause a
 runtime exception. Nevertheless, the reflection mechanism is actively
 used in libraries such as FsPickler~\cite{FsPickler}, a general
-purpose .NET serializer, or Nancy, a .NET web framework. \todo{add citation for Nancy?}
+purpose .NET serializer, or Nancy~\cite{Nancy}, a .NET web framework.
 
 \section{Type Representations in F\#}
 \label{sec:representation}
@@ -452,8 +452,9 @@ as Regular~\cite{Regular}.
 
 The type system of F\#, however, is not as expressive as that of
 Haskell. In particular, all type variables are necessarily of kind
-|*|; furthermore, all calls to overloaded methods must be resolved
-statically. For these reasons, we will need to adapt the Haskell
+|*|; furthermore, all calls to overloaded methods must be resolved in
+every call site and cannot depend on how type variables get
+instantiated. For these reasons, we will need to adapt the Haskell
 approach slightly.
 
 We will define an abstract class, |Meta|, that will be used to define
@@ -486,8 +487,11 @@ analogous to Haskell's |Either| type. It has two constructors:
 the constraint that |vara| and |varb| are sub-types of the |Meta|
 class.
 
+%% I rather say two extra arguments instead of three because the
+%% first argument is explained at the beggining and is present
+%% for all representation
 The second sub-class of |Meta| is |Prod|, corresponding to the product
-of two types. The |Prod| type accepts three extra type arguments: |`ty|, |vara|
+of two types. The |Prod| type accepts two extra type arguments: |vara|
 and |varb|. Once again, we require both |vara| and |varb| to be
 sub-types of the |Meta| class. Besides products, we will use the class
 |U :> Meta| to represent the unit type which takes no extra type
@@ -495,11 +499,10 @@ arguments.
 
 Next, the sub-class |K| of |Meta| is used to represent a type that is
 not defined to be an algebraic datatype. This can be used to represent
-primitive types, such as |int| or |float|. The |K| constructor takes a
-two extra type arguments, |`ty| and |vara|. The first argument is used
-to record the type being represented; the second corresponds to the
-type of its content. Since F\# cannot statically constrain a type to
-be an algebraic datatype or not, |vara| has no constraints.
+primitive types, such as |int| or |float|. The |K| constructor takes
+one extra type arguments, |vara|. The argument corresponds to the type
+of its content. Since F\# cannot statically constrain a type to be an
+algebraic datatype or not, |vara| has no constraints.
 
 Finally, |Id| is the last sub-class of |Meta|. This type is used to
 represent recursive types. This type only takes the |`ty| type
@@ -573,10 +576,11 @@ precise information stored in the |Type| class. This allows the F\#
 compiler to include metadata that can be used to query the
 (type of the) constructors of any algebraic data type at runtime.
 
-The .NET runtime type information is used to traverse the |Type| value
-and generate the necessary conversion functions. This functionality is
-implemented by the |Generic<<`t>>| class with the following
-members:
+Recall that all .NET objects have a member |GetType|. This member can
+be used to obtain type information at runtime which is used to
+traverse the |Type| value and generate the necessary conversion
+functions. This functionality is implemented by the |Generic<<`t>>|
+class with the following members:
 \begin{code}
 type Generic<<`t>>() =
   member x.To : vart -> Meta
@@ -632,27 +636,11 @@ class.  This is an abstract class that specifies the minimal
 implementation required to define a generic function. Its definition
 is given in Figure \ref{fig:def-meta}. It contains three type
 arguments: |`t| which is the type on which the generic functions are
-invoked, |`varin| which is the input type of the function, |`x->`x| in
+invoked, |varin| which is the input type of the function, |`x->`x| in
 this case, and |`out| which is the return type of the generic
 function, in this case |Meta|. 
 
-\ernesto{Explain `t and `ty} The Meta class specifies the minimum
-functionality to fold over representations. That is a method for each
-representation type. Furthermore, all those methods are universally
-quantified over the representation's type arguments to ensure that a
-suitable overload is available in every case. The only exception is
-the |Id| case since it represents recursion, all occurrences of |Id| in a
-representation are the type it represents. To illustrate why this is
-necessary, consider invoking the |GMap| function on the |Company|
-type. This type contains nested |Department| values. This means that
-the intermediate |Sum| constructors in some cases are of type
-|Sum<<Department<< _ >>,_,_ >>| and other cases of type |Sum<<Company<< _ >>,_,_ >>|
-(among others). This means that in order to handle both (and any
-others), the |`ty| argument of the |Sum| type must be universally
-quantified. For clarity, this section adopts the convention that |`t|
-always refers to the type of the value being applied to a generic
-function and |`ty| universally quantifies over the type that a
-representation represents.
+\ernesto{Is the distinction between `t and `ty clear?} The Meta class specifies the minimum functionality to fold over representations. That is a method for each representation type. Furthermore, all those methods are universally quantified over the representation's type arguments to ensure that a suitable overload is available in every case. The only exception is the |Id| case since it represents recursion, all occurrences of |Id| in a representation are the type it represents. To illustrate why this is necessary, consider invoking the |GMap| function on the |Company| type. This type contains nested |Department| values. This means that the intermediate |Sum| constructors in some cases are of type |Sum<<Department<< _ >>,_,_ >>| and other cases of type |Sum<<Company<< _ >>,_,_ >>| (among others). This means that in order to handle both (and any others), the |`ty| argument of the |Sum| type must be universally quantified. For clarity, this section adopts the convention that |`t| always refers to the type of the value being applied to a generic function and |`ty| universally quantifies over the type that a representation represents.
 
 %% The minimal implementation consists of
 %% a method, |FoldMeta|, for all the different subtypes of our |Meta|
@@ -697,8 +685,9 @@ This example uses the following F\# specific constructs:
   is simply reversed function application: |x ||> f = f x|. This is a
   common construct used in F\#, analogous to the (|$|) in Haskell but
   asociates to the left and has its arguments flipped. %$
-\item The |Choice| type which has the constructors |Choice1Of2| and
-  |Choice2Of2|. The type is analogous to the |Either| type in Haskell.
+%% Already explained
+%% \item The |Choice| type which has the constructors |Choice1Of2| and
+%%   |Choice2Of2|. The type is analogous to the |Either| type in Haskell.
 \item The |override| keyword serves the same purpose as |member|
   but the results in a compile time error if no matching |member| is
   found in the super-class.
@@ -720,7 +709,7 @@ contained in the |Sum| type. It then reconstructs a |Sum| instance
 with the results of the recursive call, before casting the result back
 to a value of type |Meta|. We then call the |FoldMeta| method on
 values of type |Meta|. We defer the description of the member function
-|FoldMeta : Meta * `x -> `x| of the |FoldMeta| class to
+|FoldMeta : Meta * varin -> `out| of the |FoldMeta| class to
 the next section.
 
 The next definition handles products:
@@ -760,17 +749,17 @@ before casting the result back to a value of type |Meta|. The second
 definition overrides the required |FoldMeta| member function on |K|;
 this definition leaves the underlying value untouched.
 
-There are two definitions for the |K| constructor: one
-overrides the generic method | FoldMeta<<`ty,`a>> |; the other defines
-a member function on | K<<`t,`x>> |. Note that the type variable | <<`t>> | will be
-instantiated when the |GMap| class is instantiated. As a result, when |GMap| is
-instantiated, the type variable | <<`t>> | will be a concrete type and | <<`a>> | will
-be a type variable.  The |FoldMeta| class only requires the generic
-definition; but we also add the more specific member function handling
-| <<`x>> |. By carefully handling such overloaded functions, we will ensure
-the most specific choice is always made when faced with 
-ambiguity. We will cover the precise rules in greater detail in the
-next section.
+%% There are two definitions for the |K| constructor: one
+%% overrides the generic method | FoldMeta<<`ty,`a>> |; the other defines
+%% a member function on | K<<`t,`x>> |. Note that the type variable | <<`t>> | will be
+%% instantiated when the |GMap| class is instantiated. As a result, when |GMap| is
+%% instantiated, the type variable | <<`t>> | will be a concrete type and | <<`a>> | will
+%% be a type variable.  The |FoldMeta| class only requires the generic
+%% definition; but we also add the more specific member function handling
+%% | <<`x>> |. By carefully handling such overloaded functions, we will ensure
+%% the most specific choice is always made when faced with 
+%% ambiguity. We will cover the precise rules in greater detail in the
+%% next section.
 
 The override above can apply the function to non-representable types,
 but what if |f : `x->`x| were to be defined for an ADT? We need
@@ -783,6 +772,8 @@ let mapper (f : `x->`x) (v : Meta) =
 
 member x.FoldMeta(
   u : U<<`x>>,f : `x->`x) = mapper f u
+member x.FoldMeta<<`a>>(
+  u : K<<`x,`a>>,f : `x->`x) = mapper f u
 member x.FoldMeta(
   p : Prod<<`x,Meta,Meta>>,f : `x->`x) = mapper f p
 member x.FoldMeta(
@@ -873,7 +864,7 @@ introduced in the introduction.
 % \end{table*}
 
 In the previous section, we assumed the existence of a |FoldMeta|
-function with type |Meta * (`x->`x) -> Meta|. Before getting into the
+function with type |Meta * (varin->`out) -> Meta|. Before getting into the
 details of this function, we would like to revisit the problem that it
 needs to solve. Consider the following instances, defining a fragment
 of a generic |map| function in Haskell:
