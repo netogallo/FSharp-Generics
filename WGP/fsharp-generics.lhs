@@ -1359,6 +1359,23 @@ easily generate F\# code at runtime.
 
 \subsection*{Conclusions}
 
+In the report~\cite{CompGen} several guidelines are presented to
+judge generic libraries. From the libraries discussed in the paper,
+this library would be most similar to Lightweight Implementation of
+Generics and Dynamic~\cite{Cheney02alightweight} or
+RepLib~\cite{RepLib}, although with a reduced universe. However, it is
+worth pointing out a significant approach of this library:
+extensibility. Since this library is implemented as an OO-class,
+extending it is trivial. One only needs to inherit from a generic
+function and add the custom functionality. Another thing that can be
+done by this library is overriding some functionality (but not all) of
+a generic function. This is simply done by inheriting from a generic
+function and overriding one (or more) of its methods. In Haskell,
+datatype generic programming libraries can't do this unless each
+instance for each case is defined in a separate module due to
+overlapping instances. Furthermore, all variants of a generic function
+(including the function itself) can coexist together in the same code.
+
 It is possible to use the ideas from datatype generic programming in
 order to provide a more structured alternative to reflection. It is
 still an open for discussion determining which api would be the best
