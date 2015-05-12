@@ -595,6 +595,7 @@ and limit the performance penalty that this induces.
 \label{sec:generic-functions}
 
 \begin{figure*}
+\begin{centering}
 \begin{code}
 AbstractClass
 type FoldMeta<`t,varin,`out>()
@@ -606,6 +607,7 @@ abstract FoldMeta<<`ty,`a>> : K<<`ty,`a>> * varin -> `out
 abstract FoldMeta : Id<<`t>> * varin -> `out
 abstract FoldMeta<<`ty>> : U<<`ty>> * varin -> `out
 \end{code}
+\end{centering}
 \caption{Definition of the |Meta| abstract class for 
   generic functions taking one argument.}
 \label{fig:def-meta}
@@ -640,7 +642,23 @@ invoked, |varin| which is the input type of the function, |`x->`x| in
 this case, and |`out| which is the return type of the generic
 function, in this case |Meta|. 
 
-\ernesto{Is the distinction between `t and `ty clear?} The Meta class specifies the minimum functionality to fold over representations. That is a method for each representation type. Furthermore, all those methods are universally quantified over the representation's type arguments to ensure that a suitable overload is available in every case. The only exception is the |Id| case since it represents recursion, all occurrences of |Id| in a representation are the type it represents. To illustrate why this is necessary, consider invoking the |GMap| function on the |Company| type. This type contains nested |Department| values. This means that the intermediate |Sum| constructors in some cases are of type |Sum<<Department<< _ >>,_,_ >>| and other cases of type |Sum<<Company<< _ >>,_,_ >>| (among others). This means that in order to handle both (and any others), the |`ty| argument of the |Sum| type must be universally quantified. For clarity, this section adopts the convention that |`t| always refers to the type of the value being applied to a generic function and |`ty| universally quantifies over the type that a representation represents.
+\ernesto{Is the distinction between `t and `ty clear?} The Meta class
+specifies the minimum functionality to fold over representations. That
+is a method for each representation type. Furthermore, all those
+methods are universally quantified over the representation's type
+arguments to ensure that a suitable overload is available in every
+case. The only exception is the |Id| case since it represents
+recursion, all occurrences of |Id| in a representation are the type it
+represents. To illustrate why this is necessary, consider invoking the
+|GMap| function on the |Company| type. This type contains nested
+|Department| values. This means that the intermediate |Sum|
+constructors in some cases are of type |Sum<<Department<< _ >>,_,_ >>|
+and other cases of type |Sum<<Company<< _ >>,_,_ >>| (among
+others). This means that in order to handle both (and any others), the
+|`ty| argument of the |Sum| type must be universally quantified. For
+clarity, this section adopts the convention that |`t| always refers to
+the type of the value being applied to a generic function and |`ty|
+universally quantifies over the type that a representation represents.
 
 %% The minimal implementation consists of
 %% a method, |FoldMeta|, for all the different subtypes of our |Meta|
@@ -735,7 +753,8 @@ override x.FoldMeta<<`ty>>(u : U<<`ty>>,
 
 We define two cases to handle the |K| type constructor:
 \begin{code}
-member x.FoldMeta<<`ty>>(v : K<<`ty,`x>>, f : `x->`x) = 
+member x.FoldMeta<<`ty>>(
+  v : K<<`ty,`x>>, f : `x->`x) = 
   K(f v.Elem) :> Meta
 
 override x.FoldMeta<<`ty,`a>>(k : K<<`ty,`a>>
