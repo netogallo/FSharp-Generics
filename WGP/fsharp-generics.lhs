@@ -654,11 +654,11 @@ represents. To illustrate why this is necessary, consider invoking the
 |Department| values. This means that the intermediate |Sum|
 constructors in some cases are of type |Sum<<Department<< _ >>,_,_ >>|
 and other cases of type |Sum<<Company<< _ >>,_,_ >>| (among
-others). This means that in order to handle both (and any others), the
-|`ty| argument of the |Sum| type must be universally quantified. For
-clarity, this section adopts the convention that |`t| always refers to
-the type of the value being applied to a generic function and |`ty|
-universally quantifies over the type that a representation represents.
+others). In order to handle both (and any others) cases, the |`ty| argument
+of the |Sum| type must be universally quantified. For clarity, this
+section adopts the convention that |`t| always refers to the type of
+the value being applied to a generic function and |`ty| universally
+quantifies over the type that a representation represents.
 
 %% The minimal implementation consists of
 %% a method, |FoldMeta|, for all the different subtypes of our |Meta|
@@ -893,19 +893,31 @@ instance (GMap a,GMap b) =>
   gmap (L a) f = L (gmap a f)
   gmap (R b) f = R (gmap a f)
 
-instance GMap (K x) where
-  gmap k _ = k
+instance (GMap (K Int)) where
+  gmap (K v) f = K (f v)
 
-instance GMap (K Int) where
-  gmap (K i) f = K (f i)
+instance GMap U where
+  gmap U _ = U
 \end{code}
-The two instance definitions for the type constructor |K|
-\emph{overlap}. When invoking |gmap| on a value of type |K Int|, the
-second instance is used, even if the first instance would also have
-been a valid choice. Haskell extensions that allow overlapping
-instances define a precise set of rules specifying which instance
-definition should be chosen when there is more than one alternative
-available.
+Let's take a look at the |GMap| definition for the |:+:| type. This
+function performs a recursive call to |gmap|. But there are three
+different overloads of the |gmap| function so what overload does the
+compiler choose? In Haskell, a choice is not made until enough type
+variables have been instantiated. The |GMap| function might be invoked
+with a value of type |U :+: U| as well as a value of type |K Int :+: K
+Int|. For the first application, the compiler will invoke the |gmap|
+overload for |U| wheras the second case it will invoke the |GMap|
+overload for |K Int|. It is important to notice how the choice of
+functions being invoked depends on how type variables get
+instantiated.
+
+%% The two instance definitions for the type constructor |K|
+%% \emph{overlap}. When invoking |gmap| on a value of type |K Int|, the
+%% second instance is used, even if the first instance would also have
+%% been a valid choice. Haskell extensions that allow overlapping
+%% instances define a precise set of rules specifying which instance
+%% definition should be chosen when there is more than one alternative
+%% available.
 
 We could try to adopt a similar approach in F\#, by defining the
 following member functions:
@@ -921,18 +933,26 @@ member x.FoldMeta<<`ty,`a,`b>>(
     Sum<<`ty,`a,`b>>(
       x.FoldMeta(b,f) |> Choice1Of2)
 
-member x.FoldMeta<<`ty,`a>>(
-  k : K<<`ty,`a>>,f : int -> int) = k
+member x.FoldMeta<<`ty>>(
+  k : K<<`ty,`int>>,f : int -> int) = (K (f k.Elem))
 
 member x.FoldMeta<<`ty>>(
-  k : K<<`ty,int>>,f : int -> int) = K (f k)
+  u : U<<`ty>>,f : int -> int) = u
 \end{code}
 However, this code is rejected by the F\# compiler. The |Sum|
-constructor makes two a recursive calls. When this function is
-defined, it is still unclear how to resolve these recursive calls. In
-particular, whether these calls are generic in one, two or three type
-variables. As a result, the F\# rejects this definition, even if we
-can determine this for any call to |FoldMeta| for a fixed type.
+constructor makes two a recursive calls. At the definition site it is
+still unclear what overloads should be selected for the recursive
+call. The F\# compiler cannot wait until |FoldMeta| is applied to a
+value and the type variables get instantiated to decide what overload
+to invoke. The choice of overloads must be performed at the definition
+site (contrast to Haskell). This is a simplification many OO-languages
+adopt in order to eliminate the ammount of type level computations
+needed to compile the language.
+
+%% When this function is defined, it is still unclear how to resolve these recursive calls. In
+%% particular, whether these calls are generic in one, two or three type
+%% variables. As a result, the F\# rejects this definition, even if we
+%% can determine this for any call to |FoldMeta| for a fixed type.
 
 We resolved this problem by defining a |FoldMeta|
 function of type |Meta*varin -> `out|.  This function can also be
