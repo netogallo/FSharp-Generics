@@ -909,7 +909,8 @@ Int|. For the first application, the compiler will invoke the |gmap|
 overload for |U| wheras the second case it will invoke the |GMap|
 overload for |K Int|. It is important to notice how the choice of
 functions being invoked depends on how type variables get
-instantiated.
+instantiated. In this particular case, the choice happens at the
+\emph{invokation site} of |gmap|.
 
 %% The two instance definitions for the type constructor |K|
 %% \emph{overlap}. When invoking |gmap| on a value of type |K Int|, the
@@ -944,10 +945,10 @@ constructor makes two a recursive calls. At the definition site it is
 still unclear what overloads should be selected for the recursive
 call. The F\# compiler cannot wait until |FoldMeta| is applied to a
 value and the type variables get instantiated to decide what overload
-to invoke. The choice of overloads must be performed at the definition
-site (contrast to Haskell). This is a simplification many OO-languages
-adopt in order to eliminate the ammount of type level computations
-needed to compile the language.
+to invoke. In F\#, the choice of overloads must be performed at the
+\emph{definition site}, not the invokation site as in Haskell. This is a
+simplification many OO-languages adopt in order to eliminate the
+ammount of type level computations needed to compile the language.
 
 %% When this function is defined, it is still unclear how to resolve these recursive calls. In
 %% particular, whether these calls are generic in one, two or three type
