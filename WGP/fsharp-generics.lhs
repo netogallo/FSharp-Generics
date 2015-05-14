@@ -126,7 +126,7 @@ underlying conversions manually.
 
 Yet this approach has not been as widely adopted in other
 languages. In this paper, we will attempt to address this by
-implementing a library for data type generic programming in F\# \cite{export:192596}. More
+implementing a library for data type generic programming in F\#. More
 specifically, we make the following contributions:
 
 \begin{itemize}
@@ -182,14 +182,14 @@ definition of |IncreaseSalary| using our library for generic
 programming in the second half of this paper.
 
 \subsection{The F\# language}
-The F\# programming language is a functional language of the ML
-family. It aims to combine the advantages of functional programming
-and Microsoft's .NET platform. To do so, the F\# designers have
-adopted numerous features from languages such as Haskell or OCaml,
-without sacrificing the ability to interface well with other .NET
-languages.  As a result, the language has a much simpler type system
-than Haskell or Scala.  Unlike Scala, however, F\# performs no type
-erasure when compiled to the .NET platform.
+The F\#~\cite{export:192596} programming language is a functional
+language of the ML family. It aims to combine the advantages of
+functional programming and Microsoft's .NET platform. To do so, the
+F\# designers have adopted numerous features from languages such as
+Haskell or OCaml, without sacrificing the ability to interface well
+with other .NET languages.  As a result, the language has a much
+simpler type system than Haskell or Scala.  Unlike Scala, however, F\#
+performs no type erasure when compiled to the .NET platform.
 
 Before we can define the |IncreaseSalary| function, we will define the types on which it operates:
 \begin{code}
@@ -349,7 +349,7 @@ To handle all type operations and collect type information, the .NET
 platform defines the abstract class |Type|. Instances of the class
 |Type| encode all the type information about values. When F\# is
 compiled to the .NET intermediate language, CIL, an instance of the
-|Type| class is generated for every typed defined in the F\# code. The
+|Type| class is generated for every type defined in the F\# code. The
 .NET platform makes this type information available at runtime. Every
 object has the method |GetType| which returns the value of type
 |Type|.

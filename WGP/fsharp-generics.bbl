@@ -26,6 +26,11 @@ R.~Hinze and J.~Jeuring.
 \newblock Generic haskell: Practice and theory.
 \newblock In \emph{Generic Programming}, pages 1--56. Springer, 2003.
 
+\bibitem[H\r{a}kansson and Robbins()]{Nancy}
+A.~H\r{a}kansson and S.~Robbins.
+\newblock {Nancy}.
+\newblock \url{http://nancyfx.org}.
+
 \bibitem[Jansson and Jeuring(1997)]{polyp}
 P.~Jansson and J.~Jeuring.
 \newblock Polyp—a polytypic programming language extension.
@@ -118,11 +123,6 @@ D.~Syme, A.~Granicz, and A.~Cisternino.
 \newblock Apress, November 2012{\natexlab{b}}.
 \newblock URL \url{http://research.microsoft.com/ apps/ pubs/
   default.aspx?id=192596}.
-
-\bibitem[Team()]{Nancy}
-N.~F. Team.
-\newblock {Nancy}.
-\newblock \url{http://nancyfx.org}.
 
 \bibitem[Tihon()]{InterfaceLims}
 S.~Tihon.
