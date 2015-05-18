@@ -20,7 +20,7 @@
 \newboolean{showNotes}
 \newboolean{marginNotes}
 \setboolean{showNotes}{true}
-\setboolean{marginNotes}{false}
+\setboolean{marginNotes}{true}
 \newcommand{\marginNote}[1]{
 \ifthenelse
   {\boolean{marginNotes}}
@@ -620,7 +620,12 @@ To illustrate how generic functions may be defined, we will define a
 generic map operator, |gmap|. This function accepts as an argument a
 function of type $\tau\to\tau$ and applies the function to every value
 of type $\tau$ in a ADT. In Regular, a generic function is defined as
-a typeclass. In our library, we define |GMap| as a .NET class:
+a typeclass. In our library, we define |GMap| as a .NET class.
+Every generic function in our library is implemented in a subclass of the |FoldMeta|
+class.  This is an abstract class that specifies the minimal
+implementation required to define a generic function. Its definition
+is given in Figure \ref{fig:def-meta}.
+
 \begin{code}
 type GMap<<`t,`x>>() = 
   class 
@@ -631,10 +636,7 @@ type GMap<<`t,`x>>() =
   -- [...] Implementation [...]
   end
 \end{code}
-Every generic function in our library is implemented in a subclass of the |FoldMeta|
-class.  This is an abstract class that specifies the minimal
-implementation required to define a generic function. Its definition
-is given in Figure \ref{fig:def-meta}. It contains three type
+The |FoldMeta| class is parametrized by three type
 arguments: |`t| which is the type on which the generic functions are
 invoked, |varin| which is the input type of the function, |`x->`x| in
 this case, and |`out| which is the return type of the generic
@@ -653,7 +655,7 @@ type of the first argument to |FoldMeta|.
 To illustrate why this distinction is necessary, consider invoking the
 |GMap| function on the |Company| type. This type contains values of
 type |Department|.  As a result, intermediate |Sum| constructors may
-have a type of the form |Sum<<Department<< _ >>,_,_ >>| or of the form
+have a type that is of the form |Sum<<Department<< _ >>,_,_ >>| or a type of the form
 |Sum<<Company<< _ >>,_,_ >>|. In order to handle both these cases, the
 |`ty| argument of the |Sum| type must be universally quantified in the
 corresponding definition of |FoldMeta|.  The recursive occurrences,
@@ -664,15 +666,12 @@ the convention that |`t| always refers to the type the first argument
 of the a generic function we are defining and |`ty| is a universally
 quantified type variable, corresponding to a type being represented.
 
-By overriding these |FoldMeta| methods in the concrete |GMap| class,
-we can then define the desired map operation. The |FoldMeta| class and
-its member functions will explained in detail in Section
-\ref{sec:foldmeta}. The first method we override in the of |GMap|
-class handles the |Sum| type constructor:
-% Type `a does de universal quantification over all
-% representable types.
-% Type `x is the type parameter given as an argument
-% to the GMap function
+By overriding the |FoldMeta| methods in the concrete |GMap| class, we
+will define the desired map operation. The |FoldMeta| class and its
+member functions will explained in detail in Section
+\ref{sec:foldmeta}; for the moment, we will restrict ourself to the
+methods that we override in the |GMap| class. The first method we
+override handles the |Sum| type constructor:
 \begin{code}
 override self.FoldMeta<<`ty>>
   (v : Sum<<`ty,Meta,Meta>>
@@ -692,23 +691,10 @@ This example uses the following F\# specific constructs:
   is simply reversed function application: |x ||> f = f x|. This is a
   common construct used in F\#, analogous to the (|$|) in Haskell but
   asociates to the left and has its arguments flipped. %$
-%% Already explained
-%% \item The |Choice| type which has the constructors |Choice1Of2| and
-%%   |Choice2Of2|. The type is analogous to the |Either| type in Haskell.
 \item The |override| keyword serves the same purpose as |member|
   but the results in a compile time error if no matching |member| is
   found in the super-class.
 \end{itemize}
-% In this case in this case |self.FoldMeta<<`ty>>| universally
-% quantifies over the type variable |`ty|. In some cases, the
-% quantification is implicit and the compiler can do it
-% automatically. However, when overriding methods with the same name
-% and similar signatures, leaving it out can make it ambigous to
-% determine the exact method being overriden.  
-%
-% Wouter: I'm removing this here -- we're kind of assuming alread most
-% WGP people can read F#, C#, or Scala type signatures (which I think
-% is safe to assume)
 
 The definition itself is fairly unremarkable: it pattern matches on
 its argument and applies the |FoldMeta| function to the values
@@ -731,14 +717,9 @@ override x.FoldMeta<<`ty>>
 \end{code}
 The type |Prod| contains the properties |E1| and |E2|, storing the two
 constituent elements of the product. Once again, we recursively invoke
-|FoldMeta| on these values.
-
-Similarly, the definition handling the unit type is unremarkable:
-\begin{code}
-override x.FoldMeta<<`ty>>(u : U<<`ty>>,
-                   ,f : `x -> `x) = u :> Meta
-
-\end{code}
+|FoldMeta| on these values, reassemble the result, and cast it back to
+a value of type |Meta|. The definition for unit types, |U|, is
+similarly unremarkable.
 
 We define two cases to handle the |K| type constructor:
 \begin{code}
@@ -794,28 +775,11 @@ of the function being mapped. Next they convert the representation
 back to the type, apply the function and convert the result back to a
 representation.
 
-\ernesto{Tried to make clearer the difference between `t and `ty} The
-case for the |Id| constructor is a bit more involved. The |Id| case of
-the abstract |FoldMeta| member instantiates the |`ty| argument of the
-|Id| constructor to |`t|. This means that the |Id| case only needs to
-be specified for the type |`t|, the type to which the generic function
-is being applied, instead of universally quantifying over all
-types. Recall that |Id| is used to represent recursion within a
-type. To do so, it contains the value of the recursive occurrence of
-|`t| in itself. That value can be accessed with the |Elem|
-property. However, the property contains a value of type |`t| and not
-|Meta|, so it cannot be used for recursive calls to |FoldMeta|. With
-the |Generic<<`ty>>| class it is possible to extract the contents of
-|Id|, call the |FoldMeta| function and convert the result back to the
-original type. We can define the |FoldMeta| instance for the |Id|
-constructor as follows:
+\wouter{I'm not sure I understand the point of this mapper? Can you
+  explain in the comments below -- I'd be happy update the text.}
 
-%% Remember that |Id| contains a property called |Elem : `t|. This
-%% property contains a value, and not a representation of type |Meta|.
-%% With the |Generic<<`ty>>| class it is possible to extract the contents
-%% of |Id|, call the |FoldMeta| function and convert the result back to
-%% the original type. We can define the |FoldMeta| instance for the |Id|
-%% constructor as follows:
+
+The case for the |Id| constructor is a bit more involved. 
 \begin{code}
 override x.FoldMeta
   (v : Id<<`t>>
@@ -825,6 +789,17 @@ override x.FoldMeta
       g.To c.Elem,f) |> g.From)
     :> Meta
 \end{code}
+The |Id|
+case of the abstract |FoldMeta| member instantiates the |`ty| argument
+of the |Id| constructor to |`t|. This means that the |Id| case only
+needs to be specified for the type |`t|, the type to which the generic
+function is being applied, instead of universally quantifying over all
+types. The |Id| constructor stores a single value, |Elem|, of type
+|`t|.  Using the |Generic<<`ty>>| class it is possible to convert this
+|`t| to a value of type |Meta|; after calling the |FoldMeta| function
+recursively, we can convert the result back to the original type.
+
+
 Using the |GMap :> FoldMeta| class, we can now define the following
 |gmap| function:
 \begin{code}
@@ -842,34 +817,6 @@ introduced in the introduction.
 
 \section{The FoldMeta class}
 \label{sec:foldmeta}
-% \begin{table*}
-% \begin{tabular}{cccc}
-%   \multirow{15}{*}{|self.FoldMeta(m : Meta)|} & \multirow{15}{*}{$=\left\{\begin{array}{c} \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \end{array}\right.$} & \multirow{2}{*}{|self.FoldMeta(m)|} & |exists self.FoldMeta : tau->tau1|  \\
-%   & & & $\wedge$ |m : tau| \\
-%   & & & \\
-%   & & \multirow{4}{*}{|self.FoldMeta<<tau_a>>(m.Cast())|} & |self.FoldMeta<<`ty>> : tau'->tau1| \\
-%   & & & $\wedge$ |m : tau<<tau_ty,tau_m1,tau_m2>>| \\
-%   & & & $\wedge$ |tau_m1 :> Meta| $\wedge$ |tau_m2 :> Meta| \\
-%   & & & $\wedge$ |[tau_ty/`ty]tau' = tau<<tau_a,Meta,Meta>>| \\
-%   & & & \\
-%   & & \multirow{3}{*}{|self.FoldMeta<<tau_a>>(m)|} & |exists self.FoldMeta<<`a>> : tau'->tau1| \\
-%   & & & $\wedge$ |m : tau<<tau_ty,tau_a>>|\\
-%   & & & $\wedge$ |[tau_a/`a]tau' = tau<<tau_ty,tau_a>>|\\
-%   & & & \\
-%   & & \multirow{3}{*}{|self.FoldMeta<<tau_ty,tau_a>>(m)|} & |self.FoldMeta<<`ty,`a>> : tau'->tau1| \\
-%   & & & $\wedge$ |m : tau<<tau_ty,tau_a>>|\\
-%   & & & $\wedge$ |[tau_ty/`t][tau_a/`a]tau' = tau<<tau_ty,tau_a>>|\\
-%   & & & \\
-%   %% & & | = o.Sum(x : Sum<<tau,Meta,Meta>>,v1 : tau1,...,vn : taun)| \\
-%   %% & & |self.Sum(x : Meta,v1 : tau1,...,vn : taun)| \\
-%   %% & & | = o.Sum<<tau>>(x : Sum<<tau,Meta,Meta>>,v_1 : tau1,...,v_n : taun)|
-% \end{tabular}
-% \caption{Selection criteria of the |FoldMeta| class when using reflection to select an overloaded function.
-% This is the criteria when |FoldMeta| takes no extra arguments but the selection works the same
-% way since only the subtypes of |Meta| are inspected to select the overloaded function as long as the types
-% of the extra arguments are consistent.}
-% \label{fig:selector}
-% \end{table*}
 
 In the previous section, we assumed the existence of a |FoldMeta|
 function with type |Meta * (`x->`x) -> Meta|. Before getting into the
