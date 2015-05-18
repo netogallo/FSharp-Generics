@@ -126,7 +126,7 @@ underlying conversions manually.
 
 Yet this approach has not been as widely adopted in other
 languages. In this paper, we will attempt to address this by
-implementing a library for data type generic programming in F\# \cite{export:192596}. More
+implementing a library for data type generic programming in F\#~\cite{export:192596}. More
 specifically, we make the following contributions:
 
 \begin{itemize}
@@ -165,10 +165,7 @@ specifically, we make the following contributions:
 
 We hope that porting the ideas from the datatype generic programming
 community to F\# will pave the way for the wider adoption of these
-ideas in other languages such as C\#, Swift and Scala. \ernesto{Should
-  we really say scala here? I mean it has been done in
-  \cite{scala-jfp}, in a similar fashion as in Haskell. Wouldn't this
-  show that we are not awere of the `relevant` work?}
+ideas in other .NET languages, such as C\#.
 
 \section{Background}
 \label{sec:background}
@@ -474,11 +471,11 @@ types themselves are subtypes of the |Meta| class.
 In the remainder of this section, we will present the concrete
 subtypes of the |Meta| class defined in our library. All the
 subclasses of the |Meta| class are parametrized by at least one
-(phantom) type argument, |`ty|.  This argument is instantiated to the
-type from which the representation was produced.
+(phantom) type argument, |`ty|.  This argument will be instantiated to the
+type that a value of type |Meta| is used to represent.
 
 The first subclass of |Meta| is |Sum|, that represents the sum of two
-types.  The |Sum| takes two extra type arguments: |`a| and |`b|. They
+types.  Besides the type argument |`ty|, the |Sum| takes two additional type arguments: |`a| and |`b|. They
 indicate the inner instances of |Meta| that they encode and are
 contained inside a |Chocie| type. The |Choice| type in F\# is
 analagous to Haskell's |Either| type. It has two constructors:
@@ -509,9 +506,11 @@ type as the value being represented.
 The definitions of these types are given in Figure~\ref{fig:rep-def}.
 This definitions are not complete since the actual implementation
 contains extra code used for reflection which is not relevant when
-discussing the universe of types that our library can handle. The full
+discussing the universe of types that our library can handle. 
+The full
 definition can be found in the source
 code~\cite{FSharp-Generics-Repo}.
+\todo{Fix link or scrap this sentence.}
 
 We conclude this section with an example of our type
 representation. Given the following algebraic datatype in F\#:
@@ -527,7 +526,7 @@ type ElemsRep =
   Sum<<
     Elem<<int>>,
     Sum<<
-      unit,
+      Elem<<int>>,
       Prod<<Elem<<int>>,K<<Elem<<int>>,int>>,
         Prod<<Id<<Elem<<int>> >>,U<<Elem<<int>> >> >> >>,
       Sum<<
@@ -536,15 +535,14 @@ type ElemsRep =
         U<<Elem<<int>> >> >>,
     U<<Elem<<int>> >> >>
 \end{code}
+\wouter{Ernesto can you update this example? We need to pass the extra
+  type parameter |`ty| all over the place, including products for example...}
 
 This example shows how the |Sum| type constructor takes three
 arguments: the first stores meta-information about the type being
 represented; the second two type arguments are the types whose
-coproduct is formed. \ernesto{We could remove them w/o compromising
-  the integrity of the paper, I only worte it this way bc that is how
-  the current implementation does it. However, there is always space
-  to improve. The reason I implemented it that way is for uniformity
-  :P} There is some overhead in this representation -- we could
+coproduct is formed. 
+There is some overhead in this representation -- we could
 simplify the definition a bit by removing spurious unit types. It is
 important to emphasise, however, that these definitions will be
 \emph{generated} using .NET's reflection mechanism. To keep the
@@ -632,7 +630,7 @@ class.  This is an abstract class that specifies the minimal
 implementation required to define a generic function. Its definition
 is given in Figure \ref{fig:def-meta}. It contains three type
 arguments: |`t| which is the type on which the generic functions are
-invoked, |`varin| which is the input type of the function, |`x->`x| in
+invoked, |varin| which is the input type of the function, |`x->`x| in
 this case, and |`out| which is the return type of the generic
 function, in this case |Meta|. 
 
@@ -653,21 +651,6 @@ quantified. For clarity, this section adopts the convention that |`t|
 always refers to the type of the value being applied to a generic
 function and |`ty| universally quantifies over the type that a
 representation represents.
-
-%% The minimal implementation consists of
-%% a method, |FoldMeta|, for all the different subtypes of our |Meta|
-%% class. Note that |`t| and |`ty| are distinct type variables. In the
-%% |FoldMeta| class, |`t| refers to the type that corresponds to the
-%% representation being traversed and |`ty| universially quantifies over
-%% any type that an intermediate representation represents. For example
-%% consider an instance of |FoldMeta| where |`t| is instantiated to
-%% |Company|. Since |Department| is a nested type in |Company| there are
-%% some ocassions in which |FoldMeta| will be ivoked with a
-%% representation of type |Sum<<Department,_,_>>| and some occassions
-%% where it will be invoked with a representation of type
-%% |Sum<<Company,_,_>>|. Hence one needs to universally quantify in order
-%% for a single function to handle this two (and possibly many other)
-%% cases. That is the purpose of |`ty|.
 
 By overriding these |FoldMeta| methods in the concrete |GMap| class,
 we can then define the desired map operation. The |FoldMeta| class and
@@ -746,7 +729,8 @@ override x.FoldMeta<<`ty>>(u : U<<`ty>>,
 
 We define two cases to handle the |K| type constructor:
 \begin{code}
-member x.FoldMeta<<`ty>>(v : K<<`ty,`x>>, f : `x->`x) = 
+member x.FoldMeta<<`ty>> (v : K<<`ty,`x>>
+                         , f : `x->`x) = 
   K(f v.Elem) :> Meta
 
 override x.FoldMeta<<`ty,`a>>(k : K<<`ty,`a>>
@@ -772,7 +756,7 @@ the most specific choice is always made when faced with
 ambiguity. We will cover the precise rules in greater detail in the
 next section.
 
-The override above can apply the function to non-representable types,
+The override above can apply the function to types,
 but what if |f : `x->`x| were to be defined for an ADT? We need
 additional overloads to deal with that case:
 \begin{code}
