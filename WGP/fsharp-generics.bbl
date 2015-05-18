@@ -1,9 +1,15 @@
-\begin{thebibliography}{17}
+\begin{thebibliography}{20}
 \providecommand{\natexlab}[1]{#1}
 \providecommand{\url}[1]{\texttt{#1}}
 \expandafter\ifx\csname urlstyle\endcsname\relax
   \providecommand{\doi}[1]{doi: #1}\else
   \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Cheney and Hinze(2002)]{Cheney02alightweight}
+J.~Cheney and R.~Hinze.
+\newblock A lightweight implementation of generics and dynamics.
+\newblock In \emph{Proceedings of the 2002 ACM SIGPLAN Haskell Workshop}, pages
+  90--104. ACM Press, 2002.
 
 \bibitem[d.~S.~Oliveira and Gibbons(2010)]{scala-jfp}
 B.~C. d.~S.~Oliveira and J.~Gibbons.
@@ -19,6 +25,11 @@ B.~C. d.~S.~Oliveira and J.~Gibbons.
 R.~Hinze and J.~Jeuring.
 \newblock Generic haskell: Practice and theory.
 \newblock In \emph{Generic Programming}, pages 1--56. Springer, 2003.
+
+\bibitem[H\r{a}kansson and Robbins()]{Nancy}
+A.~H\r{a}kansson and S.~Robbins.
+\newblock {Nancy}.
+\newblock \url{http://nancyfx.org}.
 
 \bibitem[Jansson and Jeuring(1997)]{polyp}
 P.~Jansson and J.~Jeuring.
@@ -69,6 +80,16 @@ T.~v. Noort, A.~Rodriguez, S.~Holdermans, J.~Jeuring, and B.~Heeren.
 \newblock ISBN 978-1-60558-060-9.
 \newblock \doi{10.1145/1411318.1411321}.
 \newblock URL \url{http://doi.acm.org/10.1145/1411318.1411321}.
+
+\bibitem[Rodriguez et~al.(2008)Rodriguez, Jeuring, Jansson, Gerdes, Kiselyov,
+  and Oliveira]{CompGen}
+A.~Rodriguez, J.~Jeuring, P.~Jansson, A.~Gerdes, O.~Kiselyov, and B.~C. d.~S.
+  Oliveira.
+\newblock Comparing libraries for generic programming in haskell.
+\newblock \emph{SIGPLAN Not.}, 44\penalty0 (2):\penalty0 111--122, Sept. 2008.
+\newblock ISSN 0362-1340.
+\newblock \doi{10.1145/1543134.1411301}.
+\newblock URL \url{http://doi.acm.org/10.1145/1543134.1411301}.
 
 \bibitem[Sheard and Jones(2002)]{Sheard02templatemeta-programming}
 T.~Sheard and S.~P. Jones.
