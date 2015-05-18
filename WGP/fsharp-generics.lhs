@@ -410,10 +410,6 @@ type Sum<<`ty,vara,varb
   end
 \end{code}
 
-%% \ernesto{From a DGP point of veiw, meta has no purpose but to be the
-%%   type from which all derive. In the implementation, it contains some
-%%   methods which are used to do reflection but I don't think they need
-%%   to be mentioned here?}
 \end{subfigure}
 \begin{subfigure}[t]{0.3\textwidth}
 \begin{code}
@@ -432,8 +428,6 @@ type Prod<<`ty,vara,varb
   end
 \end{code}
 \end{subfigure}
-%\begin{subfigure}[b]{0.3\textwidth}
-%\end{subfigure}
 \caption{Definition in F\# of all the types used to build type representations.}
 \label{fig:rep-def}
 \end{figure*}
@@ -485,9 +479,6 @@ analogous to Haskell's |Either| type. It has two constructors:
 the constraint that |vara| and |varb| are subtypes of the |Meta|
 class.
 
-%% I rather say two extra arguments instead of three because the
-%% first argument is explained at the beggining and is present
-%% for all representation
 The second subclass of |Meta| is |Prod|, corresponding to the product
 of two types. Besides the |`ty| argument, the |Prod| type accepts two additional type arguments: |vara|
 and |varb|. Once again, we require both |vara| and |varb| to be
@@ -738,18 +729,6 @@ before casting the result back to a value of type |Meta|. The second
 definition overrides the required |FoldMeta| member function on |K|;
 this definition leaves the underlying value untouched.
 
-%% There are two definitions for the |K| constructor: one
-%% overrides the generic method | FoldMeta<<`ty,`a>> |; the other defines
-%% a member function on | K<<`t,`x>> |. Note that the type variable | <<`t>> | will be
-%% instantiated when the |GMap| class is instantiated. As a result, when |GMap| is
-%% instantiated, the type variable | <<`t>> | will be a concrete type and | <<`a>> | will
-%% be a type variable.  The |FoldMeta| class only requires the generic
-%% definition; but we also add the more specific member function handling
-%% | <<`x>> |. By carefully handling such overloaded functions, we will ensure
-%% the most specific choice is always made when faced with 
-%% ambiguity. We will cover the precise rules in greater detail in the
-%% next section.
-
 The override above can apply the function to types,
 but what if |f : `x->`x| were to be defined for an ADT? We need
 additional overloads to deal with that case:
@@ -789,16 +768,15 @@ override x.FoldMeta
       g.To c.Elem,f) |> g.From)
     :> Meta
 \end{code}
-The |Id|
-case of the abstract |FoldMeta| member instantiates the |`ty| argument
-of the |Id| constructor to |`t|. This means that the |Id| case only
-needs to be specified for the type |`t|, the type to which the generic
-function is being applied, instead of universally quantifying over all
-types. The |Id| constructor stores a single value, |Elem|, of type
-|`t|.  Using the |Generic<<`ty>>| class it is possible to convert this
-|`t| to a value of type |Meta|; after calling the |FoldMeta| function
-recursively, we can convert the result back to the original type.
-
+The |Id| case of the abstract |FoldMeta| member instantiates the |`ty|
+argument of the |Id| constructor to |`t|. This means that the |Id|
+case only needs to be specified for the type |`t|, the type to which
+the generic function is being applied, instead of universally
+quantifying over all types. The |Id| constructor stores a single
+value, |Elem|, of type |`t|.  Using the |Generic<<`ty>>| class it is
+possible to convert this |`t| to a value of type |Meta|; after calling
+the |FoldMeta| function recursively, we can convert the result back to
+the original type.
 
 Using the |GMap :> FoldMeta| class, we can now define the following
 |gmap| function:
