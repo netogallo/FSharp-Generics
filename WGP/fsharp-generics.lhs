@@ -640,7 +640,7 @@ it requires a method for each concrete subtype of the |Meta| class. Note that al
 the methods are universally quantified over the type being represented, |`ty|.
 The only exception is the |Id|, representing
 recursive occurrences, 
-that requires a member function of type |Id<<`t>> * `in -> `out|, where |`t| is the
+that requires a member function of type |Id<<`t>> * varin -> `out|, where |`t| is the
 type of the first argument to |FoldMeta|.
 
 To illustrate why this distinction is necessary, consider invoking the
@@ -729,35 +729,6 @@ before casting the result back to a value of type |Meta|. The second
 definition overrides the required |FoldMeta| member function on |K|;
 this definition leaves the underlying value untouched.
 
-The override above can apply the function to types,
-but what if |f : `x->`x| were to be defined for an ADT? We need
-additional overloads to deal with that case:
-\begin{code}
-
-let mapper (f : `x->`x) (v : Meta) =
-  let g = Generic<<`x>>()
-  v |> g.From |> f |> g.To
-
-member x.FoldMeta(
-  u : U<<`x>>,f : `x->`x) = mapper f u
-member x.FoldMeta<<`a>>(
-  u : K<<`x,`a>>,f : `x->`x) = mapper f u
-member x.FoldMeta(
-  p : Prod<<`x,Meta,Meta>>,f : `x->`x) = mapper f p
-member x.FoldMeta(
-  s : Sum<<`x,Meta,Meta>>,f : `x->`x) = mapper f s
-
-\end{code}
-Recall that the all representation types have the |`ty|
-argument. These overloads instantiate that argument to |`x|; the type
-of the function being mapped. Next they convert the representation
-back to the type, apply the function and convert the result back to a
-representation.
-
-\wouter{I'm not sure I understand the point of this mapper? Can you
-  explain in the comments below -- I'd be happy update the text.}
-
-
 The case for the |Id| constructor is a bit more involved. 
 \begin{code}
 override x.FoldMeta
@@ -778,8 +749,43 @@ possible to convert this |`t| to a value of type |Meta|; after calling
 the |FoldMeta| function recursively, we can convert the result back to
 the original type.
 
-Using the |GMap :> FoldMeta| class, we can now define the following
-|gmap| function:
+Although we have now completed the required definitions for our |GMap|
+class, there is still one remaining problem. We have assumed that all
+algebraic data types will be converted to a value of type |Meta|,
+after which we may apply overriden methods to obtain the desired
+result. Now suppose the \emph{function} we are mapping has the type |X
+-> X|, for some algebraic data type |X|. In that case, we do
+\emph{not} want to convert values of type |X| to their corresponding
+representation (and apply the generic |GMap| function), but rather we
+would like to transform these values using the argument function. To
+resolve this, we need to provide several additional definitions.
+
+We will define four additional member functions with a more specific
+type. Recall that in our declaration of |GMap|, we stated that the
+argument |f| has type |`x -> `x|. Each of the new member functions
+will specifically work on representations of the type |`x|, that is,
+the type of values being transformed using the |GMap| function:
+\begin{code}
+let mapper (f : `x->`x) (v : Meta) =
+  let g = Generic<<`x>>()
+  v |> g.From |> f |> g.To
+
+member x.FoldMeta(
+  u : U<<`x>>,f : `x->`x) = mapper f u
+member x.FoldMeta<<`a>>(
+  u : K<<`x,`a>>,f : `x->`x) = mapper f u
+member x.FoldMeta(
+  p : Prod<<`x,Meta,Meta>>,f : `x->`x) = mapper f p
+member x.FoldMeta(
+  s : Sum<<`x,Meta,Meta>>,f : `x->`x) = mapper f s
+\end{code}
+All of these member functions behave similarly: they convert the
+generic representation back to a value of type |`x|, apply the
+function |f|, and convert the result back to its corresponding
+representation of type |Meta|.
+
+Now we can use the |GMap :> FoldMeta| class to define the
+following |gmap| function:
 \begin{code}
 member x.gmap(x : vart,
              f : `x -> `x) =
