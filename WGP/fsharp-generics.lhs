@@ -1044,14 +1044,15 @@ member self.FoldMeta<<`ty>>(
   v : K<<`ty,Employee>>) = 
   K("I am not an Employee!!") :> Meta
 \end{code}
-This changes the type of value stored in the |K| constructor. This is
-type correct since any instance of |K| is a subtype of |Meta|. If this
-result was used by the |From| function of the |Generic| class it would
-produce a runtime error.
+This function now changes the type of value stored in the |K| constructor, before casting
+it to the |Meta| type. This is
+type correct since any instance of |K| is a subtype of |Meta|. If the result of this function,
+however, were ever converted back to the algebraic data type it represents using the
+the |From| function of the |Generic| class, this would cause a runtime error.
 
 Such errors could be prevented by revisiting the previous definition
 of the |FoldMeta| class, adding an additional type parameters for each
-overload:
+required definition.
 \begin{code}
 type FoldMeta<<
   vart,  -- Generic\ type
@@ -1063,12 +1064,12 @@ type FoldMeta<<
   `u,    -- Return\ type\ of\ the\ U\ overload
   >>
 \end{code}
-However, to perform recursive calls, all overloads invoke the overload
-for type |Meta| which dispatches the appropriate overload as discussed
-in section \ref{sec:foldmeta}. Since the current implementation
-requires all the overloads to have the same type, the method must not
-check that the return type of the overload it selects is correct. If
-additional return types are introduced, this will no longer be the
+However, to perform recursive calls, all overloaded functions invoke the generic
+overloaded function for the |Meta| type, which dispatches accordingly as discussed
+in the previous section. Since the current implementation
+requires all the overloaded definitions to have the same type, the method does not
+need to check that the return type of the overload it selects is correct. If
+different return types are permitted, this will no longer be the
 case. The dispatch could fail at runtime if the selected overload
 returns a different type. The problem can be solved by enforcing that
 all overloads return values which are a subtype of some other type,
@@ -1087,7 +1088,7 @@ type FoldMeta<<
 Unfortunately, type constraints in F\# can only be used to enforce
 that a type must be a subclass of a \emph{concrete} type, not a type
 variable. One alternative is to make the subtyping relation explicit
-with the help of member constraints \footnote{The reader might consider using interfaces but the problem with them is that a type can only implement an interface once \cite{InterfaceLims}.}:
+with the help of member constraints :
 \begin{code}
 type FoldMeta<<
   -- [...]
@@ -1102,17 +1103,10 @@ A member constraint imposes the requirement that a member function of
 the specified type to be present in the type being instantiated by a
 variable. This way the dispatcher |FoldMeta| member can safely cast
 the result into type |`m| by calling the |Cast| method of the type
-which is required to be present.
+which is required to be present. Although this approach may work in principle,
+it highlights some of the limitations of F\# that we have encountered.
 
-%% Readers familiar with F\# might also consider type providers as an
-%% alternative approach to the meta-programming required to generate
-%% these types. However, type providers cannot accept types as static
-%% arguments and the provided types have many restrictions (such as
-%% forbidding generic methods) which makes them inapropiate.
 
-\wouter{What about defining a 'real' generic gmap function?}
-\wouter{Explicit subtyping by manual casts}
-\ernesto{I don't understand what you mean here}
 \section{Discussion}
 \wouter{I think we need to make the following points:
   \begin{itemize}
