@@ -820,25 +820,14 @@ instance GMap U where
   gmap U _ = U
 \end{code}
 Let's take a look at the |GMap| definition for the |:+:| type. This
-function performs a recursive call to |gmap|. But there are three
-different overloads of the |gmap| function so what overload does the
-compiler choose? In Haskell, a choice is not made until enough type
-variables have been instantiated. The |GMap| function might be invoked
-with a value of type |U :+: U| as well as a value of type |K Int :+: K
-Int|. For the first application, the compiler will invoke the |gmap|
-overload for |U| whereas the second case it will invoke the |GMap|
-overload for |K Int|. It is important to notice how the choice of
-functions being invoked depends on how type variables get
-instantiated. In this particular case, the choice happens at the
-\emph{invocation site} of |gmap|.
-
-%% The two instance definitions for the type constructor |K|
-%% \emph{overlap}. When invoking |gmap| on a value of type |K Int|, the
-%% second instance is used, even if the first instance would also have
-%% been a valid choice. Haskell extensions that allow overlapping
-%% instances define a precise set of rules specifying which instance
-%% definition should be chosen when there is more than one alternative
-%% available.
+function makes a recursive call to |gmap| -- but which function will get called?
+There are three
+different instances to choose from.
+In Haskell, a choice is not made until enough type
+information is present. The |GMap| function might be invoked
+with a value of type |U :+: U|, or a value of type |K Int :+: K
+Int|, or even |GMap a => a :+: K Int|.
+The choice of instance depends on the types at the \emph{call site}.
 
 We could try to adopt a similar approach in F\#, by defining the
 following member functions:
@@ -862,18 +851,12 @@ member x.FoldMeta<<`ty>>(
 \end{code}
 However, this code is rejected by the F\# compiler. At the definition
 site of the |Sum| case of |FoldMeta|, it is still unclear what
-overloads should be selected for the recursive calls. The F\# compiler
-cannot wait until |FoldMeta| is applied to a value and the type
-variables get instantiated to decide what overload to invoke. In F\#,
-the choice of overloads must be performed at the \emph{definition
-  site}, not the invocation site as in Haskell. This is a
-simplification many OO-languages adopt in order to eliminate the
-amount of type level computations needed to compile the language.
-
-%% When this function is defined, it is still unclear how to resolve these recursive calls. In
-%% particular, whether these calls are generic in one, two or three type
-%% variables. As a result, the F\# rejects this definition, even if we
-%% can determine this for any call to |FoldMeta| for a fixed type.
+how to resolve the recursive calls to specific instances. The F\# compiler
+cannot wait until |FoldMeta| is applied to a value and more type information
+is present to decide which function to invoke. In F\#,
+the resolution of an overloaded function must be performed at the \emph{definition
+  site}, not the call site as in Haskell. This is a
+simplification many languages adopt to keep the type system manageable.
 
 We resolved this problem by defining a |FoldMeta| function of type
 |Meta*varin -> `out|.  This function can also be invoked by the
@@ -890,84 +873,13 @@ argument's type, we once again use the .NET reflection mechanism. The
 exactly the right method at our disposal, we invoke that method. We
 only instantiate a more generic method when necessary. This ensures
 the desired behavior for the two definitions of |GMap| for |K| that
-we saw previously.
+we saw previously, or the use of the |mapper| function to prevent the
+unfolding of algebraic data types to their representation.
 
-% For type safety, the |FoldMeta| class is parametrized by several type
-% arguments. The type |FoldMeta <<vart,varin1,...,varinn,`out>>|
-% consists of the follwing arguments:
-% \begin{itemize}
-% \item The type |vart| refers to the algebraic datatype on which the
-%   function operates. Values of this type are translated to a generic
-%   representation, that is later handed off to the |FoldMeta|
-%   function.
-% \item The type |`out| refers to the return type of all of the generic
-%   methods. In our |GMap| example, we returned a value of type |Meta|,
-%   corresponding to the algebraic datatype resulting from the map.
-% \item The remaining type variables, |varin1| ... |varinn|, refer to
-%   any additional parameters of the generic function being defined. In
-%   the |GMap| function, there is a single argument of type |`x ->
-%   `x|. Types in F\# must take a specific number of arguments but
-%   the language allows multiple types with the same name to be
-%   defined. So a variants of |FoldMeta| are defined taking from 0 to 5
-%   input type argumetns.
-% \end{itemize}
-% The |FoldMeta| class provides a default implementation of the
-% |FoldMeta| member of type |Meta*varin1*...*varinn -> out|. This member
-% implements the dispatching mechanism described above which is outlined
-% in Figure~\ref{fig:selector}. This figure adopts the following
-% conventions:
-% \begin{itemize}
-% \item Greek variables, such as |tau| and |tau_i|, refer to a
-%   concrete type, such as |int| or |string|. They can be contrete
-%   types that take generic arguments such as |K<<`t,`a>>|.
-% \item As is conventional in F\#, generic type variables are prefixed
-%   with an apostrophe, such as |`t|. These type variables may still be
-%   instantiated to a concrete type. We will use the usual notation for
-%   substitution, writing |[tau / vart]tau'| when the variable |vart| is
-%   instantiated to |tau| in type |tau'|.
-% \item By convention, the variable |self| will refer the object on which
-%   the methods are being invoked.
-% \item The |exists self.FoldMeta : tau| indicates a case were an
-%   implementation of |FoldMeta| with type |tau| is optional, in other
-%   words it's not an abstract member of the |FoldMeta| abstract
-%   class. Conversly, when the the overload is a required to be defined
-%   in the abstract class, we omit the |exists| and only write
-%   |o.FoldMeta : tau|.
-% \item For the |Sum| and |Prod| case, a member function called |Cast|
-%   is invoked. This function is necessary because |tau<<tau_ty,tau_m1,tau_m2>> !:> tau<<tau_ty,Meta,Meta>>| in spite of |tau_m1:>Meta| and |tau_m2:>Meta|. This function is defined below.
-% \end{itemize}
-% \begin{code}
-% type Sum<<`ty,`a,`b>> with
-%   member Cast : unit -> Sum<<`t,Meta,Meta>>
-%   member x.Cast() = 
-%   match x.Elem with
-%   | Choice1Of2 m -> 
-%     Sum<<`ty,Meta,Meta>>(
-%       Choice1Of2 (m :> Meta))
-%   | Choice2Of2 m -> 
-%     Sum<<`ty,Meta,Meta>>(
-%       Choice2Of2 (m :> Meta))
-% \end{code}
-% \begin{code}
-% type Prod<<`ty,`a,`b>> with
-%   member Cast : unit -> Prod<<`t,Meta,Meta>>
-%   member x.Cast() = 
-%     Prod<<`ty,Meta,Meta>>(
-%      x.E1 :> Meta,x.E2 :> Meta)
-% \end{code}
-% \ernesto{Maybe only the type is necessary and not the implementation.}
-% Since |FoldMeta| is an abstract class, any concrete subclass requires
-% a minimal set of methods that ensure the existence of a method for
-% every possible type representation, i.e., every concrete subsclass of
-% the |Meta| type. The |FoldMeta| method of the abstract |FoldMeta|
-% class essentially calls the method associated with the representation
-% type it is passed as an argument.
-
-
-With these types in place, the library can apply a generic function to
-any ADT. Furthermore, the definition of a new generic function does
-not require any casting or reflection. That functionality is
-abstracted away by using a common representation for all types.
+Note that the definition of a new generic function does not require
+any casting or reflection. That functionality is abstracted away by
+using a common representation, |Meta|, and a general purpose traversal
+of such representations, |FoldMeta|.
 
 \section{Case study: Uniplate}
 \label{sec:uniplate}
@@ -993,7 +905,7 @@ let (c,f) = uniplate (
   Op ("add",Neg (Val 5),Val 8))
 -- prints [Neg (Val 5);Val 8]
 printf "%A" c
--- prints Op ("add",Val 1,Val 2)
+-- prints Op (``add",Val 1,Val 2)
 printf "%A" (f [Val 1;Val 2]) 
 \end{code}
 To define the function, we will define two auxiliary generic
@@ -1028,25 +940,12 @@ type are processed recursively; the results of products are combined
 by concatenating the resulting lists. Constants and unit types return
 an empty list. The only interesting case is that for the |Id| type
 constructor, which returns a singleton list with its associated
-value. An important remark is that the |FoldMeta| class only has two
-type arguments (|`t| and |`t list|) contrast to |GMap| which had
-three. To allow generic functions with a variety of arguments, several
-variants of the |FoldMeta| are defined; F\# allows types with the same
+value. Note that the |FoldMeta| class only has two
+type arguments (|`t| and |`t list|), in contrast to |GMap| that had
+three type arguments. To allow generic functions with a variety of arguments, our library defines several
+variations of the |FoldMeta| class. F\# allows types with the same
 name and different number of type arguments to coexist in the same
 namespace.
-
-%% Three overloads for the |Sum| constructor are required but only two of
-%% them (which are identical) do recursion. This is because values of
-%% type |Sum| where the first argument is different to |`t| are
-%% representations of internal values of |`t|. For example, the |Company|
-%% type introduced above contains sums of type |Sum<<Company<< _
-%% >>,_,_>>| and |Sum<<Department<< _ >>,_,_ >>| among other sums. When
-%% uniplate is called with |`t| instantiated to |Company|, only the sums
-%% of type |Company| should be recursively traversed.  \wouter{While this
-%%   is true, I think it's a confusing optimization to present at this
-%%   point. I'd argue for having a single definition for Sum, but in the
-%%   discussion mentioning that keeping track of the additional type
-%%   argument allows us to do more clever optimizations}
 
 The second generic function we define is |Instantiate|, that
 reconstructs the value of an algebraic datatype when passed the list
@@ -1075,19 +974,17 @@ the subclasses of |Meta|. The most interesting case is that for the
     :> Meta
 \end{code}
 To produce the desired child, we |pop| it off the mutable list of
-children we have at our disposal. If no such child exists, we fail
-dynamically.
+children we have at our disposal. If no such child exists, the list we
+have been passed is too short and the function fails.
 
-The case of sums and products are analogous to the |Collect| function
-in the sense that they do recursion in exactly the same way but return
-the generated representation instead of a list.
+The case of sums and products are analogous to the |Collect| function,
+making two recursive calls to construct a new |Meta| value:
 \begin{code}
   override self.FoldMeta<<`ty>>(
     p: Prod<<`ty,Meta,Meta>>) =
     Prod(self.FoldMeta p.E1,self.FoldMeta p.E2) 
     :> Meta
-\end{code}
-\begin{code}
+
   member self.FoldMeta<<`ty>>(
     s : Sum<<`ty,Meta,Meta>>) =
     match s with
@@ -1097,6 +994,12 @@ the generated representation instead of a list.
       self.FoldMeta m |> Choice2Of2)
     :> Meta
 \end{code}
+Note that these definitions rely on the list of values being mutable
+and F\#'s call-by-value semantics. In the case for products, we know
+that the first call |self.FoldMeta p.E1| will be evaluated first,
+consuming the required child nodes from the list of values, before
+evaluation continues with the second component of the tuple.
+
 Finally, the cases for the type constructors |U| and |K| are trivial,
 as they do not need to modify the list of |values|.
 \begin{code}  
