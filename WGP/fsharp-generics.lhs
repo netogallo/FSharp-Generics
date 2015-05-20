@@ -1108,17 +1108,8 @@ it highlights some of the limitations of F\# that we have encountered.
 
 
 \section{Discussion}
-\wouter{I think we need to make the following points:
-  \begin{itemize}
-  \item limited type safety when defining generic functions;
-  \item type safe calling of generic functions;
-  \item automated EP pairs using .NET reflection.
-  \item limited possibility to generate generic types (like read) for
-    now.
-  \end{itemize}
-} 
-This library was created to study the usability of datatype generic
-programming in F\#. In doing so, the existing approaches had to be
+This library was created to study the possibility of using of datatype generic
+programming in F\#. To do so, the existing approaches had to be
 adapted to suit F\#'s type system. Also, through the implementing of
 this library, the authors have uncovered pieces that have room for
 improvement. This section discusses what was learned form the process
@@ -1355,6 +1346,15 @@ this problem easier to correct.
 
 \todo{Fix overfull hboxes}
 \todo{Extend bibliograhpy}
+\wouter{I think we need to make the following points:
+  \begin{itemize}
+  \item limited type safety when defining generic functions;
+  \item type safe calling of generic functions;
+  \item automated EP pairs using .NET reflection.
+  \item limited possibility to generate generic types (like read) for
+    now.
+  \end{itemize}
+} 
 
 %\acks
 % We would like to thank Ruud Koot and the computer science reading club for their
