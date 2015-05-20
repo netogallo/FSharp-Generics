@@ -327,8 +327,9 @@ some cases, this check can be done statically. We write $x\prec \tau$
 (written $x :> \tau$ in F\#) for statically checked casts. In other
 cases, this check can only be done dynamically. We write $x \precsim
 \tau$ (in F\# $x\ {:}{?}{>}\ \tau$) for dynamically checked
-casts. Dynamic checks are usually necessary when using reflection. If
-a dynamic type check fails, an exception is thrown.
+casts. Dynamically checked casts are usually necessary when using
+reflection. If a dynamically checked cast fails, an exception is
+thrown.
 
 As in most object oriented languages, the .NET subtyping mechanism
 allows values to be cast implicitly to any super-type.  The F\#
@@ -389,7 +390,7 @@ type K<<`ty,varx>>(elem:varx) =
 \end{subfigure}
 \begin{subfigure}[t]{0.3\textwidth}
 \begin{code}
-type Id<<`ty>>(elem:vart) =
+type Id<<`ty>>(elem:`ty) =
   class
     inherit Meta()
     self.Elem 
@@ -431,8 +432,6 @@ type Prod<<`ty,vara,varb
 \caption{Definition in F\# of all the types used to build type representations.}
 \label{fig:rep-def}
 \end{figure*}
-\wouter{Should it be |elem : `ty| in the definition of |Id|?}
-
 
 The core of most libraries for datatype generic programming is a
 \emph{representation type} or \emph{universe}, that determines the
@@ -465,14 +464,14 @@ types themselves are subtypes of the |Meta| class.
 
 In the remainder of this section, we will present the concrete
 subtypes of the |Meta| class defined in our library. All the
-subclasses of the |Meta| class are parametrized by at least one
+subclasses of the |Meta| class are parameterized by at least one
 (phantom) type argument, |`ty|.  This argument will be instantiated to the
 type that a value of type |Meta| is used to represent.
 
 The first subclass of |Meta| is |Sum|, that represents the sum of two
 types.  Besides the type argument |`ty|, the |Sum| takes two
 additional type arguments: |`a| and |`b|. The |Sum| class stores a single
-piece of data, namely a value |elem| of type |Choice<`a,`b>|.
+piece of data, namely a value |elem| of type |Choice<<`a,`b>>|.
 The |Choice| type in F\# is
 analogous to Haskell's |Either| type. It has two constructors:
 |Choice1Of2| and |Choice2Of2|. Note that both |vara| and |varb| have
@@ -519,18 +518,17 @@ follows:
 \begin{code}
 type ElemsRep = 
   Sum<<
-    Elem<<int>>,
+    Elems,
     Sum<<
-      Elem<<int>>,
-      Prod<<Elem<<int>>,K<<Elem<<int>>,int>>,
-        Prod<<Id<<Elem<<int>> >>,U<<Elem<<int>> >> >> >>,
+      Elems,
+      Prod<<Elems,K<<Elems,int>>,
+        Prod<<Id<<Elems>> >>,U<<Elems>> >> >> >>,
       Sum<<
         unit,
-        Prod<<K << Elem<<int>>,int >>, U<< Elem<<int>> >> >>,
-        U<<Elem<<int>> >> >>,
-    U<<Elem<<int>> >> >>
+        Prod<<K << Elems>>,int >>, U<< Elems>> >> >>,
+        U<<Elems>> >> >>,
+    U<<Elems>> >> >>
 \end{code}
-\wouter{Shouldn't |Elem<<int>>| be just |Elems| in the example above?}
 
 This example shows how the |Sum| type constructor takes three
 arguments: the first stores meta-information about the type being
@@ -627,7 +625,7 @@ type GMap<<`t,`x>>() =
   -- [...] Implementation [...]
   end
 \end{code}
-The |FoldMeta| class is parametrized by three type
+The |FoldMeta| class is parameterized by three type
 arguments: |`t| which is the type on which the generic functions are
 invoked, |varin| which is the input type of the function, |`x->`x| in
 this case, and |`out| which is the return type of the generic
@@ -752,7 +750,7 @@ the original type.
 Although we have now completed the required definitions for our |GMap|
 class, there is still one remaining problem. We have assumed that all
 algebraic data types will be converted to a value of type |Meta|,
-after which we may apply overriden methods to obtain the desired
+after which we may apply overridden methods to obtain the desired
 result. Now suppose the \emph{function} we are mapping has the type |X
 -> X|, for some algebraic data type |X|. In that case, we do
 \emph{not} want to convert values of type |X| to their corresponding
@@ -903,9 +901,9 @@ type Arith =
   
 let (c,f) = uniplate (
   Op ("add",Neg (Val 5),Val 8))
--- prints [Neg (Val 5);Val 8]
+-- prints\ [Neg (Val 5);Val 8]
 printf "%A" c
--- prints Op (``add",Val 1,Val 2)
+-- prints\ Op (``add",Val 1,Val 2)
 printf "%A" (f [Val 1;Val 2]) 
 \end{code}
 To define the function, we will define two auxiliary generic
@@ -1023,6 +1021,30 @@ let uniplate<<vart>> (x : vart) =
   (xs, inst)
 \end{code}
 
+\section{Extensibility}
+\label{sec:ext}
+An important aspect of generic programming libraries is having the
+ability to be extended and customized~\cite{CompGen}. The typeclass
+approach has drawbacks doing so. Consider defining a the generic
+function |ShallowGMap| which behaves exactly the same as |GMap| except
+that it doesn't traverse recursive occurrences of the argument
+type. One essentially needs to change the definition of the |ID|
+constructor. In Haskell, only once instance of a class per type can
+exist in the same namespace and the OverlappingInstances extension is
+useless since we need two instances that have exactly the same
+type. However, with our library, this is trivial:
+\begin{code}
+type GMapShallow<<`t,`x>>() =
+  inherit GMap<<`t,`x>>()
+ 
+  override self.FoldMeta(i : Id<<`t>>,f : `x -> `x) = i
+\end{code}
+
+The class and module system of F\# makes it very easy to define
+several variants of the same function in the same namespace. It also
+makes it clean and simple to re-use existing generic functions in
+order to define new generic functions.
+
 \section{Limitations of the |FoldMeta| class}
 \label{sec:better-meta}
 A major limitation of the current implementation is that all the
@@ -1110,19 +1132,20 @@ which is required to be present.
 %% arguments and the provided types have many restrictions (such as
 %% forbidding generic methods) which makes them inapropiate.
 
-\wouter{What about defining a 'real' generic gmap function?}
-\wouter{Explicit subtyping by manual casts}
-\ernesto{I don't understand what you mean here}
+%% \wouter{What about defining a 'real' generic gmap function?}
+%% \wouter{Explicit subtyping by manual casts}
+%% \ernesto{I don't understand what you mean here}
+%% \section{Discussion}
+%% \wouter{I think we need to make the following points:
+%%   \begin{itemize}
+%%   \item limited type safety when defining generic functions;
+%%   \item type safe calling of generic functions;
+%%   \item automated EP pairs using .NET reflection.
+%%   \item limited possibility to generate generic types (like read) for
+%%     now.
+%%   \end{itemize}
+%% } 
 \section{Discussion}
-\wouter{I think we need to make the following points:
-  \begin{itemize}
-  \item limited type safety when defining generic functions;
-  \item type safe calling of generic functions;
-  \item automated EP pairs using .NET reflection.
-  \item limited possibility to generate generic types (like read) for
-    now.
-  \end{itemize}
-} 
 This library was created to study the usability of datatype generic
 programming in F\#. In doing so, the existing approaches had to be
 adapted to suit F\#'s type system. Also, through the implementing of
@@ -1140,7 +1163,7 @@ that allows Haskell to select a different overload of a function based
 on the instantiation of type variables at the application site of a
 function. This mechanism had to be replaced with reflection and is
 implemented in the |FoldMeta| class. Although this incurs a runtime
-penalty, at the long run, it can be eliminated with a cache.
+penalty, in the long run, it can be eliminated with a cache.
 
 The library allows a family of generic functions to be defined.  This
 is evidenced by defining the |uniplate| function which has been shown
@@ -1217,42 +1240,64 @@ generation of F\# code at runtime.
 
 \subsection*{Conclusions}
 
-In the report~\cite{CompGen} presents several guidelines are to judge
-generic libraries. From the libraries discussed in the paper, this
-library would be most similar to Lightweight Implementation of
-Generics and Dynamics~\cite{Cheney02alightweight} or
-RepLib~\cite{RepLib}; but with a reduced universe. However, it is
-worth pointing out a significant advantage of this library:
-extensibility. Since generic functions are implemented as OO-classes
-in this library, extending them is trivial. One only needs to inherit
-from a generic function and add the custom functionality. It is also
-possible to override the functionality of some parts (but not all) of
-a generic function. This is simply done by inheriting from a generic
-function and overriding one (or more) of its methods. In Haskell,
-datatype generic programming libraries can't do this unless each
-instance for each representation type is defined in a separate module
-due to overlapping instances. Furthermore, in this library, all
-variants of a generic function (including the function itself) can
-coexist together in the same namespace.
+It is possible to use the ideas of datatype generic programming to
+provided a more structured alternative to reflection. It is still an
+open discussion determining what the best interface is given the type
+system limitations in F\#. This paper presents an initial approach
+inspired from the lightweight library Regular.
 
-It is possible to use the ideas from datatype generic programming in
-order to provide a more structured alternative to reflection. It is
-still an open discussion to determine which api would be the best in
-order to bring the ideas to languages like F\#. In order to make
-datatype generic programming possible in F\#, ideas had to be adapted
-to suit F\#'s type system and tools. The use of subtyping could have
-performance benefits since values could be encoded as representations
-in such a way that the encoding/decoding only occurs if necessary. One
-might argue that Haskell's laziness already does this, but in the case
-of the |GMap| function, Haskell would still need to translate a
-representation to a value to apply the mapping and convert the result
-back to a representation; else the program won't type-check. However,
-there were consequences when adapting the library. The most notable
-one is that casting can be used to produce representations that are no
-longer faithful to the type they intend to represent. This will result
-in runtime errors. Fortunately, the richness of the type information
-provided by .NET at runtime and the debugging tooling of F\#/.NET make
-this problem easier to correct.
+The primary advantage of F\# over Haskell is that modules and classes
+make it very easy to re-use code and customize existing generic
+functions with new functionality; as it is described in section
+\ref{sec:ext}.
+
+The main limitation was F\#'s type system. To accommodate, a custom
+method dispatch mechanism was implemented using reflection. This
+method imitates what the Haskell compiler performs during compilation
+to select function overloads. The absence of higher kinds also make it
+difficult to properly constrain the type of generic functions. In
+section \ref{sec:better-meta}, we present some options to mitigate the
+problem although it is impossible reach the expressiveness of higher
+kinds with the approach. At this moment it is very unlikely that F\#
+will ever support generics with higher kinds. We hope that this
+library serves as motivation to include higher kinds in F\#.
+
+%% In the report~\cite{CompGen} presents several guidelines are to judge
+%% generic libraries. From the libraries discussed in the paper, this
+%% library would be most similar to Lightweight Implementation of
+%% Generics and Dynamics~\cite{Cheney02alightweight} or
+%% RepLib~\cite{RepLib}; but with a reduced universe. However, it is
+%% worth pointing out a significant advantage of this library:
+%% extensibility. Since generic functions are implemented as OO-classes
+%% in this library, extending them is trivial. One only needs to inherit
+%% from a generic function and add the custom functionality. It is also
+%% possible to override the functionality of some parts (but not all) of
+%% a generic function. This is simply done by inheriting from a generic
+%% function and overriding one (or more) of its methods. In Haskell,
+%% datatype generic programming libraries can't do this unless each
+%% instance for each representation type is defined in a separate module
+%% due to overlapping instances. Furthermore, in this library, all
+%% variants of a generic function (including the function itself) can
+%% coexist together in the same namespace.
+
+%% It is possible to use the ideas from datatype generic programming in
+%% order to provide a more structured alternative to reflection. It is
+%% still an open discussion to determine which api would be the best in
+%% order to bring the ideas to languages like F\#. In order to make
+%% datatype generic programming possible in F\#, ideas had to be adapted
+%% to suit F\#'s type system and tools. The use of subtyping could have
+%% performance benefits since values could be encoded as representations
+%% in such a way that the encoding/decoding only occurs if necessary. One
+%% might argue that Haskell's laziness already does this, but in the case
+%% of the |GMap| function, Haskell would still need to translate a
+%% representation to a value to apply the mapping and convert the result
+%% back to a representation; else the program won't type-check. However,
+%% there were consequences when adapting the library. The most notable
+%% one is that casting can be used to produce representations that are no
+%% longer faithful to the type they intend to represent. This will result
+%% in runtime errors. Fortunately, the richness of the type information
+%% provided by .NET at runtime and the debugging tooling of F\#/.NET make
+%% this problem easier to correct.
 
 %% Datatype generic programming is a well tested solid approach to write
 %% generic algorithms. It offers a lot of expressiveness compared to
