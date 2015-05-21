@@ -24,7 +24,7 @@ A.~H\r{a}kansson and S.~Robbins.
 
 \bibitem[Jansson and Jeuring(1997)]{polyp}
 P.~Jansson and J.~Jeuring.
-\newblock Polyp—a polytypic programming language extension.
+\newblock Polyp -- a polytypic programming language extension.
 \newblock In \emph{Proceedings of the 24th ACM SIGPLAN-SIGACT Symposium on
   Principles of Programming Languages}, pages 470--482. ACM, 1997.
 
@@ -83,8 +83,8 @@ B.~C. Oliveira and J.~Gibbons.
 
 \bibitem[Rodriguez(2015)]{FSharp-Generics-Repo}
 E.~Rodriguez.
-\newblock {FSharp-Generics}.
-\newblock \url{https://github.com/netogallo/FSharp-Generics}, 2015.
+\newblock {A library for datatype generic programming in F\#}.
+\newblock \url{github.com/netogallo/FSharp-Generics}, 2015.
 
 \bibitem[Sheard and Jones(2002)]{Sheard02templatemeta-programming}
 T.~Sheard and S.~P. Jones.
