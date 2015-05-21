@@ -1114,7 +1114,7 @@ the same -- the only difference is in the |Id| case. Using the F\#
 approach we have described, we can define a new subclass of |GMap|,
 overriding the instance for |Id|:
 \begin{code}
-type GMapShallow<<`t,`x>>() =
+type ShallowGMap<<`t,`x>>() =
   inherit GMap<<`t,`x>>()
  
   override self.FoldMeta(i : Id<<`t>>,f : `x -> `x) = i
@@ -1153,14 +1153,27 @@ make mistakes. We hope that the generic functions defined using our
 library may be a bit safer.
 
 One consequence of our use of subtyping and casting values to the
-|Meta| type is that our \emph{generic} functions may be unsafe. That
-is, a type-correct generic functions may return a result that throws
-an exception once it is converted back to an algebraic data type. As a
-result, generic functions, like |read|, that produce a new generic
-value are difficult to type-check for correctness. \wouter{But can't
-  the same be said of GMap? We create a new value there as well... Can
-  we define a read function, by the way? Or do we run into problems
-  with |FoldMeta| that we need a value of type |`ty| to inspect?}
+|Meta| type is that our \emph{generic} functions may be unsafe. This
+problem makes it difficult for the type-checker to verify the
+correctness of generic functions that take as an input an ordinary
+value and then produce a representation. This happens because the
+|FoldMeta| class cannot be used to define theese functions since the
+class only implements facilities for traversing values
+generically. The best known example of such generic functions is the
+|read| function.
+
+%% That
+%% is, a type-correct generic functions may return a result that throws
+%% an exception once it is converted back to an algebraic data type. As a
+%% result, generic functions, like |read|, that produce a new generic
+%% value are difficult to type-check for correctness. Although, in
+%% principle, |GMap| has the same problem from the type-checker point of
+%% view, it is easy to define that function since the representation gets produc
+
+%% \wouter{But can't
+%%   the same be said of GMap? We create a new value there as well... Can
+%%   we define a read function, by the way? Or do we run into problems
+%%   with |FoldMeta| that we need a value of type |`ty| to inspect?}
 
 %  examples presented in this paper contain some overhead. The most
 % notorious one is the |GMap| function. When the argument maps over
@@ -1377,11 +1390,6 @@ that road.
 
 
 \todo{Fix overfull hboxes}
-
-\todo{Ernesto: some papers in the .bib file refer to Sigplan
-  Notices. Usually, these papers are reprints of another
-  conference, like ICFP. It's more traditional to cite the original
-  paper. Can you go through the references?}
 
 \acks We would like to thank the Software Technology Reading Club of
 the University of Utrecht for their helpful feedback on a draft
