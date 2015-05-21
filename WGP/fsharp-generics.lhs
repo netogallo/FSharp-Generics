@@ -1377,33 +1377,21 @@ that road.
 
 
 \todo{Fix overfull hboxes}
-\todo{Extend bibliograhpy}
-% \wouter{I think we need to make the following points:
-%   \begin{itemize}
-%   \item limited type safety when defining generic functions;
-%   \item type safe calling of generic functions;
-%   \item automated EP pairs using .NET reflection.
-%   \item limited possibility to generate generic types (like read) for
-%     now.
-%   \end{itemize}
-% } 
+
+\todo{Ernesto: some papers in the .bib file refer to Sigplan
+  Notices. Usually, these papers are reprints of another
+  conference, like ICFP. It's more traditional to cite the original
+  paper. Can you go through the references?}
 
 \acks We would like to thank the Software Technology Reading Club of
 the University of Utrecht for their helpful feedback on a draft
 version of this paper.
 
-% Acknowledgments, if needed.
-
-% We recommend abbrvnat bibliography style.
 \bibliographystyle{abbrvnat}
 \bibliography{references}
 
 
 \end{document}
-
-% Subtyping rather than sub-typing
-% datatype vs data type
-% avoid the passive voice
 
 %%% Local Variables:
 %%% mode: latex

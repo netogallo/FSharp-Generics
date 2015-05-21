@@ -14,7 +14,7 @@ R.~Backhouse, P.~Jansson, J.~Jeuring, and L.~Meertens.
 
 \bibitem[Hinze and Jeuring(2003)]{GenericHaskell}
 R.~Hinze and J.~Jeuring.
-\newblock Generic haskell: Practice and theory.
+\newblock {Generic Haskell: Practice and Theory}.
 \newblock In \emph{Generic Programming}, pages 1--56. Springer, 2003.
 
 \bibitem[H\r{a}kansson and Robbins()]{Nancy}
@@ -84,7 +84,7 @@ B.~C. Oliveira and J.~Gibbons.
 \bibitem[Rodriguez(2015)]{FSharp-Generics-Repo}
 E.~Rodriguez.
 \newblock {A library for datatype generic programming in F\#}.
-\newblock \url{github.com/netogallo/FSharp-Generics}, 2015.
+\newblock \url{http://github.com/netogallo/FSharp-Generics}, 2015.
 
 \bibitem[Sheard and Jones(2002)]{Sheard02templatemeta-programming}
 T.~Sheard and S.~P. Jones.
