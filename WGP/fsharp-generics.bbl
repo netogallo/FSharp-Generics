@@ -1,15 +1,16 @@
-\begin{thebibliography}{19}
+\begin{thebibliography}{18}
 \providecommand{\natexlab}[1]{#1}
 \providecommand{\url}[1]{\texttt{#1}}
 \expandafter\ifx\csname urlstyle\endcsname\relax
   \providecommand{\doi}[1]{doi: #1}\else
   \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
 
-\bibitem[Cheney and Hinze(2002)]{Cheney02alightweight}
-J.~Cheney and R.~Hinze.
-\newblock A lightweight implementation of generics and dynamics.
-\newblock In \emph{Proceedings of the 2002 ACM SIGPLAN Haskell Workshop}, pages
-  90--104. ACM Press, 2002.
+\bibitem[Backhouse et~al.(1999)Backhouse, Jansson, Jeuring, and
+  Meertens]{backhouse}
+R.~Backhouse, P.~Jansson, J.~Jeuring, and L.~Meertens.
+\newblock Generic programming.
+\newblock In \emph{Advanced Functional Programming}, pages 28--115. Springer,
+  1999.
 
 \bibitem[Hinze and Jeuring(2003)]{GenericHaskell}
 R.~Hinze and J.~Jeuring.
@@ -71,15 +72,19 @@ T.~v. Noort, A.~Rodriguez, S.~Holdermans, J.~Jeuring, and B.~Heeren.
 \newblock \doi{10.1145/1411318.1411321}.
 \newblock URL \url{http://doi.acm.org/10.1145/1411318.1411321}.
 
-\bibitem[Rodriguez et~al.(2008)Rodriguez, Jeuring, Jansson, Gerdes, Kiselyov,
-  and Oliveira]{CompGen}
-A.~Rodriguez, J.~Jeuring, P.~Jansson, A.~Gerdes, O.~Kiselyov, and B.~C. d.~S.
-  Oliveira.
-\newblock Comparing libraries for generic programming in haskell.
-\newblock \emph{SIGPLAN Not.}, 44\penalty0 (2):\penalty0 111--122, Sept. 2008.
-\newblock ISSN 0362-1340.
-\newblock \doi{10.1145/1543134.1411301}.
-\newblock URL \url{http://doi.acm.org/10.1145/1543134.1411301}.
+\bibitem[Oliveira and Gibbons(2008)]{ScalaGen}
+B.~C. Oliveira and J.~Gibbons.
+\newblock Scala for generic programmers.
+\newblock In \emph{Proceedings of the ACM SIGPLAN Workshop on Generic
+  Programming}, WGP '08, pages 25--36, New York, NY, USA, 2008. ACM.
+\newblock ISBN 978-1-60558-060-9.
+\newblock \doi{10.1145/1411318.1411323}.
+\newblock URL \url{http://doi.acm.org/10.1145/1411318.1411323}.
+
+\bibitem[Rodriguez(2015)]{FSharp-Generics-Repo}
+E.~Rodriguez.
+\newblock {FSharp-Generics}.
+\newblock \url{https://github.com/netogallo/FSharp-Generics}, 2015.
 
 \bibitem[Sheard and Jones(2002)]{Sheard02templatemeta-programming}
 T.~Sheard and S.~P. Jones.
@@ -114,22 +119,10 @@ D.~Syme, A.~Granicz, and A.~Cisternino.
 \newblock URL \url{http://research.microsoft.com/ apps/ pubs/
   default.aspx?id=192596}.
 
-\bibitem[Tihon()]{InterfaceLims}
-S.~Tihon.
-\newblock My first disappointment of the f\# type system.
-\newblock \url{https://sergeytihon.wordpress.com/ 2013/03/29/
-  my-first-disappointment-on-f-type-system/}.
-
 \bibitem[Tsarpalis(2013)]{FsPickler}
 E.~Tsarpalis.
 \newblock {FsPickler}.
 \newblock \url{http://nessos.github.io/ FsPickler}, 2013.
-
-\bibitem[Wadler(1989)]{Wadler89theoremsfor}
-P.~Wadler.
-\newblock Theorems for free!
-\newblock In \emph{FUNCTIONAL PROGRAMMING LANGUAGES AND COMPUTER ARCHITECTURE},
-  pages 347--359. ACM Press, 1989.
 
 \bibitem[Weirich(2006)]{RepLib}
 S.~Weirich.
