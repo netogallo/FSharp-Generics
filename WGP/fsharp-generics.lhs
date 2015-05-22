@@ -1,4 +1,4 @@
-\documentclass[authoryear,10pt,draft]{sigplanconf}
+\documentclass[authoryear,10pt]{sigplanconf}
 
 %lhs2TeX imports -- don't remove!
 %include polycode.fmt
@@ -585,7 +585,7 @@ and limit the performance penalty that this induces.
 \begin{centering}
 \begin{code}
 AbstractClass
-type FoldMeta<`t,varin,`out>()
+type FoldMeta<<`t,varin,`out>>()
 
 abstract FoldMeta : Meta * varin -> `out
 abstract FoldMeta<<`ty>> : Sum<<`ty,Meta,Meta>> * varin -> `out
@@ -797,7 +797,7 @@ function. An instance of |GMap| with | <<`t>> | set to |Company| and |
 <<`x>> | set to |Employee| would implement the |MapEmployee| function
 introduced in the introduction.
 
-\section{The FoldMeta class}
+\section{The |FoldMeta| class}
 \label{sec:foldmeta}
 
 In the previous section, we assumed the existence of a |FoldMeta|
@@ -1028,8 +1028,8 @@ A major limitation of the current implementation is that all the
 overloads of |FoldMeta| must return a value of the same type. More
 advanced libraries for datatype generic programming use some limited
 form of dependent types, possibly through type classes or type
-families, to enable generic functions to return types of different
-values. The |FoldMeta| class lacks such mechanism as it can be used to
+families, to enable generic functions to return values of different
+types. The |FoldMeta| class lacks such mechanism as it can be used to
 subvert the F\# type system. Consider the following example:
 \begin{code}
 member self.FoldMeta<<`ty>>(
