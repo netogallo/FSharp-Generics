@@ -19,7 +19,7 @@
 \usepackage{ifthen}
 \newboolean{showNotes}
 \newboolean{marginNotes}
-\setboolean{showNotes}{true}
+\setboolean{showNotes}{false}
 \setboolean{marginNotes}{true}
 \newcommand{\marginNote}[1]{
 \ifthenelse
@@ -1153,49 +1153,15 @@ make mistakes. We hope that the generic functions defined using our
 library may be a bit safer.
 
 One consequence of our use of subtyping and casting values to the
-|Meta| type is that our \emph{generic} functions may be unsafe. This
-problem makes it difficult for the type-checker to verify the
-correctness of generic functions that take as an input an ordinary
-value and then produce a representation. This happens because the
-|FoldMeta| class cannot be used to define theese functions since the
-class only implements facilities for traversing values
-generically. The best known example of such generic functions is the
-|read| function.
-
-%% That
-%% is, a type-correct generic functions may return a result that throws
-%% an exception once it is converted back to an algebraic data type. As a
-%% result, generic functions, like |read|, that produce a new generic
-%% value are difficult to type-check for correctness. Although, in
-%% principle, |GMap| has the same problem from the type-checker point of
-%% view, it is easy to define that function since the representation gets produc
-
-%% \wouter{But can't
-%%   the same be said of GMap? We create a new value there as well... Can
-%%   we define a read function, by the way? Or do we run into problems
-%%   with |FoldMeta| that we need a value of type |`ty| to inspect?}
-
-%  examples presented in this paper contain some overhead. The most
-% notorious one is the |GMap| function. When the argument maps over
-% ADTs, conversion has to be done several times to apply the
-% function. There is one potential improvement that will be tested in
-% the upcoming months to amend this problem. It consists of taking
-% advantage of the OO-approach and overloading the constructors for
-% representation types such that they can take values of the represented
-% type as arguments (like the |Id| constructor). Then when properties of
-% the constructor are requested (like the |Elem| property of |Sum|), the
-% input type will be deconstructed on demand instead of doing it eagerly
-% by the |To| function of the |Generic| class. However, in the ADT case
-% of |GMap|, the constructors could also have a property that directly
-% returns the type used to build that representation. This would no
-% longer have the cost of \emph{de-serializing} the representation. Then
-% once the mapping is applied, a new representation can be constructed
-% without having to \emph{serialize} a value. This could bring
-% significant performance improvements which are only possible thanks to
-% the OO-approach -- an advantage over Regular or similar libraries.
-% 
-% Wouter: I've commented out this paragraph for now, as it still seems
-% a bit speculative.
+|Meta| type is that our \emph{generic} functions may be unsafe.  That
+is, a type-correct generic functions may return a result that throws
+an exception once it is converted back to an algebraic data type. We
+already saw this in the definition of |GMap| -- it was certainly
+possible to produce ill-formed representation types and casting the
+result back to the |Meta| type. The same problems also occurs when
+defining any other generic function, such as |read|, that needs to
+produce a representation of type |Meta|. The F\# type system will not
+object to definitions that produce the wrong kind of representation.
 
 There are alternatives mechanisms that could be used for datatype generic programming in F\#. 
 Type providers~\cite{export:173076} can be used to generate
@@ -1388,8 +1354,6 @@ that road.
 % the following way:
 
 
-
-\todo{Fix overfull hboxes}
 
 \acks We would like to thank the Software Technology Reading Club of
 the University of Utrecht for their helpful feedback on a draft
