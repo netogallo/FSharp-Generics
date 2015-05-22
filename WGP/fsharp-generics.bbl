@@ -28,8 +28,8 @@ P.~Jansson and J.~Jeuring.
 \newblock In \emph{Proceedings of the 24th ACM SIGPLAN-SIGACT Symposium on
   Principles of Programming Languages}, pages 470--482. ACM, 1997.
 
-\bibitem[L\"{a}mmel and Jones(2003)]{SYB}
-R.~L\"{a}mmel and S.~P. Jones.
+\bibitem[L\"{a}mmel and Peyton~Jones(2003)]{SYB}
+R.~L\"{a}mmel and S.~Peyton~Jones.
 \newblock Scrap your boilerplate: A practical design pattern for generic
   programming.
 \newblock In \emph{Proceedings of the 2003 ACM SIGPLAN International Workshop
@@ -85,8 +85,8 @@ E.~Rodriguez.
 \newblock {A library for datatype generic programming in F\#}.
 \newblock \url{http://github.com/netogallo/FSharp-Generics}, 2015.
 
-\bibitem[Sheard and Jones(2002)]{Sheard02templatemeta-programming}
-T.~Sheard and S.~P. Jones.
+\bibitem[Sheard and {Peyton Jones}(2002)]{Sheard02templatemeta-programming}
+T.~Sheard and S.~{Peyton Jones}.
 \newblock Template meta-programming for haskell.
 \newblock In \emph{In Proceedings of the ACM SIGPLAN Workshop on Haskell},
   pages 1--16. ACM, 2002.
