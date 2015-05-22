@@ -294,7 +294,7 @@ type generic(Company)(t) with
     self.MapEmpolyee (
       fun e -> e.Salary <- e.Salary + v;e)
 \end{code}
-Note that the because we have defined the |Employee| type as a class,
+Note that because we have defined the |Employee| type as a class,
 it is passed by reference in the |MapEmployee| function. The argument
 function we pass to |MapEmployee| mutates the object's |Salary|
 property directly and subsequently returns the argument object. This
@@ -1130,7 +1130,7 @@ variantions of the same function in the same namespace.
 
 This paper aims to explore the possibility of using of datatype
 generic programming in F\#. To do so, we have had to adapt the
-existing approaches to match F\#'s type system better. In the
+existing approaches to better match F\#'s type system. In the
 remainder of this section, we will reflect the limitations of F\# and
 our library.
 
