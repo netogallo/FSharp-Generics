@@ -23,6 +23,55 @@
 \part{Background}
 \section{Datatype Generic Programming}
 
+Functional programming languages often use algebraic data types (ADTs)
+in order to represent values. ADTs are defined by cases by providing a
+type constructor for each case and the type of values that the
+constructor accepts in order to produce a value of the ADT being
+defined. In other words, a type constructor is a function that takes a
+group of values of different types and produces a value of the type of
+the ADT.
+
+To define functions over ADTs, functional languages provide a
+mechanism to deconstruct ADTs called pattern matching. This mechanism
+allows the programmer to check wether a particular value was
+constructed using the specified type constructor and allows the
+programmer to extract the arguments used to produce the value. This
+mechanism is very elegant since it allows to define functions by
+induction, however it has several shortcommings.
+
+A function that pattern matches a value over the constructors of a
+particular ADT restricts that the type of the value being pattern
+matched to be monomorphic. This leads to functions being implemented
+multiple times -- either when a existing ADT is modified or a new ADT
+is declared~\cite{polyp}. Since functional programming is all about
+abstraction, several methods have been developed to allow functions to
+become more polymorphic.
+
+An ADT can be decalred to be higher-kinded. This means that a
+definition of a list |data List = Cons Int List palo Nil| can abstract
+over its content and become |data List a = Cons a (List a) palo
+Nil|. Then a function, such as lenght, might de-construct the list
+without performing any operations on its contents -- the type
+represented by |a|. Such function can operate on a list of any type --
+this is called parametric polymorphism. The programmer might also wish
+to implement functions that operate on the contents of a list without
+restricting the type of the list's content to be monomorphic. This can
+be done by requiring that the function is also provided with a set of
+operations that can be performed on its argument. For example, the
+|sum| function could be implemented by requiring that a function to
+add two elements of type |a| is provided. This is called ad-hoc
+polymorphism.
+
+Both of theese approaches can be used to define generic
+functions. This is evidenced by the libraries Scrap your Boilerpate
+Code~\cite{SYB} and Uniplate~\cite{Uniplate}. Both libraries specify a
+family of operations that must be supported by a type and use ad-hoc
+polymorphism to implement many generic functions (for example |length|
+or |increment|) in terms of the family of operations. The programer
+only needs to do pattern matching when defining theese base operations
+and both libraries provide mechanisms to do it automatically.
+
+
 \subsection{Generic Programming with Regular}
 
 To represent its universe, regular uses the following types:
