@@ -1,4 +1,266 @@
 \documentclass[8pt]{extarticle}
+
+%lhs2TeX imports -- don't remove!
+%% ODER: format ==         = "\mathrel{==}"
+%% ODER: format /=         = "\neq "
+%
+%
+\makeatletter
+\@ifundefined{lhs2tex.lhs2tex.sty.read}%
+  {\@namedef{lhs2tex.lhs2tex.sty.read}{}%
+   \newcommand\SkipToFmtEnd{}%
+   \newcommand\EndFmtInput{}%
+   \long\def\SkipToFmtEnd#1\EndFmtInput{}%
+  }\SkipToFmtEnd
+
+\newcommand\ReadOnlyOnce[1]{\@ifundefined{#1}{\@namedef{#1}{}}\SkipToFmtEnd}
+\usepackage{amstext}
+\usepackage{amssymb}
+\usepackage{stmaryrd}
+\DeclareFontFamily{OT1}{cmtex}{}
+\DeclareFontShape{OT1}{cmtex}{m}{n}
+  {<5><6><7><8>cmtex8
+   <9>cmtex9
+   <10><10.95><12><14.4><17.28><20.74><24.88>cmtex10}{}
+\DeclareFontShape{OT1}{cmtex}{m}{it}
+  {<-> ssub * cmtt/m/it}{}
+\newcommand{\texfamily}{\fontfamily{cmtex}\selectfont}
+\DeclareFontShape{OT1}{cmtt}{bx}{n}
+  {<5><6><7><8>cmtt8
+   <9>cmbtt9
+   <10><10.95><12><14.4><17.28><20.74><24.88>cmbtt10}{}
+\DeclareFontShape{OT1}{cmtex}{bx}{n}
+  {<-> ssub * cmtt/bx/n}{}
+\newcommand{\tex}[1]{\text{\texfamily#1}}	% NEU
+
+\newcommand{\Sp}{\hskip.33334em\relax}
+
+
+\newcommand{\Conid}[1]{\mathit{#1}}
+\newcommand{\Varid}[1]{\mathit{#1}}
+\newcommand{\anonymous}{\kern0.06em \vbox{\hrule\@width.5em}}
+\newcommand{\plus}{\mathbin{+\!\!\!+}}
+\newcommand{\bind}{\mathbin{>\!\!\!>\mkern-6.7mu=}}
+\newcommand{\rbind}{\mathbin{=\mkern-6.7mu<\!\!\!<}}% suggested by Neil Mitchell
+\newcommand{\sequ}{\mathbin{>\!\!\!>}}
+\renewcommand{\leq}{\leqslant}
+\renewcommand{\geq}{\geqslant}
+\usepackage{polytable}
+
+%mathindent has to be defined
+\@ifundefined{mathindent}%
+  {\newdimen\mathindent\mathindent\leftmargini}%
+  {}%
+
+\def\resethooks{%
+  \global\let\SaveRestoreHook\empty
+  \global\let\ColumnHook\empty}
+\newcommand*{\savecolumns}[1][default]%
+  {\g@addto@macro\SaveRestoreHook{\savecolumns[#1]}}
+\newcommand*{\restorecolumns}[1][default]%
+  {\g@addto@macro\SaveRestoreHook{\restorecolumns[#1]}}
+\newcommand*{\aligncolumn}[2]%
+  {\g@addto@macro\ColumnHook{\column{#1}{#2}}}
+
+\resethooks
+
+\newcommand{\onelinecommentchars}{\quad-{}- }
+\newcommand{\commentbeginchars}{\enskip\{-}
+\newcommand{\commentendchars}{-\}\enskip}
+
+\newcommand{\visiblecomments}{%
+  \let\onelinecomment=\onelinecommentchars
+  \let\commentbegin=\commentbeginchars
+  \let\commentend=\commentendchars}
+
+\newcommand{\invisiblecomments}{%
+  \let\onelinecomment=\empty
+  \let\commentbegin=\empty
+  \let\commentend=\empty}
+
+\visiblecomments
+
+\newlength{\blanklineskip}
+\setlength{\blanklineskip}{0.66084ex}
+
+\newcommand{\hsindent}[1]{\quad}% default is fixed indentation
+\let\hspre\empty
+\let\hspost\empty
+\newcommand{\NB}{\textbf{NB}}
+\newcommand{\Todo}[1]{$\langle$\textbf{To do:}~#1$\rangle$}
+
+\EndFmtInput
+\makeatother
+%
+%
+%
+%
+%
+%
+% This package provides two environments suitable to take the place
+% of hscode, called "plainhscode" and "arrayhscode". 
+%
+% The plain environment surrounds each code block by vertical space,
+% and it uses \abovedisplayskip and \belowdisplayskip to get spacing
+% similar to formulas. Note that if these dimensions are changed,
+% the spacing around displayed math formulas changes as well.
+% All code is indented using \leftskip.
+%
+% Changed 19.08.2004 to reflect changes in colorcode. Should work with
+% CodeGroup.sty.
+%
+\ReadOnlyOnce{polycode.fmt}%
+\makeatletter
+
+\newcommand{\hsnewpar}[1]%
+  {{\parskip=0pt\parindent=0pt\par\vskip #1\noindent}}
+
+% can be used, for instance, to redefine the code size, by setting the
+% command to \small or something alike
+\newcommand{\hscodestyle}{}
+
+% The command \sethscode can be used to switch the code formatting
+% behaviour by mapping the hscode environment in the subst directive
+% to a new LaTeX environment.
+
+\newcommand{\sethscode}[1]%
+  {\expandafter\let\expandafter\hscode\csname #1\endcsname
+   \expandafter\let\expandafter\endhscode\csname end#1\endcsname}
+
+% "compatibility" mode restores the non-polycode.fmt layout.
+
+\newenvironment{compathscode}%
+  {\par\noindent
+   \advance\leftskip\mathindent
+   \hscodestyle
+   \let\\=\@normalcr
+   \let\hspre\(\let\hspost\)%
+   \pboxed}%
+  {\endpboxed\)%
+   \par\noindent
+   \ignorespacesafterend}
+
+\newcommand{\compaths}{\sethscode{compathscode}}
+
+% "plain" mode is the proposed default.
+% It should now work with \centering.
+% This required some changes. The old version
+% is still available for reference as oldplainhscode.
+
+\newenvironment{plainhscode}%
+  {\hsnewpar\abovedisplayskip
+   \advance\leftskip\mathindent
+   \hscodestyle
+   \let\hspre\(\let\hspost\)%
+   \pboxed}%
+  {\endpboxed%
+   \hsnewpar\belowdisplayskip
+   \ignorespacesafterend}
+
+\newenvironment{oldplainhscode}%
+  {\hsnewpar\abovedisplayskip
+   \advance\leftskip\mathindent
+   \hscodestyle
+   \let\\=\@normalcr
+   \(\pboxed}%
+  {\endpboxed\)%
+   \hsnewpar\belowdisplayskip
+   \ignorespacesafterend}
+
+% Here, we make plainhscode the default environment.
+
+\newcommand{\plainhs}{\sethscode{plainhscode}}
+\newcommand{\oldplainhs}{\sethscode{oldplainhscode}}
+\plainhs
+
+% The arrayhscode is like plain, but makes use of polytable's
+% parray environment which disallows page breaks in code blocks.
+
+\newenvironment{arrayhscode}%
+  {\hsnewpar\abovedisplayskip
+   \advance\leftskip\mathindent
+   \hscodestyle
+   \let\\=\@normalcr
+   \(\parray}%
+  {\endparray\)%
+   \hsnewpar\belowdisplayskip
+   \ignorespacesafterend}
+
+\newcommand{\arrayhs}{\sethscode{arrayhscode}}
+
+% The mathhscode environment also makes use of polytable's parray 
+% environment. It is supposed to be used only inside math mode 
+% (I used it to typeset the type rules in my thesis).
+
+\newenvironment{mathhscode}%
+  {\parray}{\endparray}
+
+\newcommand{\mathhs}{\sethscode{mathhscode}}
+
+% texths is similar to mathhs, but works in text mode.
+
+\newenvironment{texthscode}%
+  {\(\parray}{\endparray\)}
+
+\newcommand{\texths}{\sethscode{texthscode}}
+
+% The framed environment places code in a framed box.
+
+\def\codeframewidth{\arrayrulewidth}
+\RequirePackage{calc}
+
+\newenvironment{framedhscode}%
+  {\parskip=\abovedisplayskip\par\noindent
+   \hscodestyle
+   \arrayrulewidth=\codeframewidth
+   \tabular{@{}|p{\linewidth-2\arraycolsep-2\arrayrulewidth-2pt}|@{}}%
+   \hline\framedhslinecorrect\\{-1.5ex}%
+   \let\endoflinesave=\\
+   \let\\=\@normalcr
+   \(\pboxed}%
+  {\endpboxed\)%
+   \framedhslinecorrect\endoflinesave{.5ex}\hline
+   \endtabular
+   \parskip=\belowdisplayskip\par\noindent
+   \ignorespacesafterend}
+
+\newcommand{\framedhslinecorrect}[2]%
+  {#1[#2]}
+
+\newcommand{\framedhs}{\sethscode{framedhscode}}
+
+% The inlinehscode environment is an experimental environment
+% that can be used to typeset displayed code inline.
+
+\newenvironment{inlinehscode}%
+  {\(\def\column##1##2{}%
+   \let\>\undefined\let\<\undefined\let\\\undefined
+   \newcommand\>[1][]{}\newcommand\<[1][]{}\newcommand\\[1][]{}%
+   \def\fromto##1##2##3{##3}%
+   \def\nextline{}}{\) }%
+
+\newcommand{\inlinehs}{\sethscode{inlinehscode}}
+
+% The joincode environment is a separate environment that
+% can be used to surround and thereby connect multiple code
+% blocks.
+
+\newenvironment{joincode}%
+  {\let\orighscode=\hscode
+   \let\origendhscode=\endhscode
+   \def\endhscode{\def\hscode{\endgroup\def\@currenvir{hscode}\\}\begingroup}
+   %\let\SaveRestoreHook=\empty
+   %\let\ColumnHook=\empty
+   %\let\resethooks=\empty
+   \orighscode\def\hscode{\endgroup\def\@currenvir{hscode}}}%
+  {\origendhscode
+   \global\let\hscode=\orighscode
+   \global\let\endhscode=\origendhscode}%
+
+\makeatother
+\EndFmtInput
+%
+
 \usepackage{extsizes}
 \usepackage{fullpage}
 \usepackage{amsmath,amsfonts,amssymb}
@@ -13,354 +275,262 @@
 \emph{Computer Science \\ Utrecht University \\ Utrecht \\ The Netherlands \\[0.5cm]}
 \emph{Type: Master's Thesis Proposal \\ Date: November 28th, 2015 \\ Supervisor: Dr. Wouter Swierstra\\}
 \line(1,0){520}\\ \\
-
 \line(1,0){520}
-\section{Representing Algebraic Data Types}
-Functional languages use algebraic data types as a specification for data structures. Normally, the programmer uses pattern matching to deconstruct an algebraic data type in order to write algorithms. In order to define generic algorithms that work on any ADT\footnote{Some types (like Generalized Algebraic Data Types\cite{GADTs} cannot be represented}, approaches such as Generic Deriving\cite{GenericDeriving}, Regular\cite{Regular} and RepLib\cite{RepLib} provide a collection of types to which ADTs can be converted back and forth. Algorithms are then specified in terms of theese ``universal'' types. The approach used by Regular is explained in the follwoing section.
-\subsection{Representations with Regular}
-A selection of types are used to encode data into representations. Theese types are designed to provide a type-safe mechanism that performs the translation. In other words, the compiler an check wether a particular representation is a valid representation for a particular type. Those types encode the structure of a type as well as some meta-information about such type. Regular uses the following types:
-\begin{lstlisting}[
-  mathescape,
-  columns=fullflexible,
-  basicstyle=\fontfamily{lmvtt}\selectfont,
-]
-  data Unit r = Unit
-  data K a r = K a
-  data (f $\oplus$ g) r = Inl (f r) | Inr (g r)
-  data (f $\otimes$ g) r = f r $\otimes$ g r
-  data Id r = Id r
-\end{lstlisting}
-These constructs correspond to the syntax of an ADT as follows:
+
+\part{Background}
+\section{Datatype Generic Programming}
+
+Functional programming languages often use algebraic data types (ADTs)
+in order to represent values. ADTs are defined by cases by providing a
+type constructor for each case and the type of values that the
+constructor accepts in order to produce a value of the ADT being
+defined. In other words, a type constructor is a function that takes a
+group of values of different types and produces a value of the type of
+the ADT.
+
+To define functions over ADTs, functional languages provide a
+mechanism to deconstruct ADTs called pattern matching. This mechanism
+allows the programmer to check wether a particular value was
+constructed using the specified type constructor and allows the
+programmer to extract the arguments used to produce the value. This
+mechanism is very elegant since it allows to define functions by
+induction, however it has several shortcommings.
+
+A function that pattern matches a value over the constructors of a
+particular ADT restricts that the type of the value being pattern
+matched to be monomorphic. This leads to functions being implemented
+multiple times -- either when a existing ADT is modified or a new ADT
+is declared~\cite{polyp}. Since functional programming is all about
+abstraction, several methods have been developed to allow functions to
+become more polymorphic.
+
+An ADT can be decalred to be higher-kinded. This means that a
+definition of a list \ensuremath{\mathbf{data}\;\Conid{List}\mathrel{=}\Conid{Cons}\;\Conid{Int}\;\Conid{List}\;|\;\Conid{Nil}} can abstract
+over its content and become \ensuremath{\mathbf{data}\;\Conid{List}\;\Varid{a}\mathrel{=}\Conid{Cons}\;\Varid{a}\;(\Conid{List}\;\Varid{a})\;|\;\Conid{Nil}}. Then a function, such as lenght, might de-construct the list
+without performing any operations on its contents -- the type
+represented by \ensuremath{\Varid{a}}. Such function can operate on a list of any type --
+this is called parametric polymorphism. The programmer might also wish
+to implement functions that operate on the contents of a list without
+restricting the type of the list's content to be monomorphic. This can
+be done by requiring that the function is also provided with a set of
+operations that can be performed on its argument. For example, the
+\ensuremath{\Varid{sum}} function could be implemented by requiring that a function to
+add two elements of type \ensuremath{\Varid{a}} is provided. This is called ad-hoc
+polymorphism.
+
+Both of theese approaches can be used to define generic
+functions. This is evidenced by the libraries Scrap your Boilerpate
+Code~\cite{SYB} and Uniplate~\cite{Uniplate}. Both libraries specify a
+family of operations that must be supported by a type and use ad-hoc
+polymorphism to implement many generic functions (for example \ensuremath{\Varid{length}}
+or \ensuremath{\Varid{increment}}) in terms of the family of operations. The programer
+only needs to do pattern matching when defining theese base operations
+and both libraries provide mechanisms to do it automatically.
+
+Although both of theese features allow the definition of many generic
+functions, a more general approach exists. Recall that every value
+expressed as an ADT is a type constructor followed by values of other
+types. For simplicity consider type constructors taking only one
+argument, they look something like \ensuremath{\Conid{C}\;\Varid{a}}. One could then define
+functions that generalize over \emph{every} type constructor. This is
+the idea behind polytipic programming~\cite{polyp} which later evolved
+into Datatype Generic Programming.
+
+This method has matured over many years in Haskell alone there are
+numerous tools and libraries for datatype generic programming,
+including PolyP~\cite{polyp}, Generic Haskell~\cite{GenericHaskell},
+RepLib~\cite{RepLib}, Regular~\cite{Regular},
+Multi-Rec~\cite{multirec}, Instant Generics~\cite{instant2} and many
+others. Some Haskell compilers even support Datatype Generic
+Programming natively. The present thesis focuses on Datatype Generic
+Programming and will use Regular~\cite{Regular} as a reference.
+
+\subsection{Generic Programming with Regular}
+
+The idea behind Datatype Generic Programming is to encode ADTs using
+only a handful of datatypes, such encoding is called a
+\emph{representation}. Each library uses different types to define
+representations. Representations can encode many ADTs but not all of
+them; the ADTs that are expressible by a representation is called the
+\emph{universe}.
+
+In the case of Regular, its universe are all the ADTs that:
 \begin{itemize}
-\item \verb+Unit+ corresponds to constructors that take no arguments (ie. \verb+Nothing+ or \verb+Nil+).
-\item \verb+K+ corresponds to constructors that take one argument and singleton values (ie. \verb+Just+).
-\item $\oplus$ to sum of two constructors. Denotes that a type can be defined by either of the constructors represented by each of $\oplus$'s arguments.
-\item $\otimes$ to the product of constructors. Denotes that a type is constructed out of multiple components (ie. \verb+Cons+ requires a value and list).
-\item \verb+Id+ represents recursion within the type (ie. a type defined in terms of itself like a list).
+\item Have no type arguments (are of kind *)
+\item Are not mutually recursive
 \end{itemize}
-Concretely speaking, lets take a look at the \verb+List+ type and its representation:
-\begin{lstlisting}[
-  mathescape,
-  columns=fullflexible,
-  basicstyle=\fontfamily{lmvtt}\selectfont,
-]
-  data List a = Cons a (List a) | Nil
+This universe includes many common types like lists, trees and simple
+DSLs but is smaller than the set of types definible in Haskell 98.
 
-  instance Regular (List a) where
-    type PF (List a) = K a $\otimes$ Id $\oplus$ Unit
-\end{lstlisting}
-The algorithms that perform the actual encoding/decoding are the following:
-\begin{lstlisting}[
-  mathescape,
-  columns=fullflexible,
-  basicstyle=\fontfamily{lmvtt}\selectfont,
-]
-  instance Regular (List a) where
+To represent its universe, regular uses the following types:
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\mathbf{data}\;\Conid{K}\;\Varid{a}\;\Varid{r}\mathrel{=}\Conid{K}\;\Varid{a}{}\<[E]%
+\\
+\>[B]{}\mathbf{data}\;\Conid{Id}\;\Varid{r}\mathrel{=}\Conid{Id}\;\Varid{r}{}\<[E]%
+\\
+\>[B]{}\mathbf{data}\;\Conid{Unit}\;\Varid{r}\mathrel{=}\Conid{Unit}{}\<[E]%
+\\
+\>[B]{}\mathbf{data}\;(\Varid{f}\;\oplus\;\Varid{g})\;\Varid{r}\mathrel{=}\Conid{Inl}\;(\Varid{f}\;\Varid{r})\mid \Conid{Inr}\;(\Varid{g}\;\Varid{r}){}\<[E]%
+\\
+\>[B]{}\mathbf{data}\;(\Varid{f}\;\otimes\;\Varid{g})\;\Varid{r}\mathrel{=}\Varid{f}\;\Varid{r}\;\otimes\;\Varid{g}\;\Varid{r}{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
 
-    from (Cons x xs) = Inl (K x $\otimes$ Id xs)
-    from Nil = Inr Unit
-    
-    to (Inl (K x $\otimes$ Id xs)) = Cons x xs
-    to (Inr Unit) = Nil
-
-  from (Cons 1 Nil) $\equiv$ Inl(Prod((K 1) (I Nil))) -- True
-\end{lstlisting}
-The mapping is very straightforward since each of the type constructors is represented as nestings of the \verb+Inl+ and \verb+Inr+ constructors. This process can be easily automated. In fact Generic Deriving\cite{GenericDeriving} is bundled as an extension for the Glassgow Haskell Compiler (GHC) which automatically derives such definitions.
-\\\\Generic functions can now be specified over those representations. Take for example the generic map function \verb+gmap+ which takes a function of type \verb+Int+ $\rightarrow$ \verb+Int+ and applies the function to every integer in the structure:
-\begin{lstlisting}[
-  mathescape,
-  columns=fullflexible,
-  basicstyle=\fontfamily{lmvtt}\selectfont,
-]
-  gmap :: (GMap (PF a), Regular a) $\Rightarrow$ (Int $\to$ Int) $\to$ a $\to$ a
-  gmap (+1) (Cons 1 (Cons 2 Nil)) $\equiv$ (Cons 2 (Cons 3 Nil))
-  gmap (+1) (Just 1) $\equiv$ Just 2
-  gmap (+1) Nothing $\equiv$ Nothing
-\end{lstlisting}
-To define such a function, one needs to specify how it should operate on each of the types that make up a representation. This requires function overloading which is done in Haskell via Type-Classes. First a type-class with the specification of the operation is defined. In the running example it will be called GMap. It's method \verb+gmap'+ takes as an argument a representation and returns a matching\footnote{According to the type of the representation} representation. The class is the following:
-\begin{lstlisting}[
-  mathescape,
-  columns=fullflexible,
-  basicstyle=\fontfamily{lmvtt}\selectfont,
-]
-  class GMap f where
-    gmap' :: (GMap (PF r), Regular r) $\Rightarrow$ (Int $\to$ Int) $\to$ f r $\to$ f r
-\end{lstlisting}
-Now each of the types that make up a representation are made an instance of the class. Since the \verb+GMap+ constraint is present for the types that have other representations nested inside them. This allows to recursively call the \verb+gmap'+ function, no matter what the nested types are. The compiler cannot statically determine which of the \verb+gmap'+ overloads will be invoked until it knows what the argument is\footnote{Contrary to F\# where all method calls must be resolved statically}. In other words, the functions that get called depend on the resulting type after the compiler instantiates all the polymorphic types in a call site.
-\begin{lstlisting}[
-  mathescape,
-  columns=fullflexible,
-  basicstyle=\fontfamily{lmvtt}\selectfont,
-]
-
-  instance GMap U where
-    gmap' _ _ = U
-
-  instance GMap (K Int) where
-    gmap' f (K i) = K (f i)
-
-  instance GMap (K a) where
-    gmap' _ (K a) = K a
-
-  instance (GMap g, GMap h) $\Rightarrow$ GMap (g $\oplus$ h) where
-    gmap' f (Inl a) = Inl (gmap' f a)
-    gmap' f (Inr a) = Inr (gmap' f a)
-
-  instance (GMap g, GMap h) $\Rightarrow$ GMap (g $\otimes$ h) where
-    gmap' f (g $\otimes$ h) = gmap' f g $\otimes$ gmap' f h
-
-  instance GMap Id where
-    gmap' f (Id r) = (Id $\circ$ to $\circ$ gmap' f $\circ$ from) r
-\end{lstlisting}
-With the specification in place, the compiler can use type level computations to resolve what are the exact overloads of \verb+gmap'+ that must be invoked whenever the \verb+gmap'+ is applied. Note that this code contains ``Overlapping Instances'' which are not Haskell 2010 standard. GHC in particular deals with such instances by choosing the more specific one\footnote{Or failing if two instances are ``equally'' specific}. To complete the definition, the encoding/decoding functions have to be attached to build the final master function:
-\begin{lstlisting}[
-  mathescape,
-  columns=fullflexible,
-  basicstyle=\fontfamily{lmvtt}\selectfont,
-]
-  gmap f = to $\circ$ gmap' f $\circ$ from
-\end{lstlisting}
-The experienced Haskeller should take a moment to appreciate all the ``unique'' language features that were required for this apparently simple task. They will be addressed in more detail in the following sections.
-\subsection{Abandoning Type-Safety}
-The approach from Regular will be used as a starting point to introduce generic programming into F\#. However the approach cannot be directly translated. Following paragraphs outline the problems.
-\\\\Given the absence of type-classes, overloading in F\# must be done by overloading methods of a class. One can start with a definition of \verb+GMap+ that looks as follows:
-\begin{lstlisting}[
-  mathescape,
-  columns=fullflexible,
-  basicstyle=\fontfamily{lmvtt}\selectfont,
-]
-type GMap() =
-  class
-
-    //Corresponds to K
-    member this.gmap'<'t> : (K<'t> * (int $\to$ int)) $\to$ K<'t>
-    
-    //Corresponds to U
-    member this.gmap' : (U * (int $\to$ int)) $\to$ U
-
-    //Corresponds to I
-    member this.gmap'<'t> : (Id<'t> * (int $\to$ int)) $\to$ Id<'t>
-
-    //Corresponds to $\otimes$
-    member this.gmap'<'a,'b> : (Prod<'a,'b> * (int $\to$ int)) $\to$ Prod<'a,'b>
-
-    //Corresponds to $\oplus$
-    member this.gmap'<'a,'b> : (Sum<'a,'b> * (int $\to$ int)) $\to$ Sum<'a,'b>
-
-  end
-\end{lstlisting}
-This definition provides an overload of the \verb+gmap+ function for each of the constituents that define a type representation. It is important to note that each of the overloads must {\it somehow} be able to recursively\footnote{It is not strictly speaking recursion since a different method with the same name is being invoked} invoke the appropiate overload depending on what type arguments are used to call the \verb+gmap+ function.
-\\\\Speaking concretely, suppose one has the representations $\tau_1$ and $\tau_2$ defined as \verb+Prod<K<int>,Prod<K<string>,U>>+ and \verb+Prod<K<int>,U>+ respectively. Suppose \verb+gmap+ is invoked with $\tau_1$ as argument. Here the type parameters \verb+'a+ and \verb+'b+ get instantiated to \verb+K<int>+ and \verb+Prod<K<string>,U>+ respectively. When the time comes to invoke \verb+gmap+ with the value corresponding to \verb+'b+, the correct overload (the one for the \verb+K+ case) must be selected. Now consider invoking \verb+gmap+ with $\tau_2$ as argument. When \verb+gmap+ gets invoked with the value corresponding to the type parameter \verb+'b+, a {\it different} overload (the case for \verb+U+) is selected. This subtle difference makes use of one of Haskell's type system luxuries which selects a different overload depending on how the types variables get instantiated. However, this is not possible in F\#. The overload to be invoked must be known soley from the definition of the method.
-\\\\This imposes the restriction that all the type variables must be instantiated to some {\it common} type that rules them all. For that purpose, the class \verb+Meta+ is defined. This allows all {\it recursive} calls to refer to a unique overload. In other words, the class hierarchy now looks like:
-\begin{lstlisting}[
-  mathescape,
-  columns=fullflexible,
-  basicstyle=\fontfamily{lmvtt}\selectfont,
-]
-K<'t> :> Meta
-
-Prod<'a,'b> :> Meta
-
-Sum<'a,'b> :> Meta
-
-U :> Meta
-
-Id<'t> :> Meta
-\end{lstlisting}
-where \verb+:>+ corresponds to the sub-class relation.
-\\\\With this adjustment in plae, the definition of \verb+gmap+ could be the following:
-\begin{lstlisting}[
-  mathescape,
-  columns=fullflexible,
-  basicstyle=\fontfamily{lmvtt}\selectfont,
-]
-type GMap() =
-  class
-
-    //Corresponds to K
-    member this.gmap'<'t> : (K<'t> * (int $\to$ int)) $\to$ K<'t>
-
-    //Corresponds to U
-    member this.gmap' : (U * (int $\to$ int)) $\to$ U
-
-    //Corresponds to I
-    member this.gmap'<'t> : (Id<'t> * (int $\to$ int)) $\to$ Id<'t>
-    
-    //Corresponds to $\otimes$
-    member this.gmap' : (Prod<Meta,Meta> * (int $\to$ int)) $\to$ Prod<Meta,Meta>
-
-    //Corresponds to $\oplus$
-    member this.gmap'(Sum<Meta,Meta> * (int $\to$ int)) $\to$ Sum<Meta,Meta>
-
-  end
-\end{lstlisting}
-This approach solves ambiguity of deciding which is the overload that should be invoked. Nevertheless, it is now required to have an overload to handle the case for \verb+Meta+ since that is the overload that will be selected when performing recursive calls. It looks as follows:
-\begin{lstlisting}[
-  mathescape,
-  columns=fullflexible,
-  basicstyle=\fontfamily{lmvtt}\selectfont,
-]
-type GMap() =
-  class
-    //Corresponds to Meta
-    member this.gmap' : (Meta * (int $\to$ int)) $\to$ Meta
-    ...
-  end
-\end{lstlisting}
-What should be the implementation of this method. Recall that the reason this method is required is because F\# dosen't have a mechanism to select the right overload according to the instantiation of the type variables. This means that the {\bf sole} purpose of this method is selecting the overload that must be called. This mechanism will be described in-depth in the next sections.
-\subsection{Type-Representations in F\#}
-Before exploring solutions to the problems mentioned above, this section explains in depth how the ADTs will be precisely represented in F\#. A class hierarchy is used to achieve it. On the top of the hierarchy is a class called \verb+Meta+ with no type arguments. This class is the mother of all representations. There are 6 sub-classes of this class:
+The types have the following roles:
 \begin{itemize}
-  \item \verb+U+ with no type arguments which is analogous to the \verb+Unit+ in regular.
-  \item \verb+K<'t>+ with the type argument \verb+'t+ which is analogous to \verb+K+ in regular. The type argument denotes the type of its contents.
-  \item \verb+Prod<'a,'b>+ which is analogous to $\otimes$ in regular. It's type arguments are the types of the product and they are required to be a sub-class of \verb+Meta+.
-  \item \verb+SumConstr<'a,'b>+ wich is analogous to $\oplus$ in regular. From this class, the subclasses \verb+L<'a,'b>+ and \verb+R<'a,'b>+ are defined (corresponding to the left and right branches) which are the ones actually used to create the representation.
-  \item \verb+I<'t>+ wich is analogous to \verb+I+ in regular. This class is used to represent recursion within a type.
+\item \ensuremath{\Conid{K}} represents the occurence of values of primitive types (eg. \ensuremath{\Conid{Int}} or \ensuremath{\Conid{Bool}})
+\item \ensuremath{\Conid{Id}} represents recursion over the same type
+\item \ensuremath{\Conid{Unit}} represents a constructor which takes no arguments
+\item \ensuremath{(\Varid{f}\;\oplus\;\Varid{g})} represents sum of two representations. This happens when a type has multiple constructors
+\item \ensuremath{(\Varid{f}\;\otimes\;\Varid{g})} represents product of two representstions. This happens when a constructor takes multiple arguments.
 \end{itemize}
-\[
-\]
-The encoding process is very straightforward, below each of the cases is described. The algorithm is described in reference to the input type which is denoted by \verb+T+:
-\\\\{\bf Values:}
-\begin{itemize}
-\item If the value is of type \verb+T+ return \verb+Id<T>+.
-\item If the value is an ADT, calculate its representation but using \verb+'t+ as the reference type for recursion.
-\item Otherwise return \verb+K<V>+ where \verb+V+ is the type of the value
-\end{itemize}
-{\bf Constructors:}
-\begin{itemize}
-\item If constructor takes no argumetns return \verb+U+
-\item If constructor takes argumetns. 1) Take the first argument and apply the value case. 2) Apply the constructor case to the remaining arguments. 3) Pack the two results in \verb+Prod<R1,R2>+ where \verb+R1+ is the representation resulting from the first argument and \verb+R2+ is the representation resulting from the remaining arguments.
-\end{itemize}
-{\bf Sum of Constructors}
-Constructors for a type will be ordered in some arbitrary deterministic order. A type is constructed as follows:
-\begin{itemize}
-\item For the first constructor, the type for its representation is calculated (\verb+C0+) and it is then given the type \verb+L<C0,U>+.
-\item For the nth constructor, its representation is calculated (\verb+Cn+) then it is connected to the representation of the previous constructors (\verb+Cp+) to construct a type \verb+SumConstr<Cn,Cp>+.
-\end{itemize}
-Given a value. It is now possible provide a representation matching the corresponding type. In the previous step, for each constructor a type \verb+SumConstr<C1,C2>+ has been calculated. It is then assigned the type \verb+L<C1,C2>+ (which is a subtype of (\verb+SumConstr<C1,C2>+) and for each of the constructor that appear above the ordering, a nesting inside the \verb+R+ constructor is performed. This algorithm is implemented in the class \verb+Generic<'t>+ whos type argument corresponds to the input type which is the type that will be given to the \verb+Id+ constructor.
-\subsection{A New Hope: Type-Providers}
-There is a mechanism in F\# that allows (very wild) type level programming: Type-Providers \cite{TypeProviders}. Although initally designed to permit typed access to data sources. They allow a lot of fancy declaration of new types (thanks to the excellence of .Net) at compile time.
-\\\\
-Type-providers will be used to improve the type-safety of the library. In order to do so, the user must give it as arguments the name of the generic function and the number of arguments (apart from the type-representation) it takes. This will create a type that includes the following:
-\begin{enumerate}
-\item An implementation for the \verb+Meta+ variant of the generic function wich will act as a dispatcher which selects the right generic method.
-\item Default cases for all the representations.
-\end{enumerate}
-For the default implementation to work, the user must specify a single parameter to the constructor of the generated type which is a function that will be invoked as default. The follwoing code examplifies how this would be done:
-\begin{lstlisting}[
-  mathescape,
-  columns=fullflexible,
-  basicstyle=\fontfamily{lmvtt}\selectfont,
-]
-type GMapBase = Generics.Provided.Generic<"gmap",1>
 
-GMapBase.new : ((Meta $\to$ obj $\to$ obj) $\to$ GMapBase)
+To familiarize ourselves how a type can be encoded with a
+representation, consider representing a list of \ensuremath{\Conid{Int}} with theese
+types:
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\mathbf{data}\;\Conid{List}\mathrel{=}\Conid{Cons}\;\Conid{Int}\;\Conid{List}\mid \Conid{Nil}{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+This would be represented by the type:
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\mathbf{type}\;\Conid{Rep}\mathrel{=}(\Conid{K}\;\Conid{Int}\;\otimes\;\Conid{Id})\;\oplus\;\Conid{Unit}{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
 
-GMapBase.gmap : (Meta $\to$ obj $\to$ obj)
+It is straightforward to see that the sum of constructors gets
+translated to the \ensuremath{\oplus} type. The \ensuremath{\otimes} type is used to join the
+arguments of the first constructor. One of the arguments is a
+primitive \ensuremath{\Conid{Int}} represented with \ensuremath{\Conid{K}\;\Conid{Int}} and the second arguments is a
+recursive ocurrence of the list, represented by \ensuremath{\Conid{Id}}. Finally, the
+\ensuremath{\Conid{Nil}} constructor is represented by \ensuremath{\Conid{Unit}}.
 
-GMapBase.gmap : (K<obj> $\to$ obj $\to$ obj)
+To write generic functions in Regular, one must declare a type as an
+instance of the Regular typeclass. The Regular typeclass is the following:
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{3}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\mathbf{class}\;(\Conid{Functor}\;(\Conid{PF}\;\Varid{a}))\Rightarrow \Conid{Regular}\;\Varid{a}\;\mathbf{where}{}\<[E]%
+\\
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}\mathbf{type}\;\Conid{PF}\;\Varid{a}\mathbin{::}\mathbin{*}\to \mathbin{*}{}\<[E]%
+\\
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}\Varid{from}\mathbin{::}\Varid{a}\to \Conid{PF}\;\Varid{a}\;\Varid{a}{}\<[E]%
+\\
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}\Varid{to}\mathbin{::}\Conid{PF}\;\Varid{a}\;\Varid{a}\to \Varid{a}{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
 
-GMapBase.gmap : (Prod<Meta,Meta> $\to$ obj $\to$ obj)
+The constituients of the class are a type called \ensuremath{\Conid{PF}} which simply is
+the representation using the types of Regular and two functions \ensuremath{\Varid{to}}
+and \ensuremath{\Varid{from}} that convert values to representations and representations
+to values. For the case of the \ensuremath{\Conid{List}} provided above, an instance
+could be the following:
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{3}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\mathbf{instance}\;\Conid{Regular}\;\Conid{List}\;\mathbf{where}{}\<[E]%
+\\
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}\mathbf{type}\;\Conid{PF}\;\Conid{List}\mathrel{=}(\Conid{K}\;\Conid{Int}\;\otimes\;\Conid{Id})\;\oplus\;\Conid{Unit}{}\<[E]%
+\\[\blanklineskip]%
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}\Varid{from}\;(\Conid{Cons}\;\Varid{i}\;\Varid{l})\mathrel{=}\Conid{Inl}\;(\Conid{K}\;\Varid{i}\;\otimes\;\Conid{Id}\;\Varid{l}){}\<[E]%
+\\
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}\Varid{from}\;\Conid{Nil}\mathrel{=}\Conid{Inr}\;\Conid{Unit}{}\<[E]%
+\\[\blanklineskip]%
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}\Varid{to}\;(\Conid{Inl}\;(\Conid{K}\;\Varid{i}\;\otimes\;\Conid{Id}\;\Varid{l}))\mathrel{=}\Conid{Cons}\;\Varid{i}\;\Varid{l}{}\<[E]%
+\\
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}\Varid{to}\;(\Conid{Inr}\;\Conid{Unit})\mathrel{=}\Conid{Nil}{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
 
-GMapBase.gmap : (Sum<Meta,Meta> $\to$ obj $\to$ obj)
+This instance declaration is very unremarkable. In general, providing
+an instance of Regular for a particular type is a mechanical process
+and Template Haskell~\cite{TemplateHaskell} is used to automatically
+derive them.
 
-GMapBase.gmap : (Id<obj> $\to$ obj $\to$ obj)
-
-GMapBase.gmap : (U $\to$ obj $\to$ obj)
-
-\end{lstlisting}
-The type created by the provider has a default implementation for all the possible representation elements. The implementation for the case that takes \verb+Meta+ as first argument selects at runtime the method that better matches the given constructor. It will be explained in later sections how such ordering of types has been defined. For the rest of the cases, the function provided in the constructor will be invoked. Now it is guaranteed that at runtime a method will always exist for any possible representation of a type. The programmer can override theese methods to change the behaviour of the generic function in a subclass. The approach still has the flaw that all arguments (except of the generic constructors) are of type \verb+obj+. One would like something like:
-\begin{lstlisting}[
-  mathescape,
-  columns=fullflexible,
-  basicstyle=\fontfamily{lmvtt}\selectfont,
-]
-type GMapBase<'t,'a,'r> = Generics.Provided.Generic<"gmap",1>
-
-GMapBase<'t,'a,'r>.new : ((Meta $\to$ 'a $\to$ 'r) $\to$ GMapBase)
-
-GMapBase<'t,'a,'r>.gmap : (Meta $\to$ 'a $\to$ 'r)
-
-GMapBase<'t,'a,'r>.gmap : (K<obj> $\to$ 'a $\to$ 'r)
-
-GMapBase<'t,'a,'r>.gmap : (Prod<Meta,Meta> $\to$ 'a $\to$ 'r)
-
-GMapBase<'t,'a,'r>.gmap : (Sum<Meta,Meta> $\to$ 'a $\to$ 'r)
-
-GMapBase.gmap : (Id<'t> $\to$ 'a $\to$ 'r)
-
-GMapBase.gmap : (U $\to$ 'a $\to$ 'r)
-\end{lstlisting}
-This would allow a very precise specification of the generic functions. Unfortunately, the types resulting from the invocation of Type-Providers cannot have generic arguments. The reason is that the arguments that type-providers accept are literals (strings, numbers, booleans, etc.) and even after the initial invocation (when the type-synonym is declared) the compiler still treats the resulting type as a type-provider instead of an ordinary type. Due to this shortcomming, it is only possible to implement the first approach.
-\\\\
-However, the author of generic algorithms can easily add a bit of extra type safety to a wide variety of generic algorithms. In particular the ones where the additonal arguments are constant such as the \verb+GMap+ function. This is done by providing the type parameters on the sub-class that implements the algorithm and requiring that the arguments are provided in the constructor. Additionally, in order for the \verb+Id+ branch to allow recursive calls, the class must be given the type parameters corresponding to the type being handled by the function. The code below shows an implementation of \verb+GMap+ using the above strategies:
-\begin{lstlisting}[
-  mathescape,
-  columns=fullflexible,
-  basicstyle=\fontfamily{lmvtt}\selectfont,
-]
-
-type GMapBase = Generics.Provided.Generic<''GMap'',0>
-
-type GMap<'t>(g : int -> int) =
-  inherit GMapBase(id)
-
-  let generic = Generic<'t>()
-
-  member x.GMap(c : Meta) =
-    base.GMap(c) :?> Meta
-
-  member x.GMap(c : L<Meta,Meta>) =
-    L<Meta,Meta>(x.GMap(c.Elem))
-
-  member x.GMap(c : R<Meta,Meta>) = 
-    R<Meta,Meta>(x.GMap(c.Elem))
-
-  member x.GMap(c : Prod<Meta,Meta>) =
-    let v1 = x.GMap(c.E1)
-    let v2 = x.GMap(c.E2)
-    Prod<Meta,Meta>((v1,v2))
-
-  member x.GMap(c : K<int>) =
-    K<int>(f c.Elem)
-
-  member x.GMap(c : Id<'t>) =
-    Id<'t>(x.GMap(g.To c.Elem) |> g.From)
-  
-let gmap<'t,'v> (f : int -> int) (a : 't) =
-    let g = Generic<'t>()
-    let e = GMap<'t>(f)
-    g.To a |> e.Everywhere |> g.From
-
-\end{lstlisting}
-The overload of \verb+GMap+ for the case of \verb+Meta+ is meerly a conveniece that invokes the selector method and casts the result from \verb+obj+ to \verb+Meta+. If generic type argumetns were allowed for type providers, this could be done by the provider for free.
-\subsection{Selecting the Overload}
-This implementation still has some mystery on how the overloads are selected. In particular, the F\# type system does not allow automatic casting of a type inside a container. In other words: \verb+T<int> :> T<obj>+ is not allowed in F\# in spite that \verb+int :> obj+ is allowed. This implementation has some sub-typing rules that specify how types are related. First, given the \verb+:>+ relation already present in F\#, the $\sim$ relation is defined:
-\[
-\tau_1 \sim \tau_2 =
-\left\{
-\begin{array}{ll}
-  \mathtt{true} & \mbox{if } \tau_1 :> \tau_2 \\
-  \tau_1' \sim \tau_2' \wedge \tau_1'' \sim \tau_2'' & \mbox{if } \tau_1 = \mathit{C}<\tau_1',\tau_1''> \wedge \tau_2 = \mathit{C}<\tau_2',\tau_2''> \wedge \mathit{C} \in \{\mathtt{L},\mathtt{R},\mathtt{Prod}\}\\
-  \tau_1' :> \tau_2' & \mbox{if } \tau_1 = \mathtt{K}<\tau_1'> \wedge \tau_2 = \mathtt{K}<\tau_2'>\\
-  \mathtt{false} & \mbox{otherwise}
-\end{array}
-\right.
-\]
-Given this relation, a partial order $\rhd$ between types is defined. The order is partial because two types are comparable in $\rhd$ if they are related by $\sim$. Following is the definition of $\rhd$:
-\[
-\tau_1 \rhd \tau_2 =
-\left\{
-\begin{array}{ll}
-  \tau_1'' \rhd \tau_2'' & \mbox{if } \tau_1=\mathtt{Prod}<\tau_1',\tau_1''> \wedge \tau_2=\mathtt{Prod}<\tau_2',\tau_2''> \wedge \tau_1'\equiv\tau_2'\\
-  \tau_1' \rhd \tau_2' & \mbox{if } \tau_1=\mathtt{Prod}<\tau_1',\tau_1''> \wedge \tau_2=\mathtt{Prod}<\tau_2',\tau_2''> \\
-  \tau_1' \rhd \tau_2' & \mbox{if } \tau_1=\mathtt{L}<\tau_1',\tau_1''> \wedge \tau_2=\mathtt{L}<\tau_2',\tau_2''> \\
-  \tau_1'' \rhd \tau_2'' & \mbox{if } \tau_1=\mathtt{R}<\tau_1',\tau_1''> \wedge \tau_2=\mathtt{R}<\tau_2',\tau_2''> \\
-  \tau_1' :> \tau_2' & \mbox{if } \tau_1=\mathtt{K}<\tau_1'> \wedge \tau_2=\mathtt{K}<\tau_2'> \\
-  \tau_1 :> \tau_2 & \mbox{otherwise}
-\end{array}
-\right.
-\]
-In order to select an overload, the first step is filtering the suitable methdos by comparing the type given as a first argument using $\sim$ and ordering the resulting options with $\rhd$ to select the most specific one. Note that for the case of \verb+Prod+, the ordering is biased because the first type argument is given priority when selecting the specificity of the method.
+Generic functions can now be expressed in terms of values of
+representation types instead of using values of the type itself. A
+generic function is expressed as a typeclass and is implemented by
+creating instances of type representations for that typeclass. To
+illustrate this approach, the generic increment function will be
+defined. This function increases by one the value of every integer
+that occurs in a type. This is expressed by the following class:
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{3}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\mathbf{class}\;\Conid{GInc}\;\Varid{r}\;\mathbf{where}{}\<[E]%
+\\
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}\Varid{gInc}\mathbin{::}\Varid{r}\to \Varid{r}{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+and is implemented as follows:
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{3}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\mathbf{instance}\;\Conid{GInc}\;(\Conid{K}\;\Conid{Int})\;\mathbf{where}{}\<[E]%
+\\
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}\Varid{gInc}\;(\Conid{K}\;\Varid{i})\mathrel{=}\Conid{K}\;(\Varid{i}\mathbin{+}\mathrm{1}){}\<[E]%
+\\[\blanklineskip]%
+\>[B]{}\mathbf{instance}\;\Conid{GInc}\;\Conid{Unit}\;\mathbf{where}{}\<[E]%
+\\
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}\Varid{gInc}\;\Conid{Unit}\mathrel{=}\Conid{Unit}{}\<[E]%
+\\[\blanklineskip]%
+\>[B]{}\mathbf{instance}\;\Conid{GInc}\;\Conid{Id}\;\mathbf{where}{}\<[E]%
+\\
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}\Varid{gInc}\;(\Conid{Id}\;\Varid{r})\mathrel{=}\Conid{Id}\mathbin{\$}\Varid{from}\mathbin{\$}\Varid{gInc}\mathbin{\$}\Varid{to}\;\Varid{r}{}\<[E]%
+\\[\blanklineskip]%
+\>[B]{}\mathbf{instance}\;(\Conid{GInc}\;\Varid{f},\Conid{GInc}\;\Varid{g})\Rightarrow \Conid{GInc}\;(\Varid{f}\;\oplus\;\Varid{g})\;\mathbf{where}{}\<[E]%
+\\
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}\Varid{gInc}\;(\Conid{Inl}\;\Varid{f})\mathrel{=}\Conid{Inl}\mathbin{\$}\Varid{gInc}\;\Varid{f}{}\<[E]%
+\\
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}\Varid{gInc}\;(\Conid{Inr}\;\Varid{g})\mathrel{=}\Conid{Inr}\mathbin{\$}\Varid{gInc}\;\Varid{g}{}\<[E]%
+\\[\blanklineskip]%
+\>[B]{}\mathbf{instance}\;(\Conid{GInc}\;\Varid{f},\Conid{GInc}\;\Varid{g})\Rightarrow \Conid{GInc}\;(\Varid{f}\;\otimes\;\Varid{g})\;\mathbf{where}{}\<[E]%
+\\
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}\Varid{gInc}\;(\Varid{f}\;\otimes\;\Varid{g})\mathrel{=}\Varid{gInc}\;\Varid{f}\;\otimes\;(\Varid{gInc}\;\Varid{g}){}\<[E]%
+\\[\blanklineskip]%
+\>[B]{}\mathbf{instance}\;\Conid{GInc}\;(\Conid{K}\;\Varid{a})\;\mathbf{where}{}\<[E]%
+\\
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}\Varid{gInc}\;\Varid{x}\mathrel{=}\Varid{x}{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+This definition requires the Overlapping Instances extension (among
+others) since there is no way to provide a specific case for \ensuremath{\Conid{Int}} and
+a case for everything but \ensuremath{\Conid{Int}}. It can be observed that the \ensuremath{\Conid{GInc}}
+function works for any representation given in terms of Regular's
+types. To finalize the definition, a wrapper must be written:
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\Varid{inc}\mathrel{=}\Varid{from}\;\circ\;\Varid{gInc}\;\circ\;\Varid{to}{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+This wrapper simply converts the value into the representation and
+then converts the result back to a value.
 
 \end{document}
