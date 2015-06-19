@@ -355,7 +355,7 @@ the correct overload.
 
 F\# does not have the ability to delay the selection of an overload
 until a type variable gets instantiated. The closest approach is
-method overloading but that can't be used since all the generic
+method overriding but that can't be used since all the generic
 methods would then have to be defined with the definition of the
 representation types.
 
@@ -535,5 +535,204 @@ type ListRep =
         U<<Elems>> >> >>,
     U<<Elems>> >> >>
 \end{code}
+
+\section{Defining generic functions as classes}
+
+The purpose of type representations is to provide an interface that
+the programmer can use to define generic functions. Once a function is
+defined on all the subtypes of the |Meta| class, it can be executed on
+any value whose type may be modeled using the |Meta| class.
+
+Similar to Regular, generic functions will be defined by cases for
+each of the types that define representations. Since F\# dosen't have
+typeclasses, each case will be defined by overriding methods of the
+abstract class called |FoldMeta|. The |FoldMeta| class is defined as
+follows:
+\begin{code}
+AbstractClass
+type FoldMeta<<`t,varin,`out>>() =
+
+abstract FoldMeta : Meta * varin -> `out
+abstract FoldMeta<<`ty>> : Sum<<`ty,Meta,Meta>> * varin -> `out
+abstract FoldMeta<<`ty>> : Prod<<`ty,Meta,Meta>> * varin -> `out
+abstract FoldMeta<<`ty,`a>> : K<<`ty,`a>> * varin -> `out
+abstract FoldMeta : Id<<`t>> * varin -> `out
+abstract FoldMeta<<`ty>> : U<<`ty>> * varin -> `out
+\end{code}
+
+The |FoldMeta| type is parametrized by the following type argumetns:
+\begin{itemize}
+\item |`t| which is the type being represented by the type representation
+\item |`in| which is the input type of the generic function
+\item |`out| which is the output type of the generic function
+\end{itemize}
+
+In addition to those arguments, the |Sum|, |Prod|, |K| and |U|
+variants of the method also include the type parameter |`ty|. Recall
+that all type representatios take as first type parameter the type
+being represented. In the case of 'nested types' or types that contain
+within them other types, the parameter will vary in different sections
+of the representation. Therefore, it is necessary to quantify over all
+types, not only |`t|. Regular does not do this but it is necessary to
+define certain generic functions which will be covered later. The |K|
+override also contains the type parameter |`a| which denotes the
+primitive type contained by |K|.
+
+This class can only handle generic functions that take a single
+argument. However, F\# allows types to have the same name as long as
+they differ in the number of type parameters. This makes it possible
+to define variants of |FoldMeta| that take more arguments.
+
+To illustrate how the library works. The generic function |GMap| will
+be used as an example. This function takes as an argument another
+function and applies the function on every occurence of the type of
+the function. The heading of the function is the following:
+
+\begin{code}
+type GMap<<`t,`x>>(f : `x -> `x) = 
+  class 
+  inherit FoldMeta<<
+    `t,
+    Meta>>()
+  end
+\end{code}
+
+This function uses the variant of |FoldMeta| that accepts no input
+arguments since the functional argument is moved to the
+constructor. In cases where the argument does not change during the
+recursive calls, it is easier to make the argument a class argument.
+To perform the mapping, the function produces a new representation
+with updated values; hence the |`out| parameter is instantiated to
+|Meta|.
+
+The first method that needs to be overriden is the |Sum| case: 
+\begin{code}
+override self.FoldMeta<<`ty>>
+  (v : Sum<<`ty,Meta,Meta>>) =
+    match v.Elem with
+    | Choice1Of2 m -> 
+      Sum<<`ty,Meta,Meta>>(
+      self.FoldMeta(m) |> Choice1Of2)
+    | Choice2Of2 m -> 
+      Sum<<`ty,Meta,Meta>>(
+      self.FoldMeta(m) |> Choice2Of2)
+    :> Meta
+\end{code}
+The |Sum| constructor encodes the type constructor that was used to
+create the value that was provided. The choice is encoded as nestings
+of the |Choice| type and the nesting is defined by using the
+|Choice1Of2| and |Choice2Of2| constructors. This override will
+recursively apply the |FoldMeta| function to both cases and pack the
+result back into a value with the same number of |Choice|
+nestings. The result must be casted to |Meta| in order to agree with
+the type of the method.
+
+Next, the |Prod| case must be overriden:
+The next definition handles products:
+\begin{code}
+override x.FoldMeta<<`ty>>
+  (v : Prod<<`ty,Meta,Meta>>) =
+    Prod<<Meta,Meta>>(
+      x.FoldMeta(v.E1),
+      x.FoldMeta(v.E2)
+    :> Meta
+\end{code}
+The |Prod| type contains two properties, |E1| and |E2|, which
+correspond to the two representations from which a product is
+built. Again, the function only needs to be applied recursively to the
+inner representations of the product and then packed back.
+
+To handle the |K| constructor, two methods are needed:
+\begin{code}
+member x.FoldMeta<<`ty>>(
+  v : K<<`ty,`x>>) = 
+  K(f v.Elem) :> Meta
+
+override x.FoldMeta<<`ty,`a>>(k : K<<`ty,`a>>) = k :> Meta
+override x.FoldMeta<<`ty>>(u : U<<`ty>>) = u :> Meta
+\end{code}
+
+The first case handles the occurences of primitive values that have
+the same type as the input type of the argument function. It simply
+applies the function to the value and packs the result with the same
+constructor. The second case handles all other values. Since nothing
+can be done with them, they are returned as they are. Below is the
+definition for the |U| type which dosen't do anything special either.
+
+Next, the |Id| case must be overriden:
+\begin{code}
+override x.FoldMeta
+  (v : Id<<`t>>) =
+    let g = Generic<<`t>>()
+    Id<<`t>>(x.FoldMeta(
+      g.To c.Elem) |> g.From)
+    :> Meta
+\end{code}
+Since this library works with shallow representations, recursive
+values are not immediately converted to their representation. Since
+generic functions only work with representations, the value must first
+be converted to its representation, then |FoldMeta| can be recursively
+applied to the representation and finally the resulting representation
+is converted back to a value and packed inside the |Id| constructor.
+
+Although the definition for |GMap| is complete, it is still
+incorrect. As it stands, it only allows primitive values to be
+mapped. Values that are expressible as a representation (ADTs) will
+not get mapped, just ignored. The reason is that such values get
+translated into their corresponding representation when the generic
+funciton gets applied. Here is were the first parameter of
+representation types becomes important. Three additional overloads are
+provided to map ADTs:
+
+\begin{code}
+let mapper (f : `x->`x) (v : Meta) =
+  let g = Generic<<`x>>()
+  v |> g.From |> f |> g.To
+
+member x.FoldMeta(
+  u : U<<`x>>,f : `x->`x) = mapper f u
+member x.FoldMeta(
+  p : Prod<<`x,Meta,Meta>>,f : `x->`x) = mapper f p
+member x.FoldMeta(
+  s : Sum<<`x,Meta,Meta>>,f : `x->`x) = mapper f s
+\end{code}
+Theese overloads match the type parameter of the representation type
+with the type of the first argument of the input function. When the
+match is positive, the function proceeds by calling the |mapper|
+helper function which converts the representation into a value,
+applies the function and converts the result back into a
+representation. Theese overloads no longer have the universally
+quantified |`ty| parameter since they work specifically for the type
+|`x| which gets instantiated at a class level rather than being
+instantiated when the method is invoked.
+
+The definition is now correct and complete. If implemented with the
+library, it will generically map algerbaic data types. The following
+sections explain how the library correctly selects the methdos that
+are invoked in each case. Note that all recursive calls of the
+|FoldMeta| method invoke the overload with signature |FoldMeta : Meta
+-> `out| for which no implementation was given. The implementation of
+the method is derived automatically using reflection and will be
+explained in section \todo{reference section}.
+
+\section{Overload selection}
+
+The |GMap| function defined above has overlapping overloads -- cases
+where several methods can be invoked for a particular value. This is a
+problem that many datatype generic libraries have. In the case of
+Haskell base libraries, the problem is generally solved by enabling
+the overlapping instances language extension.
+
+In the case of F\#, the problem must be approached differently. For
+starters, all overload selections must be statically resolved before
+at compile time (as mentioned in section \ref{xx} \todo{add ref to
+  overload selection}). This, in principle, makes a feature such as
+overlapping instances usleless in F\#. However, this also restricts
+the library from allowing functions like |GMap| to be defined, which
+demand that a similar feature exists. To resolve the problem, a
+customized dispatch mechanism is implemented using reflection. This
+mechanism inspects at runtime, the types of the arguments provided to
+the |FoldMeta| method and selects the correct overload based on some
+rules.
 
 \end{document}
