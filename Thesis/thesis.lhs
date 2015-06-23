@@ -227,6 +227,36 @@ inc = from circ gInc circ to
 This wrapper simply converts the value into the representation and
 then converts the result back to a value.
 
+\section{The F\# language}
+
+The F\#~\cite{export:192596} programming language is a functional
+language of the ML family. It started off as a .Net implementation of
+OCaml but it has adopted and ignored many features in order to
+inter-operate nicely with the .Net platform and its languages. One
+notable feature of the language is that it obtains its type system
+from the .Net platform (in other words there is no type
+erasure). However, the language has constructs that allow type
+inference, similarly as it happens with the Hindley-Miller system.
+
+\subsection{Types and Type System}
+The types in the F\# language can be divided into two categories. The
+purely functional structures and the Object Oriented/Imperative
+structures. The language is completely object oriented in the sense
+that every value is an object. In some cases, the compiler will
+optimize values by un-boxing primitive types (like integers) but this
+happens transparently depending on how a value is used.
+
+{\bf Functional types: }The functional structures are Algebraic Data Types and Records. Both
+of theese structures are immutable and do not allow
+inheritance/sub-type relations (they are sealed in .Net slang). ADTs
+in F\# are very similar to those of a traditional functional
+language. Type constructors are defined by cases along with the
+arguments the constructor requires to build the type. Records are
+defined by enlisting the fields of the record along with the type of
+each field. Records can then be constructed by providing the arguments
+of each of the Record's field as a name argument.
+
+
 \part{Research Topic}
 \section{Description of the Problem}
 \label{sec:prob}
