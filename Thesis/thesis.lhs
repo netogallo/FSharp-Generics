@@ -732,7 +732,84 @@ the library from allowing functions like |GMap| to be defined, which
 demand that a similar feature exists. To resolve the problem, a
 customized dispatch mechanism is implemented using reflection. This
 mechanism inspects at runtime, the types of the arguments provided to
-the |FoldMeta| method and selects the correct overload based on some
-rules.
+the |FoldMeta| method and selects the correct overload based on rules:
+
+\begin{tabular}{cccc}
+\multirow{15}{*}{|self.FoldMeta(m : Meta)|} & \multirow{15}{*}{$=\left\{\begin{array}{c} \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \end{array}\right.$} & \multirow{2}{*}{|self.FoldMeta(m)|} & |exists self.FoldMeta : tau->tau1| \\
+& & & $\wedge$ |m : tau| \\
+& & & \\
+& & \multirow{4}{*}{|self.FoldMeta<<tau_a>>(m.Cast())|} & |self.FoldMeta<<`ty>> : tau'->tau1| \\
+& & & $\wedge$ |m : tau<<tau_ty,tau_m1,tau_m2>>| \\
+& & & $\wedge$ |tau_m1 :> Meta| $\wedge$ |tau_m2 :> Meta| \\
+& & & $\wedge$ |[tau_ty/`ty]tau' = tau<<tau_a,Meta,Meta>>| \\
+& & & \\
+& & \multirow{3}{*}{|self.FoldMeta<<tau_a>>(m)|} & |exists self.FoldMeta<<`a>> : tau'->tau1| \\
+& & & $\wedge$ |m : tau<<tau_ty,tau_a>>|\\
+& & & $\wedge$ |[tau_a/`a]tau' = tau<<tau_ty,tau_a>>|\\
+& & & \\
+& & \multirow{3}{*}{|self.FoldMeta<<tau_ty,tau_a>>(m)|} & |self.FoldMeta<<`ty,`a>> : tau'->tau1| \\
+& & & $\wedge$ |m : tau<<tau_ty,tau_a>>|\\
+& & & $\wedge$ |[tau_ty/`t][tau_a/`a]tau' = tau<<tau_ty,tau_a>>|\\
+& & & \\
+%% & & | = o.Sum(x : Sum<<tau,Meta,Meta>>,v1 : tau1,...,vn : taun)| \\
+%% & & |self.Sum(x : Meta,v1 : tau1,...,vn : taun)| \\
+%% & & | = o.Sum<<tau>>(x : Sum<<tau,Meta,Meta>>,v_1 : tau1,...,v_n : taun)|
+\end{tabular}
+where
+\begin{itemize}
+\item |tau1 :> tau2| indicates that |tau1| is a sub-type of |tau2|
+\item |[tau1/tau2]tau| indicates replacing |tau2| with |tau1| in |tau|
+\end{itemize}
+
+This selection mechanism is very simple and it replaces the type level
+computations carried out by the Haskell compiler in order to select
+the right overloads. The process happens in stages. First the method
+|FoldMeta : Meta->`out| is invoked with an argument of type
+|Meta|. Recall that |Meta| is an abstract class so all values of type
+|Meta| also have some other type |tau :> Meta|. To select the
+overload, first one checks if there is a method |FoldMeta : tau ->
+`out|, if such method exists, invoke the method with the supplied
+arguments. If the previous check fails, type variables are
+instantiated in order to invoke a suitable generic method. This
+happens by cases:
+\begin{itemize}
+\item When |m : U<<tau_ty>>|, methods of type |FoldMeta : forall tau
+  . U<<tau>> -> `out| are considered and |tau| is instantiated to |tau_ty|
+\item When |m : K<<tau_ty,tau_a>>|, methods of type |FoldMeta : forall
+  tau1,tau2 . K<<tau1,tau2>> -> `out| are considered. |tau1| is
+  instantiated to |tau_ty| and |tau2| is instantiated to |tau_a|.
+\item When |m : Sum<<tau_ty,tau_a,tau_b>> -> `out| or |m :
+  Prod<<tau_ty,tau_a,tau_b>> -> `out|, methods of type |m : forall tau
+  . Sum<<tau,Meta,Meta>> -> `out| or |m : forall tau
+  . Prod<<tau,Meta,Meta>> -> `out| are considered. |tau| is
+  instantiated to |tau_ty|. The inner types |tau_a| and |tau_b| are
+  casted to |Meta| in order to make the method call compatible. 
+\end{itemize}
+
+When many methods with compatible signature exist. Priority is first
+given to the colosest match and then the position in the class
+hierarchy of the type that declared the selected method. Although this
+mechanism is immitating the overlapping instances mechanism of the
+Haskell compiler, it gives the user a finer control on which method is
+selected. In fact, this makes it trivial to extend or customize
+generic functions. For example, to define a function |GMapShallow|
+which does the same as |GMap| but does not traverse structures that
+occurr recursively one can simply extend from |GMap| and override the
+|Id| case:
+\begin{code}
+type GMapShallow<<`t,`x>>(f : `x -> `x) = 
+  class 
+    inherit GMap<<`t,`x>>(f)
+
+    override self.FoldMeta(v : Id<<`t>>) = v
+
+  end
+
+\end{code}
+
+Here both functions can exist in the same namespace and context. In
+fact, a function could invoke both of them as if they were any two
+generic functions.
+
 
 \end{document}
