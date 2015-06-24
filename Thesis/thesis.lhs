@@ -246,16 +246,116 @@ that every value is an object. In some cases, the compiler will
 optimize values by un-boxing primitive types (like integers) but this
 happens transparently depending on how a value is used.
 
-{\bf Functional types: }The functional structures are Algebraic Data Types and Records. Both
-of theese structures are immutable and do not allow
-inheritance/sub-type relations (they are sealed in .Net slang). ADTs
-in F\# are very similar to those of a traditional functional
-language. Type constructors are defined by cases along with the
-arguments the constructor requires to build the type. Records are
+{\bf Functional types: }The functional structures are Algebraic Data
+Types and Records. Both of theese structures are immutable and do not
+allow inheritance/sub-type relations (they are sealed in .Net
+terminology). ADTs in F\# are very similar to those of a traditional
+functional language. Type constructors are defined by cases along with
+the arguments the constructor requires to build the type. Records are
 defined by enlisting the fields of the record along with the type of
 each field. Records can then be constructed by providing the arguments
-of each of the Record's field as a name argument.
+of each of the Record's field as a named argument.
 
+The functional types can be manipulated via pattern matching as
+typically done in functional languages. This allows functions to be
+defined inductively by cases. Since types can be generic, the type
+inferencer will abstract over any type argument when values of that
+type argument are not operated inside the functions -- this is
+parametric polymorphism. Ad-hoc polymorphism can be used with
+functional types by extending them with member functions. Type
+variables can then be annotated with member constraints, constraints
+that indicate that the type supports a particular method, or interface
+constraints, constraints that indicate that a type implements a
+particular interface. Interface constraints are similar to the
+typeclass constraints that exist in Haskell.
+
+{\bf Classes and Structures: }The other category of types that exist
+in F\# are classes and structures. Both are very similar with slight
+differences only on the type parameters they support but those details
+are not relevant and will be ignored. These types are the traditional
+classes that are available in other object oriented languages. They
+are defined by providing one (or many) constructors, class variables
+(which can be mutable) and member functions (or methods). F\# (and
+.Net) allow inheritance from a single type. Classes in F\# can also
+implement any number of interfaces.
+
+By allowing types to inherit from other types, a sub-typing relation
+is defined. This thesis uses the notation |tau_a :> tau_b| to indicate
+that |tau_a| inherits from (is a subtype of) |tau_b|. As with most
+OO-languages, values are automatically assigned a supertype if
+necessary. Sometimes it is necessary to explicitly assign a type to a
+value. The notation |x :> tau_a| is used to indicate a safe cast of
+|x| to |tau_a| -- in other words |x| is assigned the type |tau_a| and
+the compiler can check that the value |x| is compatible with that
+type. In some situations, the compatibility cannot be checked
+statically. In such case, the operation |x :?> tau_a| is used to
+dynamically check if |x| is compatible with |tau_a| and if so assign
+the type |tau_a| to |x| otherwise raise a runtime exception.
+
+Pattern matching is not allowed for classes but F\# offers a feature
+called active patterns which allow matching any value against a
+pattern by defining a special kind of function that takes the value as
+input and returns a tuple with the values that correspond to the
+pattern or |None| to indicate that the value dosen't match the
+pattern. However, active patterns don't provide any mechanism to
+re-construct the values it matches nor can it be checked that they are
+exahustive.
+
+Classes can also have abstract methods. An abstrac method is a method
+that can be overriden (replaced by) another method with the same
+signature but different implementation. The implementation of an
+overriden method can invoke the previous implementation if necessary.
+
+{\bf Generic types: } Types in F\# can accept generic type
+arguments. Theese are type variables that can then be instantiated to
+any concrete type as long as the concrete type satisfies the
+constraints given to the argument. A major difference between F\# and
+other functional laungauges is that type variables are restricted to
+kind |*|. Functions such as the bind (|>>=|) function in Haskell
+cannot be implemented in F\#. For example:
+\begin{code}
+(>>=) :: Monad m => m a -> (a -> m b) -> m b
+\end{code}
+cannot be immitated in F\# because |m| is higher kinded (it takes |a|
+as argument). One possible approximation in F\# could be:
+\begin{code}
+(>>=) : Monad<`a> -> (`a -> Monad<`b>) -> Monad<`b>
+\end{code}
+and have every monad in F\# implement the Monad interface. Even though
+this funciton would behave correctly, it can go wrong if the first
+argument is an instance of the |Maybe| monad and the second argument a
+function that goes from |`a| to the |IO| monad. Such errors would
+not be caught by the typechecker.
+
+
+\subsection{Reflection}
+
+Through the .Net platform, the F\# language has access to a very rich
+reflection library. Reflection consists of using type information
+obtained dynamically to implement a program. The basis of reflection
+is the |Type| class.
+
+When a program is compiled to CIL, the .Net intermediate language, an
+instance of the |Type| class is created for every type that is
+declared in the program. This is an abstract class and specifies all
+the information that .Net needs about a type. The class must be
+extended by any of the .Net languages. This allows the storage of
+extra information. In the case of F\#, information about the type
+constructors and record fields is included in the type.
+
+Using this type information, one can in principle pattern match
+constructors that contain a value of a particular type for any
+ADT. One can also instantiate a value using information gained through
+reflection by queriying the available type constructors and invoking
+it with the right arguments.
+
+Since functions and methods in the reflection API work for all .Net
+types and the result could be any .Net type, there isn't much
+typechecking that can be done by the compiler within this code. A
+correctly implemented funciton that uses reflection can provide a safe
+interface by using generic arguments. The code typically will use
+unsafe coercions to convert type from and to the supplied generic
+arguments.
 
 \part{Research Topic}
 \section{Description of the Problem}
