@@ -379,7 +379,7 @@ serializer, and Nancy~\cite{Nancy}, a .NET web framework.
 Code written using reflection is usually cluttered with method calls
 that execute .NET internal routines but have no relevance in the logic
 of the algorithm they implement. This makes it very inconvenient to
-use in ordinary code. It also leads to code that is hard to mantain
+use in ordinary code. It also leads to code that is hard to maintain
 since its use requires good understanding of .NET's internals.
 
 \section{Type Representations in F\#}
@@ -478,7 +478,7 @@ instance (GMap f, GMap g) =>
     gmap f (x :*: y) = ...
 \end{code}
 Instead of abstracting over higher-kinded type arguments, we will
-abstract over first-order type variables of kind |*|, and consrain
+abstract over first-order type variables of kind |*|, and constrain
 them to be a sub-type of |Meta|.
 
 In the remainder of this section, we will present the concrete
@@ -550,7 +550,7 @@ type ElemsRep =
 This example shows how nested |Sum| types are used to represent the
 three type constructors of the |Elems| type. We show how constructors
 of different number of arguments are encoded with the |Prod| type. The
-recursive ocurrence of |Elems| in the |Cons| constructor is
+recursive occurrence of |Elems| in the |Cons| constructor is
 represented by the |Id| type.
 
 There is some overhead in this representation -- we could simplify the
@@ -568,9 +568,9 @@ algorithms that work on a family of types. It is important to perform
 the conversion between types and their representations automatically
 since that makes the library convenient to use. Haskell libraries
 usually use Template Haskell~\cite{Sheard02templatemeta-programming}
-to generate theese conversions. Some Haskell compilers even have a
+to generate these conversions. Some Haskell compilers even have a
 built-in mechanism~\cite{GenericDeriving} for these conversions. The
-F\# language does not have the same facilites for meta-programming but
+F\# language does not have the same facilities for meta-programming but
 we can use .NET's reflection mechanism to achieve similar results.
 
 The |Object| class of .NET has a method called |GetType : unit ->
@@ -595,7 +595,7 @@ type Generic<<`t>>() =
 Note that these conversions are generated \emph{dynamically}, in
 contrast to most Haskell approaches to generic
 programming. Intermediate results of this conversion can be cached to
-reduce the perfomance penalty.
+reduce the performance penalty.
 
 \section{Generic functions}
 \label{sec:generic-functions}
@@ -644,7 +644,7 @@ type GMap<<`t,`x>>() =
   -- [...] Implementation [...]
   end
 \end{code}
-The |FoldMeta| class is parameterized by three type
+The |FoldMeta| class is parametrized by three type
 arguments: |`t| which is the type on which the generic functions are
 invoked, |varin| which is the input type of the function, |`x->`x| in
 this case, and |`out| which is the return type of the generic
@@ -676,7 +676,7 @@ variable corresponding to the specific type of each method.
 By overriding the |FoldMeta| methods in the concrete |GMap| class, we
 will define the desired map operation. The |FoldMeta| class and its
 member functions will be explained in detail in Section
-\ref{sec:foldmeta}; for the moment, we will restrict ourself to the
+\ref{sec:foldmeta}; for the moment, we will restrict ourselves to the
 methods that we override in the |GMap| class. The first method we
 override handles the |Sum| type constructor:
 \begin{code}
@@ -840,7 +840,7 @@ get called?  There are three different overloads to choose from.  In
 Haskell, a choice is not made until enough type information is
 present. The |GMap| function might be invoked with a value of type |U
 :+: U|, or a value of type |K Int :+: K Int|, or even |GMap a => a :+:
-K Int|.  The chosen overload depens on the types at the \emph{call
+K Int|.  The chosen overload depends on the types at the \emph{call
   site} and might be different in every call.
 
 We could try adopting a similar approach in F\#, by defining the
@@ -880,7 +880,7 @@ differently. For example, if for the |K| constructor one wanted a
 We resolved this problem by defining a |FoldMeta| function of type
 |Meta*varin -> `out|.  This function can also be invoked with the
 internal elements of |Sum| or |Product| constructors since they are
-parameterized by variables |`a,`b :> Meta|. This |FoldMeta| function
+parametrized by variables |`a,`b :> Meta|. This |FoldMeta| function
 then selects the corresponding `instance' that should be invoked based
 on the type of its argument. Note that this is handled statically in
 Haskell, but must necessarily be done dynamically in F\#.
@@ -1084,7 +1084,7 @@ member FoldMeta<<`ty>>
 If |FoldMeta| were invoked with both arguments being |Sum| then this
 overload would get called. If the second argument is not |Sum| then the
 overload accepting a |Meta| would be invoked. This way it is possible
-increase the class of generic functions defininble by our library
+increase the class of generic functions definable by our library
 although Haskell's type system will always be more expressive.
 
 Another limitation of the current implementation is that all the
@@ -1187,7 +1187,7 @@ This is harder to do in most Haskell libraries. Generic functions
 defined using type classes, such as those in the Regular library, make
 it very hard to re-use existing instance definitions in new generic
 functions. The class and module system of F\#, on the other hand, make
-it fairly straightforward to define different variantions of the same
+it fairly straightforward to define different variations of the same
 function in the same namespace.
 
 \section{Discussion}
@@ -1233,7 +1233,7 @@ functions is the ability to construct values generically. Although our
 library allows it, it is much less convenient than with Haskell
 libraries. The reason is that F\# lacks the type level programming
 necessary to statically check the correctness of the algorithms. It
-might be possible to implement some of theese checks using reflection
+might be possible to implement some of these checks using reflection
 and is left as future research.
 
 Many of the limitations of the library come from the fact that the
@@ -1280,7 +1280,7 @@ multiple definitions are not feasible. We show that the ideas of
 datatype generic programming can be used to implement some polytipic
 functions in a simpler way. We use reflection to implement the library
 and show that .NET's implementation of reflection is very robust and
-can be used to achive good results -- especially since compiled code
+can be used to achieve good results -- especially since compiled code
 can be dynamically loaded in a post compilation stage. However, work
 typically done by the type system of Haskell must be implemented
 manually via reflection; yet the user of the library does not need to
@@ -1292,7 +1292,7 @@ adopted outside of the functional programming community, despite
 several attempts to implement libraries in languages such as
 Scala~\cite{scala-jfp}. We believe that there is still much work to be
 done to transfer expertise from the datatype generic programming
-community to other, more mainstream progarmming languages. We hope
+community to other, more mainstream programming languages. We hope
 that the library we have presented here is another small step down
 that road.
 
