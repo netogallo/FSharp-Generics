@@ -275,14 +275,15 @@ type generic(Department)(t when vart :> Employee) =
 type generic(Company)(t when vart :> Employee) =
   | Empty
   | Dept of generic(Department)(t)*generic(Company)(t)
-\end{code}\end{fsharp}
-\begin{fsharp}\begin{code}
+
 type GuatemalanEmployee(salary' : int) =
   class
     inherit Employee()
     let mutable salary = salary'
     override self.Salary  
       with get() = salary
+\end{code}\end{fsharp}
+\begin{fsharp}\begin{code}
       and  set(value) = salary <- value
     override self.NetSalary 
       with get() = self.Salary / 1.12
@@ -330,12 +331,12 @@ type generic(Staff)(t) with
     | Empty -> Empty
     | Member (m,s) -> 
       Member (f m,s.UpdateEmployee f)
-\end{code}\end{fsharp}
-\begin{fsharp}\begin{code}
 type generic(Department)(t) with
   member self.UpdateEmployee(f) =
     match self.with
     | Tech of meta,staff -> 
+\end{code}\end{fsharp}
+\begin{fsharp}\begin{code}
         Tech (meta,staff.UpdateEmployee f)
     | HR of meta,staff -> 
         HR (meta,staff.UpdateEmployee f)
@@ -591,7 +592,7 @@ full definition can be found in the source
 code~\cite{FSharp-Generics-Repo}.
 
 We conclude this section with an example of our type
-representation. Given the following algebraic datatype in F\#:
+representation. Given the following ADT in F\#:
 \begin{fsharp}\begin{code}
 type Elems = Cons of int*Elems
                    | Val of int
@@ -867,11 +868,12 @@ the type of values being transformed using the |GMap| function:
 let mapper (f : `x->`x) (v : Meta) =
   let g = Generic<<`x>>()
   v |> g.From |> f |> g.To
-
 member x.FoldMeta(
   u : U<<`x>>,f : `x->`x) = mapper f u
 member x.FoldMeta<<`a>>(
   u : K<<`x,`a>>,f : `x->`x) = mapper f u
+\end{code}\end{fsharp}
+\begin{fsharp}\begin{code}
 member x.FoldMeta(
   p : Prod<<`x,Meta,Meta>>,f : `x->`x) = mapper f p
 member x.FoldMeta(
@@ -1027,10 +1029,8 @@ type Collect<<vart>>() =
     List.concat<<vart>> [
       self.Collect c.E1
       ;self.Collect c.E2]
-
   override self.FoldMeta<<`ty,`a>>(
     _ : K<<`ty,`a>>) = []
-
   override self.FoldMeta<<`ty>>(_ : U<<`ty>>) = []
 
   override self.FoldMeta(i : Id<<vart>>) =
@@ -1085,13 +1085,14 @@ making two recursive calls to construct a new |Meta| value:
     p: Prod<<`ty,Meta,Meta>>) =
     Prod(self.FoldMeta p.E1,self.FoldMeta p.E2) 
     :> Meta
-
   member self.FoldMeta<<`ty>>(
     s : Sum<<`ty,Meta,Meta>>) =
     match s with
-    | L m -> Sum<<`ty,Meta,Meta>>(
+\end{code}\end{fsharp}
+\begin{fsharp}\begin{code}
+    | Choice1Of2 m -> Sum<<`ty,Meta,Meta>>(
       self.FoldMeta m |> Choice1Of2)
-    | R m -> Sum<<`ty,Meta,Meta>>(
+    | Choice2Of2 m -> Sum<<`ty,Meta,Meta>>(
       self.FoldMeta m |> Choice2Of2)
     :> Meta
 \end{code}\end{fsharp}
@@ -1141,7 +1142,8 @@ can be invoked. For example, we can extend |FoldMeta| as:
 \begin{fsharp}\begin{code}
 AbstractClass
 type FoldMeta<<`t,`out>>() =
-
+\end{code}\end{fsharp}
+\begin{fsharp}\begin{code}
 abstract FoldMeta 
   : Meta * Meta -> `out
 abstract FoldMeta<<`ty>> 
@@ -1179,8 +1181,7 @@ types. The |FoldMeta| class lacks such mechanism as it can be used to
 subvert the F\# type system. Consider the following example:
 \begin{fsharp}\begin{code}
 member self.FoldMeta<<`ty>>(
-  v : K<<`ty,Employee>>) = 
-  K(v.Elem) :> Meta
+  v : K<<`ty,Employee>>) = K(v.Elem) :> Meta
 \end{code}\end{fsharp}
 The type checker would not object to changing the
 function as follows:
@@ -1241,6 +1242,8 @@ type FoldMeta<<
   when `s : (member Cast : unit -> `m)
   and `p : (member Cast : unit -> `m)
   and `i : (member Cast : unit -> `m)
+\end{code}\end{fsharp}
+\begin{fsharp}\begin{code}
   and `k : (member Cast : unit -> `m)
   and `u : (member Cast : unit -> `m)
   >>
