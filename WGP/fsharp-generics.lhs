@@ -830,9 +830,7 @@ this definition leaves the underlying value untouched.
 
 The case for the |Id| constructor is a bit more involved: 
 \begin{fsharp}\begin{code}
-override x.FoldMeta
-  (v : Id<<`t>>
-  ,f : `x -> `x) =
+override x.FoldMeta(v : Id<<`t>>,f : `x -> `x) =
     let g = Generic<<`t>>()
     Id<<`t>>(x.FoldMeta(
       g.To c.Elem,f) |> g.From)
@@ -872,10 +870,10 @@ member x.FoldMeta(
   u : U<<`x>>,f : `x->`x) = mapper f u
 member x.FoldMeta<<`a>>(
   u : K<<`x,`a>>,f : `x->`x) = mapper f u
-\end{code}\end{fsharp}
-\begin{fsharp}\begin{code}
 member x.FoldMeta(
   p : Prod<<`x,Meta,Meta>>,f : `x->`x) = mapper f p
+\end{code}\end{fsharp}
+\begin{fsharp}\begin{code}
 member x.FoldMeta(
   s : Sum<<`x,Meta,Meta>>,f : `x->`x) = mapper f s
 \end{code}\end{fsharp}
@@ -887,8 +885,7 @@ representation of type |Meta|.
 Now we can use the |GMap :> FoldMeta| class to define the
 following |gmap| function:
 \begin{fsharp}\begin{code}
-member x.gmap(x : vart,
-             f : `x -> `x) =
+member x.gmap(x : vart,f : `x -> `x) =
     let gen = Generic<<`x>>()
     x.FoldMeta(gen.To x,f)
     |> gen.From
@@ -1088,11 +1085,11 @@ making two recursive calls to construct a new |Meta| value:
   member self.FoldMeta<<`ty>>(
     s : Sum<<`ty,Meta,Meta>>) =
     match s with
-\end{code}\end{fsharp}
-\begin{fsharp}\begin{code}
     | Choice1Of2 m -> Sum<<`ty,Meta,Meta>>(
       self.FoldMeta m |> Choice1Of2)
     | Choice2Of2 m -> Sum<<`ty,Meta,Meta>>(
+\end{code}\end{fsharp}
+\begin{fsharp}\begin{code}
       self.FoldMeta m |> Choice2Of2)
     :> Meta
 \end{code}\end{fsharp}
@@ -1142,10 +1139,10 @@ can be invoked. For example, we can extend |FoldMeta| as:
 \begin{fsharp}\begin{code}
 AbstractClass
 type FoldMeta<<`t,`out>>() =
-\end{code}\end{fsharp}
-\begin{fsharp}\begin{code}
 abstract FoldMeta 
   : Meta * Meta -> `out
+\end{code}\end{fsharp}
+\begin{fsharp}\begin{code}
 abstract FoldMeta<<`ty>> 
   : Sum<<`ty,Meta,Meta>> * Meta -> `out
 abstract FoldMeta<<`ty>> 
@@ -1242,9 +1239,9 @@ type FoldMeta<<
   when `s : (member Cast : unit -> `m)
   and `p : (member Cast : unit -> `m)
   and `i : (member Cast : unit -> `m)
+  and `k : (member Cast : unit -> `m)
 \end{code}\end{fsharp}
 \begin{fsharp}\begin{code}
-  and `k : (member Cast : unit -> `m)
   and `u : (member Cast : unit -> `m)
   >>
 \end{code}\end{fsharp}
@@ -1279,7 +1276,7 @@ function in the same namespace.
 \section{Discussion}
 
 This paper aims to explore the possibility of using of datatype
-generic programming in F\#. To do so, had to adapt the existing
+generic programming in F\#. To do so, we had to adapt the existing
 approaches to better match F\#'s type system. We also substituted some
 type level computations performed by the Haskell compiler with
 reflection. In the remainder of this section, we will reflect about
@@ -1296,54 +1293,53 @@ work at runtime, even if memoizing results can help improve
 performance.
 
 The library makes it possible to define a wide variety of generic
-functions. Our implementation of the |uniplate| method
-highlights that new generic functions can be added without having to
-use any .NET reflection. Although reflection is a very powerful
-programming technique, there is ample opportunity for programmers to
-make mistakes. We hope that the generic functions defined using our
-library may be a bit safer.
+functions. Our implementation of the |uniplate| method highlights that
+new generic functions can be added without having to use any .NET
+reflection. The expresiveness of the library is limited by the fact
+that the programmer must use the |FoldMeta| class as the interface to
+define generic functions. This is done to ensure complete
+definitions. It is possible to provide variants of |FoldMeta| to
+increase expressiveness but this will clutter the library with
+definitions and its expressiveness will never be on par to that of
+Regular. An alternative would be to allow the programmer to provide
+its own definitions of the |FoldMeta| class. This could be achieved by
+requiring that the programmer annotates the definition with as special
+pragma. Then the compiled F\# assemblies can be checked by a tool
+using reflection since all the type information is still present after
+compilation and the compiled assemblies can be dynamically
+loaded. This technique is used by Websharper~\cite{websharper} to
+compile F\# into Javascript.
 
-One consequence of our use of subtyping and casting values to the
-|Meta| type is that our \emph{generic} functions may be unsafe.  That
-is, a type-correct generic functions may return a result that throws
-an exception once it is converted back to an algebraic data type. We
-already saw this in the definition of |GMap| -- it was certainly
-possible to produce ill-formed representation types and casting the
-result back to the |Meta| type. The same problems also occur when
-defining any other generic function, such as |read|, that needs to
-produce a representation of type |Meta|. The F\# type system will not
-object to definitions that produce the wrong kind of representation.
+
+%% Although reflection is a very powerful
+%% programming technique, there is ample opportunity for programmers to
+%% make mistakes. We hope that the generic functions defined using our
+%% library may be a bit safer.
 
 One of the advantages of using representations to define generic
 functions is the ability to construct values generically. Although our
-library allows it, it is much less convenient than with Haskell
-libraries. The reason is that F\# lacks the type level programming
-necessary to statically check the correctness of the algorithms. It
-might be possible to implement some of these checks using reflection
-and is left as future research.
-
-Many of the limitations of the library come from the fact that the
-programmer must use the |FoldMeta| class as the interface to define
-generic functions. This is done to ensure complete definitions. It is
-possible to provide variants of |FoldMeta| to increase expressiveness
-but this will clutter the library with definitions and the
-expressiveness will never be on par to that of Haskell. An alternative
-would be to allow the programmer to provide its own definitions of the
-|FoldMeta| class. This can be easily achieved by requiring that the
-programmer annotates the definition with as special pragma. Then the
-compiled F\# assemblies can be checked by a tool using reflection
-since all the type information is still present after compilation and
-the compiled assemblies can be dynamically loaded. This technique is
-used by Websharper~\cite{websharper} to compile F\# into Javascript.
+library allows it, it is much less convenient than using Haskell since
+our use of subtyping and casting values to the |Meta| might result in
+unsafe \emph{generic} functions.  That is, a type-correct generic
+function may return a result that throws an exception once it is
+converted back to an algebraic data type. We already saw this in the
+definition of |GMap| -- it was certainly possible to produce
+ill-formed representation types and cast the result back to the |Meta|
+type. The same problems also occur when defining any other generic
+function, such as |read|, that needs to produce a representation of
+type |Meta|. The F\# type system will not object to definitions that
+produce the wrong kind of representation. It might be possible to
+increase safety by implementing additional checks using reflection and
+this is left as future research.
 
 There are alternative mechanisms that could be used for datatype
-generic programming in F\#.  Type providers~\cite{export:173076} can
-be used to generate types at compilation time by executing arbitrary
-.NET code. They are typically used to provide typed access to external
-data sources, such as a database. Although we have experimented with
-using type providers to generate representation types, we abandoned
-this approach. Type providers have several severe restrictions on the
-type information they can access and the types they can
+generic programming in F\#. Type providers~\cite{export:173076} can be
+used to generate types at compilation time by executing arbitrary .NET
+code. They are typically used to provide typed access to external data
+sources, such as a database. Although we have experimented with using
+type providers to generate representation types, we abandoned this
+approach. Type providers have several severe restrictions on the type
+information they can access and the types they can
 generate. Alternatively, the \emph{quotations}
 library~\cite{export:147193} provides constructs to generate F\#
 programs at run-time. Even though some functions can be implemented
@@ -1353,7 +1349,7 @@ pattern match values generically.
 Datatype generic programming has been attempted in other object
 oriented languages such as Scala~\cite{scala-jfp}. This library makes
 makes use of higher-kinds and traits to define representations and
-generic functions are defined by cases in a similar fashion as
+generic functions are defined by cases in a similar fashion as in
 Regular. The library uses implicit parameters instead of reflection
 for method dispatch. Type representations must be specified manually
 but the compiler can typecheck the correctness of the definition. The
