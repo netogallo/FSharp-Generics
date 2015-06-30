@@ -145,10 +145,10 @@
 \begin{abstract}
   Datatype generic programming enable programmers to define functions
   by induction over the structure of types on which they operate. This
-  paper presents a type-safe library for datatype generic programming
-  in F\#, built on top of the .NET reflection mechanism. The generic
-  functions defined using this library can be called by any other
-  language running on the .NET platform.
+  paper presents a library for datatype generic programming in F\#,
+  built on top of the .NET reflection mechanism. The generic functions
+  defined using this library can be called by any other language
+  running on the .NET platform.
 \end{abstract}
 
 \category{D.1.1}{Applicative (Functional) Programming}{}
@@ -214,8 +214,8 @@ specifically, we make the following contributions:
   prone. We provide an alternative method to implement polytipic
   functions with less overhead.
 
-\item Finally, we will show how how functions from other Haskell
-  libraries such as Uniplate, may be readily implemented using the
+\item Finally, we will show how functions from other Haskell
+  libraries, such as Uniplate, may be readily implemented using the
   resulting library (Section~\ref{sec:uniplate}).
 \end{itemize}
 
@@ -316,12 +316,12 @@ subtype of the |Employee| class. The type constraints are
 declared using the |when| keyword.
 
 It is worth pointing out that type arguments can only be of kind
-|*|. This is particularly important limitation in the context of
+|*|. This is a particularly important limitation in the context of
 datatype generic programming since many Haskell libraries rely on
 higher kinds.
 
-Next, we implement the |IncreaseSalary| function. To do so, we
-will begin by defining an auxiliary function called |UpdateEmployee| that
+Next, we implement the |IncreaseSalary| function. To do so, we will
+begin by defining an auxiliary function called |UpdateEmployee| that
 applies its argument function to every |Employee| of the company:
 
 \begin{fsharp}\begin{code}
@@ -369,9 +369,9 @@ function we pass to |UpdateEmployee| mutates the object's |Salary|
 property directly and subsequently returns the argument object.
 
 In the later sections we will show how the |UpdateEmployee| function
-may also be defined in terms of a generic map, implemented in our
-library.  Before doing so, however, we would like to give a brief
-overview of some of the relevant features of the .NET platform.
+may also be defined in terms of a generic map, implemented with our
+library.  Before doing so, we will give a brief overview of some of
+the relevant features of the .NET platform.
 
 \subsection{The .NET platform}
 The .NET platform is a common runtime environment supporting a family
@@ -748,14 +748,15 @@ To illustrate why this distinction is necessary, consider invoking the
 type |Department|.  As a result, intermediate |Sum| constructors may
 have a type that is of the form |Sum<<Department<< _ >>,_,_ >>| or a
 type of the form |Sum<<Company<< _ >>,_,_ >>|. In order to handle both
-these cases, the |`ty| argument of the |Sum| type must be universally
-quantified in the corresponding definition of |FoldMeta|. On the other
-hand, recursive occurrences always store a value of the type being
-represented. Hence the |FoldMeta| definition for the |Id| type
-constructor is specialized to |`t| rather than being polymorphic for
-any |`ty|. Here we adopt the convention that |`t| always refers to the
-type being represented and |`ty| is a universally quantified type
-variable corresponding to the specific type of each method.
+of these cases, the |`ty| argument of the |Sum| type must be
+universally quantified in the corresponding definition of
+|FoldMeta|. On the other hand, recursive occurrences always store a
+value of the type being represented. Hence the |FoldMeta| definition
+for the |Id| type constructor is specialized to |`t| rather than being
+polymorphic for any |`ty|. Here we adopt the convention that |`t|
+always refers to the type being represented and |`ty| is a universally
+quantified type variable corresponding to the specific type of each
+method.
 
 By overriding the |FoldMeta| methods in the concrete |GMap| class, we
 will define the desired map operation. The |FoldMeta| class and its
@@ -839,12 +840,12 @@ override x.FoldMeta(v : Id<<`t>>,f : `x -> `x) =
 The |Id| case of the abstract |FoldMeta| member instantiates the |`ty|
 argument of the |Id| constructor to |`t|. This means that the |Id|
 case only needs to be specified for the type |`t|, the type to which
-the generic function is being applied. Contrary to the other overloads
-which universally quantify over all types. The |Id| constructor stores
-a single value, |Elem|, of type |`t|.  Using the |Generic<<`ty>>|
-class it is possible to convert this |`t| to a value of type |Meta|.
-After calling the |FoldMeta| function recursively, we can convert the
-result back to the original type.
+the generic function is being applied. Contrary to the other
+overloads, it is not universally quantified for all types. The |Id|
+constructor stores a single value, |Elem|, of type |`t|.  Using the
+|Generic<<`ty>>| class it is possible to convert this |`t| to a value
+of type |Meta|.  After calling the |FoldMeta| function recursively, we
+can convert the result back to the original type.
 
 We have now completed the required definitions for our |GMap| class
 but there still remains one problem. We have assumed that all
@@ -953,7 +954,7 @@ information is present in order to decide which function to invoke. In
 object oriented languages, abstract methods are usually used to
 dispatch different methods depending on the argument. This approach
 does not work for our purposes because it would require that every
-specific instance of the |Meta| subtypes override the method
+specific instance of a polymporphic type overrides the method
 differently. For example, if for the |K| constructor one wanted a
 |FoldMeta| specialized for |int| and another polymorphic for all |`t|;
 |K<<int>>| and |K<<`t>>| would require a different override of
@@ -1125,17 +1126,17 @@ let uniplate<<vart>> (x : vart) =
 
 \section{Limitations of the |FoldMeta| class}
 \label{sec:better-meta}
-The |FoldMeta| class intends to provide a safe interface to use
-reflection in order to traverse types in lieu of the type
-system. However, it is more restrictive than Haskell's type system in
-the class of functions that it can define. A very obvious example is
-generic equality since it requires induction on two values instead of
-one.
+The |FoldMeta| class intends to provide a generic interface that
+abstract away the use of reflection in order to traverse and construct
+values of many types generically. It is more restrictive than
+Haskell's type system in the class of functions that it can define. A
+very obvious example of such restrictions is generic equality since it
+requires induction on two values instead of one.
 
 Variants of the |FoldMeta| class that perform induction over more than
 one value are possible. It is only necessary that all cases for one
-argument are covered to ensure that there always is a function that
-can be invoked. For example, we can extend |FoldMeta| as:
+argument are covered to ensure that pattern matching is
+exahustive. For example, we can extend |FoldMeta| as:
 \begin{fsharp}\begin{code}
 AbstractClass
 type FoldMeta<<`t,`out>>() =
@@ -1173,7 +1174,7 @@ Another limitation of the current implementation is that all the
 overloads of |FoldMeta| must return a value of the same type. More
 advanced libraries for datatype generic programming use some limited
 form of dependent types, possibly through type classes or type
-families, to enable generic functions to return values of different
+families, to allow generic functions to return values of different
 types. The |FoldMeta| class lacks such mechanism as it can be used to
 subvert the F\# type system. Consider the following example:
 \begin{fsharp}\begin{code}
@@ -1187,7 +1188,7 @@ member self.FoldMeta<<`ty>>(
   v : K<<`ty,Employee>>) = 
   K("I am not an Employee!!") :> Meta
 \end{code}\end{fsharp}
-This function now changes the type of value stored in the |K|
+This function now changes the type of the value stored in the |K|
 constructor, before casting it to the |Meta| type. This is type
 correct since any instance of |K| is a subtype of |Meta|. However, if
 the result of this function is passed to the |From| function that
@@ -1304,11 +1305,11 @@ definitions and its expressiveness will never be on par to that of
 Regular. An alternative would be to allow the programmer to provide
 its own definitions of the |FoldMeta| class. This could be achieved by
 requiring that the programmer annotates the definition with as special
-pragma. Then the compiled F\# assemblies can be checked by a tool
-using reflection since all the type information is still present after
-compilation and the compiled assemblies can be dynamically
-loaded. This technique is used by Websharper~\cite{websharper} to
-compile F\# into Javascript.
+pragma. Then the compiled F\# assemblies can be checked
+post-compilation for consistency using reflection since all the type
+information is still present after compilation and the compiled
+assemblies can be dynamically loaded. This technique is used by
+Websharper~\cite{websharper} to compile F\# into Javascript.
 
 
 %% Although reflection is a very powerful
@@ -1319,14 +1320,14 @@ compile F\# into Javascript.
 One of the advantages of using representations to define generic
 functions is the ability to construct values generically. Although our
 library allows it, it is much less convenient than using Haskell since
-our use of subtyping and casting values to the |Meta| might result in
-unsafe \emph{generic} functions.  That is, a type-correct generic
-function may return a result that throws an exception once it is
-converted back to an algebraic data type. We already saw this in the
-definition of |GMap| -- it was certainly possible to produce
+our use of subtyping and casting values to the |Meta| class might
+result in unsafe \emph{generic} functions.  That is, a type-correct
+generic function may return a result that throws an exception once it
+is converted back to an algebraic data type. We already saw this in
+the definition of |GMap| -- it was certainly possible to produce
 ill-formed representation types and cast the result back to the |Meta|
-type. The same problems also occur when defining any other generic
-function, such as |read|, that needs to produce a representation of
+type. The same problems can also occur when defining other generic
+functions, such as |read|, that need to produce a representation of
 type |Meta|. The F\# type system will not object to definitions that
 produce the wrong kind of representation. It might be possible to
 increase safety by implementing additional checks using reflection and
