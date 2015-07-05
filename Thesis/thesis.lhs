@@ -397,13 +397,14 @@ reflection library. Reflection consists of using type information
 obtained dynamically to implement a program. The basis of reflection
 is the |Type| class.
 
-When a program is compiled to CIL, the .Net intermediate language, an
+When a program is compiled to CIL, the .NET intermediate language, an
 instance of the |Type| class is created for every type that is
 declared in the program. This is an abstract class and specifies all
 the information that .NET needs about a type. The class must be
-extended by the .NET languages. This allows the storage of extra
-information. In the case of F\#, information about the type
-constructors and record fields is included in the type.
+extended by the .NET languages. This allows the storage of any type
+information that the language wishes to include. In the case of F\#,
+information about the type constructors and record fields is included
+in the type.
 
 Using the type information provided by reflection, one can generically
 de-construct values by querying the available patterns that exist for
@@ -416,10 +417,10 @@ typechecking that can be done by the compiler within this code. A
 correctly implemented funciton that uses reflection can provide a safe
 interface when annotated with the right type. The implementation of
 the function will typically perform unsafe coercions in order to match
-the type. Code that uses reflection is very common. For example,
+the type. Code that uses reflection is very common, for example,
 FsPickler~\cite{fspickler}, a general purpose .NET serializer, and
 Nancy~\cite{nancyfx}, a .NET web framework, use reflection for a
-variety of operations.
+variety of reasons.
 
 \part{Research Topic}
 \section{Description of the Problem}
@@ -444,13 +445,13 @@ define functions generically. There are several reasons why this
 approach is inconvenient: 
 \begin{itemize}
 \item Reflection is quite involved to use. The programmer must learn a
-  lot on how .Net internally handles types and values.
+  lot on how .NET internally handles types and values.
 \item The F\# language offers no syntactic facilites to call functions
   via reflection. This means that a function call can ammount to
   several lines of code. 
 \item Reflection relies on dyamic typeing which can lead to runtime
   errors. 
-\item Different implementations (eg. .Net and Mono) handle reflection
+\item Different implementations (eg. .NET and Mono) handle reflection
   differently so code might not work in every platform.
 \end{itemize}
 
@@ -464,12 +465,12 @@ to mantain.
 
 Taking as inspiration the existing knowlege about datatype generic
 programming, it might be possible to construct a library that allows
-the definition of generic functions with out requiring the programmer
+the definition of generic functions without requiring the programmer
 to use reflection. Even if this library is implemented using
 reflection, the programmer would enjoy several advantages using it:
 \begin{itemize}
 \item The definition of generic functions will not require reflection
-\item The code that uses reflection can be small and easier to mantain
+\item The code that uses reflection can be small and easy to mantain
 \item The library can perform optimizations which would have to be
   done manually when using reflection
 \item Defining and calling generic functions has little overhead for
@@ -485,13 +486,16 @@ programming.
 
 \subsection{Kind-Polymorphism and Datatype Generic Programming}
 
-Kind-polymorphism is an \emph{essential} component for datatype
-generic programmer. Recall that the idea is to abstract over type
-constructors and define functions using such abstraction. Since type
-constructors usually take other type arguments one must necesarily
-abstract over types of higher kind. In other words, |C a| where |C| is
-a type variable that abstracts over type constructors is of kind |(*
--> *)|.
+%% Kind-polymorphism is an \emph{essential} component for datatype
+%% generic programmer. 
+
+
+%% Recall that the idea is to abstract over type
+%% constructors and define functions using such abstraction. Since type
+%% constructors usually take other type arguments one must necesarily
+%% abstract over types of higher kind. In other words, |C a| where |C| is
+%% a type variable that abstracts over type constructors is of kind |(*
+%% -> *)|.
 
 \subsection{Dependent types and Generic Programming}
 Dependent typeing is a language feature that allows a language to
@@ -764,29 +768,25 @@ type ListRep =
 Being able to convert values to and from representations automatically
 makes the library more convenient to use. Since this conversion is a
 single function, it can be implemented using reflection. The user of
-the library will not need to write reflective code implement generic
-functions. This section describes how reflection can be used in F\# to
-write the function.
+the library will not need to write reflective code to implement
+generic functions. This section describes how reflection can be used
+in F\# to write the function.
 
 Every object in .NET has a member function |GetType : unit ->
-Type|. This function returns a value of type |Type|. When F\# is
-compiled into CIL, the .NET intermediate language, the compiler
-defines an extension of the |Type| class for every type declared in
-the program. The compiler is free to include any information it wishes
-inside subclasses of |Type|. In the case of F\#, it adds information
-about the class of the type (ie. if it is an ADT, record or class). To
-access this information, the F\# core libraries include the package
-|Reflection|. Below are two functions to inspect ADTs:
+Type|. This function returns a value of type |Type| containing all the
+metadata related to the type of the value. Many methods exist to
+inspect that metadata, most of them are available in the |Reflection|
+package of F\#. Two very important functions when handling ADTs are:
 \begin{code}
 type FSharpType =
   static member IsUnion : Type -> bool
-  static member GetUnionCases : Type -> UnionCaseInfo
+  static member GetUnionCases : Type -> List<<UnionCaseInfo>>
 \end{code}
-The |IsUnion| method checks at runtime wether or not the |Type| it is
-given is an ADT. The |GetUnionCases| method gives a list of all the
-type constructors of an ADT. The |UnionCaseInfo| type contains
-information about each of the type constructors and can be used to
-construct and pattern match values.
+The |IsUnion| method checks at runtime whether or not values of the
+given type are defined as ADTs. The |GetUnionCases| method gives a
+list of all the type constructors of an ADT. The |UnionCaseInfo| type
+contains information about each of the type constructors and can be
+used to construct and pattern match values.
 
 The remainder of this section describes the algorithm to convert
 values into representations. The code here intends to demostrate how
@@ -815,12 +815,12 @@ Both of these functions only operate on ADTs. They are implemented in
 several stages. Below are the first two parts:
 \begin{code}
 
-let getTyUnion<<`t>> : List<<UnionCaseInfo>> -> Type
+let getTyUnion : <<Type>> -> List<<UnionCaseInfo>> -> Type
 ^^ getTyUnion<<`t>> (uc :: []) = getTyValue<<`t>> spc uc
 ^^ getTyUnion<<`t>> (uc :: ucs) = Sum<<`t,getTyValue<<`t>> spc uc,getTyUnion<<`t>> spc ucs>>
 \end{code}
 \begin{code}
-let toUnion<< Sum<<`t,`a,`b>> >> : obj -> List<<UnionCaseInfo>> -> Meta
+let toUnion : << Type >> -> obj -> List<<UnionCaseInfo>> -> Meta
 ^^ toUnion<< Sum<<`t,`a,`b>> >> (x) (uc :: ucs) =
 ^^ ^^ if uc.Matches x then
 ^^ ^^ ^^ Sum<<`t,`a,`b>>(toValue<<`t>> x uc |> Choice1Of2)
@@ -834,18 +834,18 @@ constructors for that type encoded as a list of |UnionCaseInfo|. The
 function nests an application of the |Sum| type for every type
 constructor available in the argument type. For each of the type
 constructors, the function |getTyValue| is called. The |toUnion|
-function takes as a first argument the type obtained by the
-|getTyUnion| function, the list of type constructors and the value
-being converted to a representation. It tries to match the given value
-to a type constructor. For each constructor that dosen't match, it
-applies a nesting of the |Sum| constructor and recursively calls
-itself with the next type argument of the |Sum| (the |<<`b>>|) and the
-remainder of the type constructors. When the match is positive, it
-provides the value and the matched type constructor to the |toValue|
-function and packs the result in the corresponding |Sum|.
+function takes as arguments the type obtained by the |getTyUnion|
+function, the list of type constructors and the value being converted
+to a representation. It tries to match the given value to a type
+constructor. For each constructor that dosen't match, it applies a
+nesting of the |Sum| constructor and recursively calls itself with the
+next type argument of the |Sum| (the |<<`b>>|) and the remainder of
+the type constructors. When the match is positive, it provides the
+value and the matched type constructor to the |toValue| function and
+packs the result in the corresponding |Sum|.
 
 \begin{code}
-let getTyValue<<`t>> : UnionCaseInfo -> Type
+let getTyValue : << Type >> -> UnionCaseInfo -> Type
 ^^ getTyValue<<`t>> uc =
 ^^ ^^ let genTy<<`ty>> = 
 ^^ ^^ ^^ if FSharpType.IsUnion<<`ty>> then getTyUnion<<`ty>>
@@ -858,7 +858,7 @@ let getTyValue<<`t>> : UnionCaseInfo -> Type
 
 \end{code}
 \begin{code}
-let toValue<< Prod<<`t,`a,`b>> >> : `t -> UnionCaseInfo -> Meta
+let toValue : << Type >> -> `t -> UnionCaseInfo -> Meta
 ^^ toValue<< Prod<<`t,`a,`b>> >> (obj : `t) (uc : UnionCaseInfo) =
 ^^ ^^ let (args : List<<obj>>) = uc.GetArguments obj
 ^^ ^^ let go<<Prod<<`t,`a,U<<`t>> >> (x::[]) = Prod<<`t,`a,U<<`t>> >>(to<<`a>> spc x,U<<`t>>()) 
@@ -1022,7 +1022,6 @@ nestings. The result must be casted to |Meta| in order to agree with
 the type of the method.
 
 Next, the |Prod| case must be overriden:
-The next definition handles products:
 \begin{code}
 override x.FoldMeta<<`ty>>
   (v : Prod<<`ty,Meta,Meta>>) =
@@ -1063,7 +1062,8 @@ override x.FoldMeta
     :> Meta
 \end{code}
 Since this library works with shallow representations, recursive
-values are not immediately converted to their representation. Since
+values are not immediately converted to their representation. The |Id|
+constructor contains an instance of the type being represented. Since
 generic functions only work with representations, the value must first
 be converted to its representation, then |FoldMeta| can be recursively
 applied to the representation and finally the resulting representation
@@ -1107,9 +1107,10 @@ are invoked in each case. Note that all recursive calls of the
 |FoldMeta| method invoke the overload with signature |FoldMeta : Meta
 -> `out| for which no implementation was given. The implementation of
 the method is derived automatically using reflection and will be
-explained in section \todo{reference section}.
+explained in section \todo{sec:foldmeta}.
 
 \section{The |FoldMeta| class}
+\label{sec:foldmeta}
 
 The |FoldMeta| class is the interface to define generic functions. It
 has the purpose of ensuring that the definitions are complete and it
@@ -1168,15 +1169,15 @@ Haskell based libraries, the problem is generally solved by enabling
 the overlapping instances language extension.
 
 In the case of F\#, the problem must be approached differently. For
-starters, all overload selections must be statically resolved before
-at compile time (as mentioned in section \ref{xx} \todo{add ref to
-  overload selection}). This, in principle, makes a feature such as
-overlapping instances usleless in F\#. However, this also restricts
-the library from allowing functions like |GMap| to be defined, which
-demand that a similar feature exists. To resolve the problem, a
-customized dispatch mechanism is implemented using reflection. This
-mechanism inspects, at runtime, the types of the arguments provided to
-the |FoldMeta| method and selects the correct overload based on rules:
+starters, all overload selections must be statically resolved at
+compile time (as mentioned in section \ref{sec:typeclasses}). This, in
+principle, makes a feature such as overlapping instances usleless in
+F\#. However, this also restricts the library from allowing functions
+like |GMap| to be defined, which demand that a similar feature
+exists. To resolve the problem, a customized dispatch mechanism is
+implemented using reflection. This mechanism inspects, at runtime, the
+types of the arguments provided to the |FoldMeta| method and selects
+the correct overload based on rules:
 
 \begin{tabular}{cccc}
 \multirow{15}{*}{|self.FoldMeta(m : Meta)|} & \multirow{15}{*}{$=\left\{\begin{array}{c} \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \end{array}\right.$} & \multirow{2}{*}{|self.FoldMeta(m)|} & |exists self.FoldMeta : tau->tau1| \\
@@ -1217,28 +1218,31 @@ arguments. If the previous check fails, type variables are
 instantiated in order to invoke a suitable generic method. This
 happens by cases:
 \begin{itemize}
-\item When |m : U<<tau_ty>>|, methods of type |FoldMeta : forall tau
-  . U<<tau>> -> `out| are considered and |tau| is instantiated to |tau_ty|
-\item When |m : K<<tau_ty,tau_a>>|, methods of type |FoldMeta : forall
-  tau1,tau2 . K<<tau1,tau2>> -> `out| are considered. |tau1| is
-  instantiated to |tau_ty| and |tau2| is instantiated to |tau_a|.
+\item When |m : U<<tau_ty>>|, methods with signature |FoldMeta<<tau>>
+  : U<<tau>> -> `out| are considered and |tau| is instantiated to
+  |tau_ty|
+\item When |m : K<<tau_ty,tau_a>>|, methods with signature
+  |FoldMeta<<tau1,tau2>> : K<<tau1,tau2>> -> `out| are
+  considered. |tau1| is instantiated to |tau_ty| and |tau2| is
+  instantiated to |tau_a|.
 \item When |m : Sum<<tau_ty,tau_a,tau_b>> -> `out| or |m :
-  Prod<<tau_ty,tau_a,tau_b>> -> `out|, methods of type |m : forall tau
-  . Sum<<tau,Meta,Meta>> -> `out| or |m : forall tau
-  . Prod<<tau,Meta,Meta>> -> `out| are considered. |tau| is
-  instantiated to |tau_ty|. The inner types |tau_a| and |tau_b| are
-  casted to |Meta| in order to make the method call compatible. 
+  Prod<<tau_ty,tau_a,tau_b>> -> `out|, methods with signatures
+  |FoldMeta<< tau >> : Sum<<tau,Meta,Meta>> -> `out| or
+  |FoldMeta<<tau>> : Prod<<tau,Meta,Meta>> -> `out| are
+  considered. |tau| is instantiated to |tau_ty|. The inner types
+  |tau_a| and |tau_b| are casted to |Meta| in order to make the method
+  call compatible.
 \end{itemize}
 
 When many methods with compatible signature exist. Priority is first
-given to the colosest match and then the position in the class
+given to the closest match and then the position in the class
 hierarchy of the type that declared the selected method. Although this
 mechanism is immitating the overlapping instances mechanism of the
 Haskell compiler, it gives the user a finer control on which method is
 selected. In fact, this makes it trivial to extend or customize
 generic functions. For example, to define a function |GMapShallow|
 which does the same as |GMap| but does not traverse structures that
-occurr recursively one can simply extend from |GMap| and override the
+occurr recursively, one can simply extend from |GMap| and override the
 |Id| case:
 \begin{code}
 type GMapShallow<<`t,`x>>(f : `x -> `x) = 
@@ -1266,18 +1270,12 @@ could be defined. The definition would look like:
 \begin{code}
 AbstractClass
 type FoldMeta<<`t,`out>>() =
-abstract FoldMeta 
-  : Meta * Meta -> `out
-abstract FoldMeta<<`ty>> 
-  : Sum<<`ty,Meta,Meta>> * Meta -> `out
-abstract FoldMeta<<`ty>> 
-  : Prod<<`ty,Meta,Meta>> * Meta -> `out
-abstract FoldMeta<<`ty,`a>> 
-  : K<<`ty,`a>> * Meta -> `out
-abstract FoldMeta 
-  : Id<<`t>> * Meta -> `out
-abstract FoldMeta<<`ty>> 
-  : U<<`ty>> * Meta -> `out
+abstract FoldMeta : Meta * Meta -> `out
+abstract FoldMeta<<`ty>> : Sum<<`ty,Meta,Meta>> * Meta -> `out
+abstract FoldMeta<<`ty>> : Prod<<`ty,Meta,Meta>> * Meta -> `out
+abstract FoldMeta<<`ty,`a>> : K<<`ty,`a>> * Meta -> `out
+abstract FoldMeta : Id<<`t>> * Meta -> `out
+abstract FoldMeta<<`ty>> : U<<`ty>> * Meta -> `out
 \end{code}
 This definition ensures that all cases are covered when defining
 generic functions that accept two arguments. Additional overloads can
@@ -1285,9 +1283,7 @@ be added to this class in order to in order to pattern match specific
 cases. For example, when defining generic equality, one would like a
 method with type:
 \begin{code}
-member FoldMeta<<`ty>> 
-  : Sum<<`ty,Meta,Meta>> * Sum<<`ty,Meta,Meta>> 
-  -> `out
+member FoldMeta<<`ty>> : Sum<<`ty,Meta,Meta>> * Sum<<`ty,Meta,Meta>> -> `out
 \end{code}
 which would recursively check each side of the sum for equality and
 return true if both sides are equal. This extension can be repeated to
@@ -1298,7 +1294,7 @@ extensions.
 Another limitation of the |FoldMeta| class has to do with the type of
 values that can be returned by generic functions. Since generic
 functions are specified through the |FoldMeta| class, the return type
-of such functions are provided as a type argument to the class. This
+of such functions is provided as a type argument to the class. This
 means that the return type of all cases must be the same. This is
 restrictive compared to other datatype generic programming libraries
 like Regular where the |Id| case might have a different return type as
@@ -1314,7 +1310,7 @@ Here, |`out| gets instantiated to |K<<`ty,`a>>|. Notice that both
 |`ty| and |`a| are universally quantified variables local to the
 |FoldMeta| definition, not the class. This means that in order for it
 to be possible to instantiate |`out| to |K<<`ty,`a>>|, |`out| must be
-of kind |*->*->*| since it must accept |`ty| and |`a| as arguments. 
+of kind |* -> * -> *| since it must accept |`ty| and |`a| as arguments. 
 
 A possibility that could overcome some of the limitations is to extend
 the |FoldMeta| class with additional type arguments -- one for each
@@ -1347,7 +1343,7 @@ type FoldMeta<<
   >>
 \end{code}
 However, sub-type constraints cannot be enforced against type
-variablesS. This results in a compile time error since |`m| is a type
+variables. This results in a compile time error since |`m| is a type
 variable.
 
 \end{document}
