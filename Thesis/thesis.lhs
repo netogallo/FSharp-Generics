@@ -31,16 +31,65 @@
 \line(1,0){520}\\ \\
 \line(1,0){520}
 
+\section{Introduction}
+
+Functional programming languages have relied on algebraic data types
+(ADTs) as the mechanism to represent data structures. They allow
+inductively defined types which can be de-constructed using pattern
+matching. The type system keeps track of the locations where pattern
+matching takes place to prevent programming errors. To allow code
+re-use, the type system is able to abstract a type into a variable if
+a function does not pattern match a particular value. This feature is
+very powerful but does not scale to functions, such as equality, that
+cannot be defined without using pattern matching. This drawback leads
+to boilerplate code when implementing functions which are only
+concerned about the structure of a value but not its type.
+
+To mitigate the problem, polytypic programming~\cite{polyp}, which
+later became datatype generic programming, was developed. The idea
+behind polytypic programming is to encode values of ADTs using a
+representation. Algorithms can then be defined for representations of
+types instead of the types themselves. These algorithms can be
+executed on any value encodable with a representation -- even if
+values are of different type. This happens because two values with the
+same structure have representations with the same type.
+
+Datatype generic programming has been actively researched in the last
+years. Many approaches exists such as Regular~\cite{Regular},
+Multirec~\cite{multirec}, Generic Haskell~\cite{GenericDeriving},
+RepLib~\cite{RepLib} and Instant
+Generics~\cite{Cheney02alightweight}. Most of the appraches differ in
+the class of types that can be represented by the library -- called
+the universe. In general, if the universe is smaller, the library is
+easier to learn and its implementation is less demanding for the type
+system.
+
+Unfortunately, little work has been done to bring theese ideas into
+other programming languages. One of the main difficulties is that most
+approaches rely on advanced type system features to ensure correct
+behavior. For example none of the libraries mentioned above work with
+plain Haskell 98 and all of them use higher kinded polymorphic
+types. Since most ordinary programming languages still lack many of
+theese features, the ideas cannot be directly implemented in such
+languages and need to be adapted.
+
+The present thesis investigates how to adapt the ideas of datatype
+generic programming to the F\# programming language. The approach is
+inspired by Regular which is a library designed with ease of use in
+mind. To adapt the ideas, several compromises had to be made which
+resulted in both advantages and disadvantages. The result is packed as
+a library which can be used to declare generic functions which can be
+used with little programming overhead in the F\# language.
+
 \part{Background}
 \section{Datatype Generic Programming}
 
 Functional programming languages often use algebraic data types (ADTs)
-in order to represent values. ADTs are defined by cases by providing a
-type constructor for each case and the type of values that the
-constructor accepts in order to produce a value of the ADT being
-defined. In other words, a type constructor is a function that takes a
-group of values of different types and produces a value of the type of
-the ADT.
+to represent values. ADTs are defined in cases by providing a type
+constructor for each case and specifying the type of values the
+constructor needs to create a new value. In other words, a type
+constructor is a function that takes a group of values of different
+types and produces a value of the ADT's type.
 
 To define functions over ADTs, functional languages provide a
 mechanism to deconstruct ADTs called pattern matching. This mechanism
@@ -48,57 +97,54 @@ allows the programmer to check wether a particular value was
 constructed using the specified type constructor and allows the
 programmer to extract the arguments used to produce the value. This
 mechanism is very elegant since it allows to define functions by
-induction, however it has several shortcommings.
+induction but it has several shortcommings.
 
 A function that pattern matches a value over the constructors of a
-particular ADT restricts that the type of the value being pattern
-matched to be monomorphic. This leads to functions being implemented
-multiple times -- either when a existing ADT is modified or a new ADT
-is declared~\cite{polyp}. Since functional programming is all about
-abstraction, several methods have been developed to allow functions to
-become more polymorphic.
+particular ADT constraints the type of the value being pattern matched
+to be monomorphic. This leads to functions being implemented multiple
+times -- either when a existing ADT is modified or a new ADT is
+declared~\cite{polyp}. Due to the importance of abstraction, sevaral
+methods for polymorphism have been developed to address these
+restrictions.
 
 An ADT can be decalred to be higher-kinded. This means that a
 definition of a list |data List = Cons Int List palo Nil| can abstract
 over its content and become |data List a = Cons a (List a) palo
 Nil|. Then a function, such as lenght, might de-construct the list
-without performing any operations on its contents -- the type
-represented by |a|. Such function can operate on a list of any type --
-this is called parametric polymorphism. The programmer might also wish
-to implement functions that operate on the contents of a list without
+without performing any operations on its content (the type represented
+by |a|). Such function can operate on a list of any type -- this is
+called parametric polymorphism. The programmer might also wish to
+implement functions that operate on the contents of a list without
 restricting the type of the list's content to be monomorphic. This can
 be done by requiring that the function is also provided with a set of
-operations that can be performed on its argument. For example, the
-|sum| function could be implemented by requiring that a function to
-add two elements of type |a| is provided. This is called ad-hoc
-polymorphism.
+operations that it may perform on its content. For example, the |sum|
+function could be implemented by requiring that a function to add two
+elements of type |a| is provided. This is called ad-hoc polymorphism.
 
-Both of theese approaches can be used to define generic
+Both of these approaches can be used to define generic
 functions. This is evidenced by the libraries Scrap your Boilerpate
 Code~\cite{SYB} and Uniplate~\cite{Uniplate}. Both libraries specify a
 family of operations that must be supported by a type and use ad-hoc
 polymorphism to implement many generic functions (for example |length|
 or |increment|) in terms of the family of operations. The programer
-only needs to do pattern matching when defining theese base operations
+only needs to do pattern matching when defining these base operations
 and both libraries provide mechanisms to do it automatically.
 
-Although both of theese features allow the definition of many generic
+Although both of these features allow the definition of many generic
 functions, a more general approach exists. Recall that every value
 expressed as an ADT is a type constructor followed by values of other
 types. For simplicity consider type constructors taking only one
-argument, they look something like |C a|. One could then define
-functions that generalize over \emph{every} type constructor. This is
-the idea behind polytipic programming~\cite{polyp} which later evolved
-into Datatype Generic Programming.
-
-This method has matured over many years in Haskell alone there are
-numerous tools and libraries for datatype generic programming,
-including PolyP~\cite{polyp}, Generic Haskell~\cite{GenericHaskell},
-RepLib~\cite{RepLib}, Regular~\cite{Regular},
-Multi-Rec~\cite{multirec}, Instant Generics~\cite{instant2} and many
-others. Some Haskell compilers even support Datatype Generic
-Programming natively. The present thesis focuses on Datatype Generic
-Programming and will use Regular~\cite{Regular} as a reference.
+argument, they can be seen as |C a|. With this abstraction, it is
+possible to define a function that operates on all type constructors
+that accept one argument. More specific functions, such as
+|increment|, can be defined for type constructors that accept an |Int|
+as an argument. This would be type safe because the type checker is
+able to compare the type of the arguments of the constructors. The
+generalization of this approach (for constructors taking any
+arguments) is called \emph{datatype generic programming}. In the
+remainder of this thesis, the term generic programming will always
+mean datatype generic programming. The next section introduces generic
+programming using the Regular~\cite{regular} library.
 
 \subsection{Generic Programming with Regular}
 
@@ -109,9 +155,10 @@ representations. Representations can encode many ADTs but not all of
 them; the ADTs that are expressible by a representation is called the
 \emph{universe}.
 
-In the case of Regular, its universe are all the ADTs that:
+In the case of Regular, its universe is all the ADTs that:
 \begin{itemize}
-\item Have no type arguments (are of kind *)
+\item Have no type arguments (are of kind *) \todo{revise, it might be
+  one type argument}
 \item Are not mutually recursive
 \end{itemize}
 This universe includes many common types like lists, trees and simple
@@ -163,8 +210,8 @@ class (Functor (PF a)) => Regular a where
 \end{code}
 
 The constituients of the class are a type called |PF| which simply is
-the representation using the types of Regular and two functions |to|
-and |from| that convert values to representations and representations
+the representation using the types of Regular and two functions, |to|
+and |from|, that convert values to representations and representations
 to values. For the case of the |List| provided above, an instance
 could be the following:
 \begin{code}
@@ -216,7 +263,23 @@ instance (GInc f, GInc g) => GInc (f otimes g) where
 instance GInc (K a) where
   gInc x = x
 \end{code}
-This definition requires the Overlapping Instances extension (among
+This definition is not very interesting. Whenever there is an integer,
+its value will be increased by one. In the case of products and sums,
+the function is recursively applied and the result is packed back into
+the same product or sum. The case for |Id| also applies the function
+recursively but since it contains a |List| rather than a
+representation, it must be converted into a representation to apply
+|gInc| and the result needs to be converted back to the original
+type. The rest of the cases leave the value untouched.
+
+What is important about this function is that Haskell's add-hoc
+polymorphism (type-classes) are used to allow recursion and to provide
+type safety. For instance, if the |K Int| case returned a value |K
+"value" : K String|, the compiler produces a type error. This is a
+consequence of the way parametric polymorphism is used by the
+typeclasses.
+
+This definition requires the overlapping instances extension (among
 others) since there is no way to provide a specific case for |Int| and
 a case for everything but |Int|. It can be observed that the |GInc|
 function works for any representation given in terms of Regular's
@@ -230,13 +293,13 @@ then converts the result back to a value.
 \section{The F\# language}
 
 The F\#~\cite{export:192596} programming language is a functional
-language of the ML family. It started off as a .Net implementation of
+language of the ML family. It started off as a .NET implementation of
 OCaml but it has adopted and ignored many features in order to
-inter-operate nicely with the .Net platform and its languages. One
+inter-operate nicely with the .NET platform and its languages. One
 notable feature of the language is that it obtains its type system
-from the .Net platform (in other words there is no type
+from the .NET platform (in other words there is no type
 erasure). However, the language has constructs that allow type
-inference, similarly as it happens with the Hindley-Miller system.
+inference, in a similar way as the Hindley-Miller system.
 
 \subsection{Types and Type System}
 The types in the F\# language can be divided into two categories. The
@@ -248,7 +311,7 @@ happens transparently depending on how a value is used.
 
 {\bf Functional types: }The functional structures are Algebraic Data
 Types and Records. Both of theese structures are immutable and do not
-allow inheritance/sub-type relations (they are sealed in .Net
+allow inheritance/sub-type relations (they are sealed in .NET
 terminology). ADTs in F\# are very similar to those of a traditional
 functional language. Type constructors are defined by cases along with
 the arguments the constructor requires to build the type. Records are
@@ -259,7 +322,7 @@ of each of the Record's field as a named argument.
 The functional types can be manipulated via pattern matching as
 typically done in functional languages. This allows functions to be
 defined inductively by cases. Since types can be generic, the type
-inferencer will abstract over any type argument when values of that
+inferencer will abstract away any type argument when values of that
 type argument are not operated inside the functions -- this is
 parametric polymorphism. Ad-hoc polymorphism can be used with
 functional types by extending them with member functions. Type
@@ -269,7 +332,7 @@ constraints, constraints that indicate that a type implements a
 particular interface. Interface constraints are similar to the
 typeclass constraints that exist in Haskell.
 
-{\bf Classes and Structures: }The other category of types that exist
+{\bf Classes and Structures: }The other category of types that exists
 in F\# are classes and structures. Both are very similar with slight
 differences only on the type parameters they support but those details
 are not relevant and will be ignored. These types are the traditional
@@ -290,24 +353,24 @@ the compiler can check that the value |x| is compatible with that
 type. In some situations, the compatibility cannot be checked
 statically. In such case, the operation |x :?> tau_a| is used to
 dynamically check if |x| is compatible with |tau_a| and if so assign
-the type |tau_a| to |x| otherwise raise a runtime exception.
+the type |tau_a| to |x| or raise a runtime exception if |x| does not
+have type |tau_a|.
 
 Pattern matching is not allowed for classes but F\# offers a feature
 called active patterns which allow matching any value against a
 pattern by defining a special kind of function that takes the value as
 input and returns a tuple with the values that correspond to the
-pattern or |None| to indicate that the value dosen't match the
 pattern. However, active patterns don't provide any mechanism to
 re-construct the values it matches nor can it be checked that they are
 exahustive.
 
-Classes can also have abstract methods. An abstrac method is a method
+Classes can also have abstract methods. An abstract method is a method
 that can be overriden (replaced by) another method with the same
 signature but different implementation. The implementation of an
 overriden method can invoke the previous implementation if necessary.
 
-{\bf Generic types: } Types in F\# can accept generic type
-arguments. Theese are type variables that can then be instantiated to
+{\bf Polymorphic types: } Types in F\# can accept type
+arguments. These are type variables that can then be instantiated to
 any concrete type as long as the concrete type satisfies the
 constraints given to the argument. A major difference between F\# and
 other functional laungauges is that type variables are restricted to
@@ -319,7 +382,7 @@ cannot be implemented in F\#. For example:
 cannot be immitated in F\# because |m| is higher kinded (it takes |a|
 as argument). One possible approximation in F\# could be:
 \begin{code}
-(>>=) : Monad<`a> -> (`a -> Monad<`b>) -> Monad<`b>
+(>>=) : Monad<`a> -> (`a -> Monad<<`b>>) -> Monad<<`b>>
 \end{code}
 and have every monad in F\# implement the Monad interface. Even though
 this funciton would behave correctly, it can go wrong if the first
@@ -327,10 +390,9 @@ argument is an instance of the |Maybe| monad and the second argument a
 function that goes from |`a| to the |IO| monad. Such errors would
 not be caught by the typechecker.
 
-
 \subsection{Reflection}
 
-Through the .Net platform, the F\# language has access to a very rich
+Through the .NET platform, the F\# language has access to a very rich
 reflection library. Reflection consists of using type information
 obtained dynamically to implement a program. The basis of reflection
 is the |Type| class.
@@ -338,24 +400,26 @@ is the |Type| class.
 When a program is compiled to CIL, the .Net intermediate language, an
 instance of the |Type| class is created for every type that is
 declared in the program. This is an abstract class and specifies all
-the information that .Net needs about a type. The class must be
-extended by any of the .Net languages. This allows the storage of
-extra information. In the case of F\#, information about the type
+the information that .NET needs about a type. The class must be
+extended by the .NET languages. This allows the storage of extra
+information. In the case of F\#, information about the type
 constructors and record fields is included in the type.
 
-Using this type information, one can in principle pattern match
-constructors that contain a value of a particular type for any
-ADT. One can also instantiate a value using information gained through
-reflection by queriying the available type constructors and invoking
-it with the right arguments.
+Using the type information provided by reflection, one can generically
+de-construct values by querying the available patterns that exist for
+a type. One can also generically construct values since it is possible
+to obtain the available type constructors to construct a type.
 
-Since functions and methods in the reflection API work for all .Net
-types and the result could be any .Net type, there isn't much
+Since functions and methods in the reflection API work for all .NET
+types and the result could be any .NET type, there isn't much
 typechecking that can be done by the compiler within this code. A
 correctly implemented funciton that uses reflection can provide a safe
-interface by using generic arguments. The code typically will use
-unsafe coercions to convert type from and to the supplied generic
-arguments.
+interface when annotated with the right type. The implementation of
+the function will typically perform unsafe coercions in order to match
+the type. Code that uses reflection is very common. For example,
+FsPickler~\cite{fspickler}, a general purpose .NET serializer, and
+Nancy~\cite{nancyfx}, a .NET web framework, use reflection for a
+variety of operations.
 
 \part{Research Topic}
 \section{Description of the Problem}
@@ -456,6 +520,7 @@ due to several restrictions (outlined in section \ref{sec:tp-res}),
 they can't be used to immitate this feature.
 
 \subsection{Typeclasses and Generic Programming}
+\label{sec:typeclasses}
 Typeclasses are another Haskell specific feature essential for generic
 programming. They are the mechanism used in Haskell for function
 overloading. The special feature about typeclasses is the way they
@@ -483,11 +548,39 @@ of the |gInc| overload. Haskell addresses the problem by performing
 type level computations when type variables get instantiated to select
 the correct overload.
 
-F\# does not have the ability to delay the selection of an overload
-until a type variable gets instantiated. The closest approach is
-method overriding but that can't be used since all the generic
-methods would then have to be defined with the definition of the
-representation types.
+In F\#, method constraints could be used to achieve a similar
+result. For example, one could define the |GInc| funciton as an
+extension method of |K|, |Unit| and |Sum|:
+\begin{code}
+type K<<`t, `x>> with
+  member x.GInc() = x
+
+type K<<`t,int>> with
+  member x.GInc() = K(x.Elem + 1)
+
+type Sum<<`t,`a,`b when 
+  (`a : member GInc : unit -> `a) 
+  and (`b : : member GInc : unit -> `a)>> with
+  member x.GInc() = match x.Elem with
+                      | Choice1Of2 v -> Sum(Choice1Of2 v.GInc())
+                      | Choice2Of2 v -> Sum(Choice2Of2 v.GInc())
+
+\end{code}
+
+However, type constraints in F\# have the following limitations:
+\begin{enumerate}
+\item Extension methods are not checked by the compiler when solving
+  type constraints
+\item When extending a type, it must have the exact same signature as
+  the original definition. The extension for |K<<`t,int>>| and |Sum|
+  given above are not valid F\# code.
+\end{enumerate}
+These limitations (especially \#2) highlight the additional type level
+computation power available in Haskell. To address them, F\# would
+have to solve type constraints differently depending on how type
+variables are instantiated. Currently, type constraints in F\# are
+solved the same way regardless on how the type variables of a type get
+instantiated.
 
 \section{Objectives}
 To explore the feasability of implementing a datatype generic
@@ -666,7 +759,190 @@ type ListRep =
     U<<Elems>> >> >>
 \end{code}
 
+\section{Automatic conversion between values and representations}
+
+Being able to convert values to and from representations automatically
+makes the library more convenient to use. Since this conversion is a
+single function, it can be implemented using reflection. The user of
+the library will not need to write reflective code implement generic
+functions. This section describes how reflection can be used in F\# to
+write the function.
+
+Every object in .NET has a member function |GetType : unit ->
+Type|. This function returns a value of type |Type|. When F\# is
+compiled into CIL, the .NET intermediate language, the compiler
+defines an extension of the |Type| class for every type declared in
+the program. The compiler is free to include any information it wishes
+inside subclasses of |Type|. In the case of F\#, it adds information
+about the class of the type (ie. if it is an ADT, record or class). To
+access this information, the F\# core libraries include the package
+|Reflection|. Below are two functions to inspect ADTs:
+\begin{code}
+type FSharpType =
+  static member IsUnion : Type -> bool
+  static member GetUnionCases : Type -> UnionCaseInfo
+\end{code}
+The |IsUnion| method checks at runtime wether or not the |Type| it is
+given is an ADT. The |GetUnionCases| method gives a list of all the
+type constructors of an ADT. The |UnionCaseInfo| type contains
+information about each of the type constructors and can be used to
+construct and pattern match values.
+
+The remainder of this section describes the algorithm to convert
+values into representations. The code here intends to demostrate how
+the algorithm works and how reflection is used to implement it but the
+actual implementation is very different since this code omits lots of
+boilerplate code that arises from the use of reflection. It uses
+pseudo-code that has F\# syntax but types are treated as first class
+values, it uses |<< >>| to distinguish types from values
+in the arguments of functions. In this code, variables preceded by an
+apostrophe, such as |`x|, always refer to types, even when used as
+values, that is they are always of type |`x : Type|. This code also
+pattern matches types as if they were ordinary values. In F\# it is
+possible to mimick this pattern matching using reflection but the
+details on how to do it are quite involved.
+
+Type representations are constructed in two stages. First the type of
+such representation is obtained by the |getTy| function. Then, given a
+value, a representation is constructed with the |to| function. The
+type of the representation is the type determined by the |getTy|
+function. Below are the signatures:
+\begin{code}
+let getTy : Type -> Type
+let to : Type -> obj -> Meta
+\end{code}
+Both of these functions only operate on ADTs. They are implemented in
+several stages. Below are the first two parts:
+\begin{code}
+
+let getTyUnion<<`t>> : List<<UnionCaseInfo>> -> Type
+^^ getTyUnion<<`t>> (uc :: []) = getTyValue<<`t>> spc uc
+^^ getTyUnion<<`t>> (uc :: ucs) = Sum<<`t,getTyValue<<`t>> spc uc,getTyUnion<<`t>> spc ucs>>
+\end{code}
+\begin{code}
+let toUnion<< Sum<<`t,`a,`b>> >> : obj -> List<<UnionCaseInfo>> -> Meta
+^^ toUnion<< Sum<<`t,`a,`b>> >> (x) (uc :: ucs) =
+^^ ^^ if uc.Matches x then
+^^ ^^ ^^ Sum<<`t,`a,`b>>(toValue<<`t>> x uc |> Choice1Of2)
+^^ ^^ else
+^^ ^^ ^^ Sum<<`t,`a,`b>>(toUnion<<`t,`b>> x ucs |> Choice2Of2)
+\end{code}
+
+The |getTyUnion| function takes as arguments the type for which a
+representation will be computed and the information of the type
+constructors for that type encoded as a list of |UnionCaseInfo|. The
+function nests an application of the |Sum| type for every type
+constructor available in the argument type. For each of the type
+constructors, the function |getTyValue| is called. The |toUnion|
+function takes as a first argument the type obtained by the
+|getTyUnion| function, the list of type constructors and the value
+being converted to a representation. It tries to match the given value
+to a type constructor. For each constructor that dosen't match, it
+applies a nesting of the |Sum| constructor and recursively calls
+itself with the next type argument of the |Sum| (the |<<`b>>|) and the
+remainder of the type constructors. When the match is positive, it
+provides the value and the matched type constructor to the |toValue|
+function and packs the result in the corresponding |Sum|.
+
+\begin{code}
+let getTyValue<<`t>> : UnionCaseInfo -> Type
+^^ getTyValue<<`t>> uc =
+^^ ^^ let genTy<<`ty>> = 
+^^ ^^ ^^ if FSharpType.IsUnion<<`ty>> then getTyUnion<<`ty>>
+^^ ^^ ^^ else K<<`t,`ty>>
+^^ ^^ let tys = uc.ArgumentsTypes
+^^ ^^ let go (`ty::tys) = Prod<<`t,getTy<<`ty>>,go tys>>
+^^ ^^ ^^ go [`ty] = genTy<<`ty>>
+^^ ^^ ^^ go [] = U<<`t>>
+^^ ^^ go tys
+
+\end{code}
+\begin{code}
+let toValue<< Prod<<`t,`a,`b>> >> : `t -> UnionCaseInfo -> Meta
+^^ toValue<< Prod<<`t,`a,`b>> >> (obj : `t) (uc : UnionCaseInfo) =
+^^ ^^ let (args : List<<obj>>) = uc.GetArguments obj
+^^ ^^ let go<<Prod<<`t,`a,U<<`t>> >> (x::[]) = Prod<<`t,`a,U<<`t>> >>(to<<`a>> spc x,U<<`t>>()) 
+^^ ^^ ^^ go<<Prod<<`t,`a,`b>> (x::xs) = Prod<<`t,`a,`b>>(to<<`a>> spc x,go<<`b>> spc xs)
+^^ ^^ go<< Prod<<`t,`a,`b>> >> spc args
+
+^^ toValue<<K<<`t,`x>> >> (obj : `t) (uc : UnionCaseInfo) = 
+^^ ^^ let [v] = uc.GetArguments obj
+^^ ^^ K<<`t,`x>>(v)
+^^ toValue<<U<<`t>> >> (obj : `t) (uc : UnionCaseInfo) = U<<`t>>()
+\end{code}
+
+The |getTyValue| function handles the conversion of each of the type
+constructors to the type of the corresponding representation. It first
+extracts the type of each of the arguments of the type
+constructor. The code above uses the member function
+|ArgumentsTypes|. That function is not available in the reflection API
+but can be defined by querying the arguments accepted by the
+constructor method. Applications of the |Prod| constructor are nested
+for each argument accepted by the type constructor. Each of the
+arguments is subsequently expanded into its representation which is
+done by calling the |getTyUnion| function for ADTs or using the |K|
+constructor for other types.
+
+The |toValue| function looks involved but is also very simple. It is
+divided in three cases: |Prod|, |K| and |U|. The |K| case simply
+unpacks the only argument that is accepted by the type constructor and
+packs the argument into the |K| constructor. The |U| case simply
+returns an instance of the |U<<`t>>| type. The |Prod| case extracts
+the value of all the arguments that were given to the type
+constructor. Again, the example uses the |GetArguments| member
+function which can be defined by invoking all the property accessors
+of the values accepted by the type constructors. For each value, it
+applies the |Prod| constructor giving it as a first argument the
+representation of the value (obtained by calling the |to| function)
+and the recursive application of the function to serialize the
+remainder of the product. Finally we define the main functions:
+\begin{code}
+ 
+let to<<Sum<<`t,`a,`b>> >> obj = toUnion<<Sum<<`t,`a,`b>> >> obj FSharpType.GetUnionCases<<`t>>
+let to<<Prod<<`t,`a,`b>> >> obj = toValue<<Prod<<`t,`a,`b>> >> obj (head FSharpType.GetUnionCases<<`t>>)
+let to<<K<<`t,`x>> >> obj = toValue<<K<<`t,`x>> >> obj (head FSharpType.GetUnionCases<<`t>>)
+let to<<U<<`t>> >> obj = toValue<<U<<`t>> >> obj (head FSharpType.GetUnionCases<<`t>>)
+\end{code}
+\begin{code}
+let getTy<<`t>> =
+  if FSharpType.IsUnion<<`t>> then
+    getTyUnion<<`t>>
+  else
+    failwith "Not an ADT"
+
+\end{code}
+With these functions, conversion into a representation can be done by
+frist invoking the |getTy| function and passing the result to the |to|
+function along with the value which should be converted to a
+representation. Conversion from a representation into a value happens
+in a similar way but in the opposite direction. All this machinery is
+packed inside the |Generic| type which provides:
+\begin{code}
+type Generic<<`t>> =
+  abstract To : `t -> Meta
+  abstract From : Meta -> `t
+\end{code}
+
 \section{Defining generic functions as classes}
+
+\begin{figure*}
+\begin{centering}
+\begin{code}
+AbstractClass
+type FoldMeta<<`t,varin,`out>>() =
+
+  abstract FoldMeta : Meta * varin -> `out
+  abstract FoldMeta<<`ty>> : Sum<<`ty,Meta,Meta>> * varin -> `out
+  abstract FoldMeta<<`ty>> : Prod<<`ty,Meta,Meta>> * varin -> `out
+  abstract FoldMeta<<`ty,`a>> : K<<`ty,`a>> * varin -> `out
+  abstract FoldMeta : Id<<`t>> * varin -> `out
+  abstract FoldMeta<<`ty>> : U<<`ty>> * varin -> `out
+\end{code}
+\end{centering}
+\caption{Definition of the |Meta| abstract class for 
+  generic functions taking one argument.}
+\label{fig:def-meta}
+\end{figure*}
 
 The purpose of type representations is to provide an interface that
 the programmer can use to define generic functions. Once a function is
@@ -676,24 +952,12 @@ any value whose type may be modeled using the |Meta| class.
 Similar to Regular, generic functions will be defined by cases for
 each of the types that define representations. Since F\# dosen't have
 typeclasses, each case will be defined by overriding methods of the
-abstract class called |FoldMeta|. The |FoldMeta| class is defined as
-follows:
-\begin{code}
-AbstractClass
-type FoldMeta<<`t,varin,`out>>() =
-
-abstract FoldMeta : Meta * varin -> `out
-abstract FoldMeta<<`ty>> : Sum<<`ty,Meta,Meta>> * varin -> `out
-abstract FoldMeta<<`ty>> : Prod<<`ty,Meta,Meta>> * varin -> `out
-abstract FoldMeta<<`ty,`a>> : K<<`ty,`a>> * varin -> `out
-abstract FoldMeta : Id<<`t>> * varin -> `out
-abstract FoldMeta<<`ty>> : U<<`ty>> * varin -> `out
-\end{code}
-
-The |FoldMeta| type is parametrized by the following type argumetns:
+abstract class called |FoldMeta|. The abstract definition of the
+|FoldMeta| is given in figure \ref{fig:def-meta}. The |FoldMeta| type
+is parametrized by the following type argumetns:
 \begin{itemize}
 \item |`t| which is the type being represented by the type representation
-\item |`in| which is the input type of the generic function
+\item |varin| which is the input type of the generic function
 \item |`out| which is the output type of the generic function
 \end{itemize}
 
@@ -845,12 +1109,62 @@ are invoked in each case. Note that all recursive calls of the
 the method is derived automatically using reflection and will be
 explained in section \todo{reference section}.
 
-\section{Overload selection}
+\section{The |FoldMeta| class}
+
+The |FoldMeta| class is the interface to define generic functions. It
+has the purpose of ensuring that the definitions are complete and it
+also dispatches the correct methdod according to a custom set of type
+rules.
+
+\subsection{Enforcing complete definitions}
+Consider once again the |GInc| function that was previously defined
+using Regular. Assume that only the following cases were given:
+\begin{code}
+instance GInc (K Int) where
+  gInc (K i) = K (i + 1)
+
+instance GInc Unit where
+  gInc Unit = Unit
+
+instance (GInc f, GInc g) => GInc (f otimes g) where
+  gInc (f otimes g) = gInc f otimes gInc g
+\end{code}
+Consider these two types and their representations:
+\begin{code}
+data T1 = T1 Int Int
+data T1Rep = Prod (K Int) (K Int)
+
+data T2 = T2 Int String
+data T2Rep = Prod (K Int) (K String)
+\end{code}
+
+Values of type |T1| can be handled by the |GInc| function wheras
+values of type |T2| cannot since |GInc| lacks a case for |K
+String|. If one tried to apply |GInc| to a value of type |T2Rep|, the
+Haskell compiler would instantiate the variables and figure out that
+there is no |GInc| instance for |K String|. It was discussed in
+section \ref{sec:typeclasses} that F\# cannot perform such typelevel
+computations and that abstract members and member constraints cannot
+be used to dispatch the correct overloads. This means that the F\#
+compiler has no way to check if a generic function can handle a
+particular representation.
+
+The only option left is to require that every generic function handles
+every case. This is quite a drawback because generic functions in this
+library must be total for its universe -- every value can be applied
+to every generic function as long as the value can be represented as
+an instance of |Meta|. As a result, the |FoldMeta| class requires an
+implementation for four methods which are able to handle all
+representations. More specialized methods can be additionally included
+and they will be used whenever the function's arguments are compatible
+with the method. Otherwise, the more general method is selected.
+
+\subsection{Overload Selection}
 
 The |GMap| function defined above has overlapping overloads -- cases
 where several methods can be invoked for a particular value. This is a
 problem that many datatype generic libraries have. In the case of
-Haskell base libraries, the problem is generally solved by enabling
+Haskell based libraries, the problem is generally solved by enabling
 the overlapping instances language extension.
 
 In the case of F\#, the problem must be approached differently. For
@@ -861,7 +1175,7 @@ overlapping instances usleless in F\#. However, this also restricts
 the library from allowing functions like |GMap| to be defined, which
 demand that a similar feature exists. To resolve the problem, a
 customized dispatch mechanism is implemented using reflection. This
-mechanism inspects at runtime, the types of the arguments provided to
+mechanism inspects, at runtime, the types of the arguments provided to
 the |FoldMeta| method and selects the correct overload based on rules:
 
 \begin{tabular}{cccc}
@@ -941,5 +1255,99 @@ Here both functions can exist in the same namespace and context. In
 fact, a function could invoke both of them as if they were any two
 generic functions.
 
+\subsection{Limitations of the |FoldMeta| class}
+
+The most obvious limitation of the |FoldMeta| class is the number of
+arguments it can do induction on. For example, the generic equality
+function cannot be defined with |FoldMeta| as it stands since it must
+do recursion on two representations. To overcome the limitation, a
+variant of |FoldMeta| that performs induction on two of its arguments
+could be defined. The definition would look like: 
+\begin{code}
+AbstractClass
+type FoldMeta<<`t,`out>>() =
+abstract FoldMeta 
+  : Meta * Meta -> `out
+abstract FoldMeta<<`ty>> 
+  : Sum<<`ty,Meta,Meta>> * Meta -> `out
+abstract FoldMeta<<`ty>> 
+  : Prod<<`ty,Meta,Meta>> * Meta -> `out
+abstract FoldMeta<<`ty,`a>> 
+  : K<<`ty,`a>> * Meta -> `out
+abstract FoldMeta 
+  : Id<<`t>> * Meta -> `out
+abstract FoldMeta<<`ty>> 
+  : U<<`ty>> * Meta -> `out
+\end{code}
+This definition ensures that all cases are covered when defining
+generic functions that accept two arguments. Additional overloads can
+be added to this class in order to in order to pattern match specific
+cases. For example, when defining generic equality, one would like a
+method with type:
+\begin{code}
+member FoldMeta<<`ty>> 
+  : Sum<<`ty,Meta,Meta>> * Sum<<`ty,Meta,Meta>> 
+  -> `out
+\end{code}
+which would recursively check each side of the sum for equality and
+return true if both sides are equal. This extension can be repeated to
+do recursion in any number of arguments. It is still limited by the
+fact that the library can only define a finite number of these
+extensions.
+
+Another limitation of the |FoldMeta| class has to do with the type of
+values that can be returned by generic functions. Since generic
+functions are specified through the |FoldMeta| class, the return type
+of such functions are provided as a type argument to the class. This
+means that the return type of all cases must be the same. This is
+restrictive compared to other datatype generic programming libraries
+like Regular where the |Id| case might have a different return type as
+de |K| case. This is particularly important to ensure type safety on
+functions that construct values generically, such as |read|. The
+|FoldMeta| class cannot fully solve the problem without higher
+kinds. For example, to define |GMap| properly, one would like that the
+return type is the same as the input type. For the |K| would be:
+\begin{code}
+abstract FoldMeta<<`ty,`a>> : K<<`ty,`a>> -> K<<`ty,`a>>
+\end{code}
+Here, |`out| gets instantiated to |K<<`ty,`a>>|. Notice that both
+|`ty| and |`a| are universally quantified variables local to the
+|FoldMeta| definition, not the class. This means that in order for it
+to be possible to instantiate |`out| to |K<<`ty,`a>>|, |`out| must be
+of kind |*->*->*| since it must accept |`ty| and |`a| as arguments. 
+
+A possibility that could overcome some of the limitations is to extend
+the |FoldMeta| class with additional type arguments -- one for each
+case. This would result in a new definition like:
+\begin{code}
+type FoldMeta<<
+  vart,  -- Generic\ type
+  `m,    -- Return\ type\ of\ the\ Meta\ overload
+  `s,    -- Return\ type\ of\ the\ Sum\ overload
+  `p,    -- Return\ type\ of\ the\ Prod\ overload
+  `i,    -- Return\ type\ of\ the\ Id\ overload
+  `k,    -- Return\ type\ of\ the\ K\ overload
+  `u,    -- Return\ type\ of\ the\ U\ overload
+  >>
+\end{code}
+This definition is still problematic since the return type of every
+overload is different. Recall that all overloads get dispatched by
+same method. This method has type |`m|, so it cannot return a value of
+type |`s| or |`p| since it results in a runtime error. To overcome
+this, one could add additional type constraints to ensure all return
+types are compatible with |`m|:
+\begin{code}
+type FoldMeta<<
+  -- [...]
+  when `s :> `m
+  and `p :> `m
+  and `i :> `m
+  and `k :> `m
+  and `u :> `m
+  >>
+\end{code}
+However, sub-type constraints cannot be enforced against type
+variablesS. This results in a compile time error since |`m| is a type
+variable.
 
 \end{document}
