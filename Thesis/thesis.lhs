@@ -486,9 +486,34 @@ programming.
 
 \subsection{Kind-Polymorphism and Datatype Generic Programming}
 
-%% Kind-polymorphism is an \emph{essential} component for datatype
-%% generic programmer. 
+Polytipic programming was introduced as a mechanism to derive algebras
+generically in order to fold over values~\cite{polyp}. This approach
+visualized the representation of a type as the \emph{functor} of the
+type. This requires the need of a higher kind operator |f| that takes
+a type and returns the functor of the type. In Regular, this operator
+is required in the definition of Regular instances:
+\begin{code}
+class Regular a where
+  PF a :: * -> *
+  from :: a -> PF a a
+  to   :: PF a a -> a
+\end{code}
+Here, |PF a| is a type operator that takes the type |a| to its
+representation type. Such type operator is not possible in F\# since
+it has a higher kind.
 
+In F\#, member constraints are sometimes used as a replacement for
+higher kinds. The best example are the computation expressions of
+F\#. They are analogous to Haskell's do notation. For example, to use
+the |let!| constructor in F\#, one requires the member function:
+\begin{code}
+ member Bind : M<'T> * ('T -> M<'U>) -> M<'U> 
+\end{code}
+where |M| is of higher kind. However, this simply means that if type
+|T| wishes to use the |let!| operator, then it must define the member
+function |Bind| where |M| is replaced by |T|. These constructs cannot
+be generalized to any member function which makes them useless for
+generic programming.
 
 %% Recall that the idea is to abstract over type
 %% constructors and define functions using such abstraction. Since type
