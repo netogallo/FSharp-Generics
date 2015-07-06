@@ -689,12 +689,12 @@ reduce the performance penalty.
 AbstractClass
 type FoldMeta<<`t,varin,`out>>() =
 
-abstract FoldMeta : Meta * varin -> `out
-abstract FoldMeta<<`ty>> : Sum<<`ty,Meta,Meta>> * varin -> `out
-abstract FoldMeta<<`ty>> : Prod<<`ty,Meta,Meta>> * varin -> `out
-abstract FoldMeta<<`ty,`a>> : K<<`ty,`a>> * varin -> `out
-abstract FoldMeta : Id<<`t>> * varin -> `out
-abstract FoldMeta<<`ty>> : U<<`ty>> * varin -> `out
+  abstract FoldMeta : Meta * varin -> `out
+  abstract FoldMeta<<`ty>> : Sum<<`ty,Meta,Meta>> * varin -> `out
+  abstract FoldMeta<<`ty>> : Prod<<`ty,Meta,Meta>> * varin -> `out
+  abstract FoldMeta<<`ty,`a>> : K<<`ty,`a>> * varin -> `out
+  abstract FoldMeta : Id<<`t>> * varin -> `out
+  abstract FoldMeta<<`ty>> : U<<`ty>> * varin -> `out
 \end{code}
 \end{tcolorbox}
 \end{centering}
