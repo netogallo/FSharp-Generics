@@ -144,7 +144,7 @@
 
 \begin{abstract}
   Datatype generic programming enable programmers to define functions
-  by induction over the structure of types on which they operate. This
+  by induction over the structure of types on which these functions operate. This
   paper presents a library for datatype generic programming in F\#,
   built on top of the .NET reflection mechanism. The generic functions
   defined using this library can be called by any other language
@@ -158,8 +158,12 @@ datatype generic programming, reflection, F\#
 
 \section{Introduction}
 
+\wouter{How about only using the grey background for Haskell
+  fragments? That way it will still look good when printed
+  black-and-white}
+
 Over the last decade, datatype generic programming has emerged as an
-powerful mechanism for defining families of functions. In Haskell
+powerful mechanism for exploiting \emph{type structure} to define families of functions. In Haskell
 alone, there are numerous tools and libraries for datatype generic
 programming, including PolyP~\cite{polyp}, Generic
 Haskell~\cite{GenericHaskell}, Scrap your boilerplate~\cite{SYB},
@@ -200,7 +204,10 @@ specifically, we make the following contributions:
 
 \item Next, we show how generic functions may be defined over this
   representation type (Section~\ref{sec:generic-functions}). As an
-  example, we will implement a generic map function.
+  example, we will implement a generic map function. Instead of recursing
+  over the representation type directly, we develop several 
+  auxiliary functions to hide the usage of .NET reflection and 
+  facilitate the definition of generic functions.
 
 \item Where many Haskell libraries use type classes to implement
   type-based dispatch, F\#'s overloading mechanism is too limited for
@@ -208,11 +215,13 @@ specifically, we make the following contributions:
   ad-hoc polymorphism using the .NET reflection mechanism
   (Section~\ref{sec:foldmeta})
 
-\item The tool typically used in F\# to implement polytipic
-  functions~\cite{polyp} generically is reflection. However,
-  reflection imposes a lot of programming overhead and is error
-  prone. We provide an alternative method to implement polytipic
-  functions with less overhead.
+% Wouter -- I'm commenting this out for now. I think these points are already covered -- 
+% or am I missing something?
+% \item The tool typically used in F\# to implement polytipic
+%   functions~\cite{polyp} generically is reflection. However,
+%   reflection imposes a lot of programming overhead and is error
+%   prone. We provide an alternative method to implement polytipic
+%   functions with less overhead.
 
 \item Finally, we will show how functions from other Haskell
   libraries, such as Uniplate, may be readily implemented using the
@@ -234,9 +243,8 @@ datatype generic programming~\cite{SYB}, we will define a company type
 and a function called |IncreaseSalary|. The function increases the
 salary of every employee in the company. Our example is different
 since our library doesn't support mutually recursive data types and we
-intend to present all type declarations allowed in F\#.  Along the
-way, we will introduce the the syntax and relevant concepts from F\#
-and .NET. We will provide an alternative definition of
+will use this example to illustrate the different type declarations allowed in F\#.
+We will provide an alternative definition of
 |IncreaseSalary| using our library for generic programming in the
 second half of this paper.
 
@@ -249,11 +257,15 @@ F\# designers have adopted numerous features from languages such as
 Haskell or OCaml, without sacrificing the ability to interface well
 with other .NET languages.  As a result, the language has a much
 simpler type system than the type system of Haskell, OCaml or Scala.
-F\# performs no type erasure when compiled to the .NET platform.
+For instance, F\# performs no type erasure when compiled to the .NET platform.
 
 Before we can define the |IncreaseSalary| function, we will define the
 types on which it operates:
 
+\todo{Usually, I try to not have code 'spill over' to the next
+  page/column -- or at least, not break in the middle of a
+  definition. You may want to consider tweaking the formatting/exact
+  code placement to avoid this.}
 \begin{fsharp}\begin{code}
 AbstractClass
 type Employee() = class
@@ -308,9 +320,8 @@ which they are invoked as an argument, as witnessed by the |self|
 identifier before a member function's definition.
 
 These data declarations also use polymorphic types and type
-constraints. Polymorphic types define datatypes parametrized by a type
-argument.  In this case |Company|, |Department| and
-|Staff| accept a single type as argument. In our example, the
+constraints. In our example, |Company|, |Department| and
+|Staff| are all types parametrized by a single type as argument. These
 type arguments have a type constraint, stating that they must be a
 subtype of the |Employee| class. The type constraints are
 declared using the |when| keyword.
@@ -368,8 +379,8 @@ is passed by reference in the |UpdateEmployee| function. The argument
 function we pass to |UpdateEmployee| mutates the object's |Salary|
 property directly and subsequently returns the argument object.
 
-In the later sections we will show how the |UpdateEmployee| function
-may also be defined in terms of a generic map, implemented with our
+In the later sections, the |UpdateEmployee| function will be
+defined in terms of a generic map, that is implemented with our
 library.  Before doing so, we will give a brief overview of some of
 the relevant features of the .NET platform.
 
@@ -381,7 +392,7 @@ such as casting, are handled by the .NET platform.
 
 \paragraph{Subtyping}
 
-The .NET platform defines a subtyping relation which is the one used
+The .NET platform defines the subtyping relation that is used
 by F\#. We write $\tau_a \prec \tau_b$ to denote that $\tau_a$ is a
 subtype of $\tau_b$. In F\#, such subtyping constraints can be
 specified in a type by writing |varta ::> vartb|.
@@ -401,7 +412,7 @@ As in most object oriented languages, the .NET subtyping mechanism
 allows values to be cast implicitly to any super-type.  The F\#
 language uses the keyword |inherit| to denote that a type inherits
 from another type.  The subtyping relation does not extend
-automatically to polymorphic types: that is, the implication $\tau_a \prec
+automatically to parametrized types: that is, the implication $\tau_a \prec
 \tau_b\ \Rightarrow\ \mathtt{T}\langle\tau_a\rangle \; \prec \;
 \mathtt{T}\langle\tau_b\rangle$ does not hold in general.
 
@@ -556,7 +567,7 @@ subclasses of the |Meta| class are parametrized by at least one
 type that a value of type |Meta| is used to represent.
 
 The first subclass of |Meta| is |Sum|, that represents the sum of two
-types.  Besides the type argument |`ty|, the |Sum| takes two
+types.  Besides the type argument |`ty|, the |Sum| type constructor takes two
 additional type arguments: |`a| and |`b|. The |Sum| class stores a single
 piece of data, namely a value |elem| of type |Choice<<`a,`b>>|.
 The |Choice| type in F\# is
@@ -575,8 +586,8 @@ which takes no extra type arguments.
 Next, the subclass |K| of |Meta| is used to represent types not
 defined as algebraic datatypes. This can be used to represent primitive
 types, such as |int| or |float|. The |K| constructor takes one extra
-type argument: |vara|. This argument corresponds to the type of its
-content. Since F\# cannot statically constrain a type to be an
+type argument: |vara|, corresponding to the type of the value it stores. 
+Since F\# cannot statically constrain a type to be an
 algebraic datatype or not, |vara| has no constraints.
 
 Finally, |Id| is the last subclass of |Meta|. This type is used to
@@ -633,8 +644,10 @@ types.
 
 The representations are used as a universal interface to implement
 algorithms that work on a family of types. It is important to perform
-the conversion between types and their representations automatically
-since that makes the library convenient to use. Haskell libraries
+the conversion between types and their representations automatically, otherwise
+the cost of using a library for generic programming may exceed writing 
+instances of generic functions by hand.
+Haskell libraries
 usually use Template Haskell~\cite{Sheard02templatemeta-programming}
 to generate these conversions. Some Haskell compilers even have a
 built-in mechanism~\cite{GenericDeriving} for these conversions. The
@@ -759,7 +772,7 @@ quantified type variable corresponding to the specific type of each
 method.
 
 By overriding the |FoldMeta| methods in the concrete |GMap| class, we
-will define the desired map operation. The |FoldMeta| class and its
+define the desired map operation. The |FoldMeta| class and its
 member functions will be explained in detail in Section
 \ref{sec:foldmeta}; for the moment, we will restrict ourselves to the
 methods that we override in the |GMap| class. The first method we
@@ -1126,15 +1139,16 @@ let uniplate<<vart>> (x : vart) =
 
 \section{Limitations of the |FoldMeta| class}
 \label{sec:better-meta}
-The |FoldMeta| class intends to provide a generic interface that
-abstract away the use of reflection in order to traverse and construct
-values of many types generically. It is more restrictive than
-Haskell's type system in the class of functions that it can define. A
-very obvious example of such restrictions is generic equality since it
+The |FoldMeta| class provides a generic interface that
+abstract away the use of reflection to traverse and construct
+values of many types generically. Requiring generic functions to be defined
+using the |FoldMeta| class is more restrictive than
+the approach that many Haskell libraries use. For example, it is 
+not obvious how to define a generic equality function, since that
 requires induction on two values instead of one.
 
 Variants of the |FoldMeta| class that perform induction over more than
-one value are possible. It is only necessary that all cases for one
+one value are possible. We only need to ensure that all cases for one
 argument are covered to ensure that pattern matching is
 exahustive. For example, we can extend |FoldMeta| as:
 \begin{fsharp}\begin{code}
@@ -1166,9 +1180,8 @@ member FoldMeta<<`ty>>
 \end{code}\end{fsharp}
 If |FoldMeta| were invoked with both arguments being |Sum| then this
 overload would get called. If the second argument is not |Sum| then the
-overload accepting a |Meta| would be invoked. This way it is possible
-increase the class of generic functions definable by our library
-although Haskell's type system will always be more expressive.
+overload accepting a |Meta| would be invoked. In this way, it is possible
+increase the class of generic functions definable by our library.
 
 Another limitation of the current implementation is that all the
 overloads of |FoldMeta| must return a value of the same type. More
@@ -1246,14 +1259,14 @@ type FoldMeta<<
   and `u : (member Cast : unit -> `m)
   >>
 \end{code}\end{fsharp}
-A member constraint imposes the requirement that a member function of
+These member constraints impose the requirement that a member function of
 the specified type is present in the type that instantiates the
 variable. This way the dispatcher |FoldMeta| member can safely cast
 the result into type |`m| by calling the |Cast| method of the given
 value. Although this approach may work in principle, it highlights
 some of the limitations of F\# that we have encountered.
 
-There are a few cases where our usage subtyping and the |FoldMeta|
+There are a few cases where our usage of subtyping and the |FoldMeta|
 class has certain advantages compared to many Haskell
 libraries. Suppose we want to define an alternative version of the
 |GMap| function, |ShallowGMap|, that does not traverse recursive
@@ -1278,9 +1291,9 @@ function in the same namespace.
 
 This paper aims to explore the possibility of using of datatype
 generic programming in F\#. To do so, we had to adapt the existing
-approaches to better match F\#'s type system. We also substituted some
+approaches to match F\#'s type system. We also substituted some
 type level computations performed by the Haskell compiler with
-reflection. In the remainder of this section, we will reflect about
+reflection. In the remainder of this section, we will look back on
 our library and the limitations of F\#.
 
 First of all, due to the use of reflection, our representation types
@@ -1300,10 +1313,9 @@ reflection. The expresiveness of the library is limited by the fact
 that the programmer must use the |FoldMeta| class as the interface to
 define generic functions. This is done to ensure complete
 definitions. It is possible to provide variants of |FoldMeta| to
-increase expressiveness but this will clutter the library with
-definitions and its expressiveness will never be on par to that of
-Regular. An alternative would be to allow the programmer to provide
-its own definitions of the |FoldMeta| class. This could be achieved by
+increase expressiveness, but this clutters the library with
+definitions. An alternative would be to allow the programmers to provide
+their own definitions of the |FoldMeta| class. This could be achieved by
 requiring that the programmer annotates the definition with as special
 pragma. Then the compiled F\# assemblies can be checked
 post-compilation for consistency using reflection since all the type
@@ -1357,17 +1369,18 @@ but the compiler can typecheck the correctness of the definition. The
 approach also enjoys the extensibility advantages present in our
 library.
 
-Polytipic functions are difficult to implement in F\#. Programmers
-usually define the same function multiple times or use reflection when
-multiple definitions are not feasible. We show that the ideas of
-datatype generic programming can be used to implement some polytipic
-functions in a simpler way. We use reflection to implement the library
-and show that .NET's implementation of reflection is very robust and
-can be used to achieve good results -- especially since compiled code
-can be dynamically loaded in a post compilation stage. However, work
-typically done by the type system of Haskell must be implemented
-manually via reflection; yet the user of the library does not need to
-know about the implementation.
+% Wouter: I'm removing this paragraph as I feel it doesn't add much...
+% Polytipic functions are difficult to implement in F\#. Programmers
+% usually define the same function multiple times or use reflection when
+% multiple definitions are not feasible. We show that the ideas of
+% datatype generic programming can be used to implement some polytipic
+% functions in a simpler way. We use reflection to implement the library
+% and show that .NET's implementation of reflection is very robust and
+% can be used to achieve good results -- especially since compiled code
+% can be dynamically loaded in a post compilation stage. However, work
+% typically done by the type system of Haskell must be implemented
+% manually via reflection; yet the user of the library does not need to
+% know about the implementation.
 
 The idea of datatype generic programming is now almost twenty years
 old~\cite{polyp, backhouse}. Yet the approach has not been widely
@@ -1547,8 +1560,7 @@ that road.
 
 
 \acks We would like to thank the Software Technology Reading Club of
-the University of Utrecht for their helpful feedback on a draft
-version of this paper.
+the University of Utrecht and our reviewers for their helpful feedback.
 
 \bibliographystyle{abbrvnat}
 \bibliography{references}
