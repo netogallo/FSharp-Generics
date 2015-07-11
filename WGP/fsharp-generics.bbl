@@ -1,4 +1,4 @@
-\begin{thebibliography}{18}
+\begin{thebibliography}{19}
 \providecommand{\natexlab}[1]{#1}
 \providecommand{\url}[1]{\texttt{#1}}
 \expandafter\ifx\csname urlstyle\endcsname\relax
@@ -11,6 +11,27 @@ R.~Backhouse, P.~Jansson, J.~Jeuring, and L.~Meertens.
 \newblock Generic programming.
 \newblock In \emph{Advanced Functional Programming}, pages 28--115. Springer,
   1999.
+
+\bibitem[d.~S.~Oliveira and Gibbons(2010)]{scala-jfp}
+B.~C. d.~S.~Oliveira and J.~Gibbons.
+\newblock Scala for generic programmers.
+\newblock \emph{Journal of Functional Programming}, 20\penalty0 (3,4):\penalty0
+  303--352, 2010.
+\newblock \doi{10.1017/S0956796810000171}.
+\newblock URL \url{http://www.comlab.ox.ac.uk/ jeremy.gibbons/ publications/
+  scalagp-jfp.pdf}.
+\newblock Revised version of the WGP2008 paper.
+
+\bibitem[Granicz(2015)]{websharper}
+A.~Granicz.
+\newblock Functional web and mobile development in f\#.
+\newblock In V.~Zsók, Z.~Horváth, and L.~Csató, editors, \emph{Central
+  European Functional Programming School}, volume 8606 of \emph{Lecture Notes
+  in Computer Science}, pages 381--406. Springer International Publishing,
+  2015.
+\newblock ISBN 978-3-319-15939-3.
+\newblock \doi{10.1007/978-3-319-15940-9_9}.
+\newblock URL \url{http://dx.doi.org/10.1007/978-3-319-15940-9\_9}.
 
 \bibitem[Hinze and Jeuring(2003)]{GenericHaskell}
 R.~Hinze and J.~Jeuring.
@@ -70,15 +91,6 @@ T.~V. Noort, A.~Rodriguez, S.~Holdermans, J.~Jeuring, and B.~Heeren.
 \newblock In \emph{International Conference on Functional Programming}, pages
   13--24, 2008.
 \newblock \doi{10.1145/1411318.1411321}.
-
-\bibitem[Oliveira and Gibbons(2008)]{ScalaGen}
-B.~C. Oliveira and J.~Gibbons.
-\newblock Scala for generic programmers.
-\newblock In \emph{Proceedings of the ACM SIGPLAN Workshop on Generic
-  Programming}, WGP '08, pages 25--36, New York, NY, USA, 2008. ACM.
-\newblock ISBN 978-1-60558-060-9.
-\newblock \doi{10.1145/1411318.1411323}.
-\newblock URL \url{http://doi.acm.org/10.1145/1411318.1411323}.
 
 \bibitem[Rodriguez(2015)]{FSharp-Generics-Repo}
 E.~Rodriguez.
