@@ -258,10 +258,6 @@ For instance, F\# performs no type erasure when compiled to the .NET platform.
 Before we can define the |IncreaseSalary| function, we will define the
 types on which it operates:
 
-\todo{Usually, I try to not have code 'spill over' to the next
-  page/column -- or at least, not break in the middle of a
-  definition. You may want to consider tweaking the formatting/exact
-  code placement to avoid this.}
 \begin{code}
 AbstractClass
 type Employee() = class
@@ -290,8 +286,6 @@ type GuatemalanEmployee(salary' : int) =
     let mutable salary = salary'
     override self.Salary  
       with get() = salary
-\end{code}
-\begin{code}
       and  set(value) = salary <- value
     override self.NetSalary 
       with get() = self.Salary / 1.12
@@ -342,8 +336,6 @@ type generic(Department)(t) with
   member self.UpdateEmployee(f) =
     match self.with
     | Tech of meta,staff -> 
-\end{code}
-\begin{code}
         Tech (meta,staff.UpdateEmployee f)
     | HR of meta,staff -> 
         HR (meta,staff.UpdateEmployee f)
@@ -850,8 +842,6 @@ member x.FoldMeta<<`a>>(
   u : K<<`x,`a>>,f : `x->`x) = mapper f u
 member x.FoldMeta(
   p : Prod<<`x,Meta,Meta>>,f : `x->`x) = mapper f p
-\end{code}
-\begin{code}
 member x.FoldMeta(
   s : Sum<<`x,Meta,Meta>>,f : `x->`x) = mapper f s
 \end{code}
@@ -1066,8 +1056,6 @@ making two recursive calls to construct a new |Meta| value:
     | Choice1Of2 m -> Sum<<`ty,Meta,Meta>>(
       self.FoldMeta m |> Choice1Of2)
     | Choice2Of2 m -> Sum<<`ty,Meta,Meta>>(
-\end{code}
-\begin{code}
       self.FoldMeta m |> Choice2Of2)
     :> Meta
 \end{code}
@@ -1120,8 +1108,6 @@ AbstractClass
 type FoldMeta<<`t,`out>>() =
 abstract FoldMeta 
   : Meta * Meta -> `out
-\end{code}
-\begin{code}
 abstract FoldMeta<<`ty>> 
   : Sum<<`ty,Meta,Meta>> * Meta -> `out
 abstract FoldMeta<<`ty>> 
@@ -1218,8 +1204,6 @@ type FoldMeta<<
   and `p : (member Cast : unit -> `m)
   and `i : (member Cast : unit -> `m)
   and `k : (member Cast : unit -> `m)
-\end{code}
-\begin{code}
   and `u : (member Cast : unit -> `m)
   >>
 \end{code}
