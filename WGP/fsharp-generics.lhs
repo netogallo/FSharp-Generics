@@ -143,12 +143,12 @@
 \maketitle
 
 \begin{abstract}
-  Datatype generic programming enable programmers to define functions
-  by induction over the structure of types on which these functions operate. This
-  paper presents a library for datatype generic programming in F\#,
-  built on top of the .NET reflection mechanism. The generic functions
-  defined using this library can be called by any other language
-  running on the .NET platform.
+  Datatype generic programming enables programmers to define functions
+  by induction over the structure of types on which these functions
+  operate. This paper presents a library for datatype generic
+  programming in F\#, built on top of the .NET reflection
+  mechanism. The generic functions defined using this library can be
+  called by any other language running on the .NET platform.
 \end{abstract}
 
 \category{D.1.1}{Applicative (Functional) Programming}{}
@@ -243,8 +243,8 @@ datatype generic programming~\cite{SYB}, we will define a company type
 and a function called |IncreaseSalary|. The function increases the
 salary of every employee in the company. Our example is different
 since our library doesn't support mutually recursive data types and we
-will use this example to illustrate the different type declarations allowed in F\#.
-We will provide an alternative definition of
+will use this example to present the different type declarations
+allowed in F\#.  We will provide an alternative definition of
 |IncreaseSalary| using our library for generic programming in the
 second half of this paper.
 
@@ -442,7 +442,7 @@ serializer, and Nancy~\cite{Nancy}, a .NET web framework.
 
 Code written using reflection is usually cluttered with method calls
 that execute .NET internal routines but have no relevance in the logic
-of the algorithm they implement. This makes it very inconvenient to
+of the algorithm it implements. This makes it very inconvenient to
 use in ordinary code. It also leads to code that is hard to maintain
 since its use requires good understanding of .NET's internals.
 
@@ -1129,7 +1129,7 @@ handles the conversions to our type representation:
 let uniplate<<vart>> (x : vart) =
   let g = Generic<<vart>>()
   let rep = g.To x
-  let xs = rep |> Collect().FoldMeta
+  let xs = rep |> Collect<<`t>>().FoldMeta
   let inst xs = 
     xs |> Instantiate<<vart>>(xs').FoldMeta<<vart>>
     |> g.From
@@ -1148,7 +1148,7 @@ not obvious how to define a generic equality function, since that
 requires induction on two values instead of one.
 
 Variants of the |FoldMeta| class that perform induction over more than
-one value are possible. We only need to ensure that all cases for one
+one value are possible. We only need to enforce that all cases for one
 argument are covered to ensure that pattern matching is
 exahustive. For example, we can extend |FoldMeta| as:
 \begin{fsharp}\begin{code}
@@ -1246,7 +1246,7 @@ type FoldMeta<<
 Unfortunately, type constraints in F\# can only be used to enforce
 that a type must be a subclass of a \emph{concrete} type, not a type
 variable. One alternative is to make the subtyping relation explicit
-with the help of member constraints :
+with the help of member constraints:
 \begin{fsharp}\begin{code}
 type FoldMeta<<
   -- [...]
@@ -1314,14 +1314,14 @@ that the programmer must use the |FoldMeta| class as the interface to
 define generic functions. This is done to ensure complete
 definitions. It is possible to provide variants of |FoldMeta| to
 increase expressiveness, but this clutters the library with
-definitions. An alternative would be to allow the programmers to provide
-their own definitions of the |FoldMeta| class. This could be achieved by
-requiring that the programmer annotates the definition with as special
-pragma. Then the compiled F\# assemblies can be checked
-post-compilation for consistency using reflection since all the type
-information is still present after compilation and the compiled
-assemblies can be dynamically loaded. This technique is used by
-Websharper~\cite{websharper} to compile F\# into Javascript.
+definitions. An alternative would be to allow the programmers to
+provide their own definitions of the |FoldMeta| class. This could be
+achieved by requiring that the programmer annotates the definition
+with a special pragma. Then the compiled F\# assemblies can be
+checked post-compilation for consistency using reflection since all
+the type information is still present after compilation and the
+compiled assemblies can be dynamically loaded. This technique is used
+by Websharper~\cite{websharper} to compile F\# into Javascript.
 
 
 %% Although reflection is a very powerful
