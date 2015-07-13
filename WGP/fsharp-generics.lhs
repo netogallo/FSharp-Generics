@@ -339,7 +339,9 @@ type generic(Department)(t) with
         Tech (meta,staff.UpdateEmployee f)
     | HR of meta,staff -> 
         HR (meta,staff.UpdateEmployee f)
-
+\end{code}
+\pagebreak
+\begin{code}
 type generic(Company)(t) with
   member self.UpdateEmployee(f) =
     match self.with
@@ -764,7 +766,7 @@ results of the recursive call. Lastly, it casts the result back to the
 type |Meta|. The recursive calls of |FoldMeta| happen through the
 member function |FoldMeta : Meta * varin -> `out| of the |FoldMeta|
 class. We defer its description to section \ref{sec:foldmeta}.
-
+\pagebreak
 The next definition handles products:
 \begin{code}
 override x.FoldMeta<<`ty>>
@@ -797,7 +799,7 @@ constructor returns the value of type |`x|, which we pass to |f|,
 before casting the result back to a value of type |Meta|. The second
 definition overrides the required |FoldMeta| member function on |K|;
 this definition leaves the underlying value untouched.
-
+\pagebreak
 The case for the |Id| constructor is a bit more involved: 
 \begin{code}
 override x.FoldMeta(v : Id<<`t>>,f : `x -> `x) =
@@ -849,7 +851,7 @@ All of these member functions behave similarly: they convert the
 generic representation back to a value of type |`x|, apply the
 function |f|, and convert the result back to its corresponding
 representation of type |Meta|.
-
+\pagebreak
 Now we can use the |GMap :> FoldMeta| class to define the
 following |gmap| function:
 \begin{code}
@@ -896,7 +898,6 @@ K Int|.  The chosen overload depends on the types at the \emph{call
 We could try adopting a similar approach in F\#, by defining the
 following member functions:
 \begin{code}
-
 member x.FoldMeta<<`ty,`a,`b>>(
   s : Sum<<`ty,`a,`b>>, f : int -> int) =
   match s.Elem with
@@ -906,7 +907,9 @@ member x.FoldMeta<<`ty,`a,`b>>(
   | Choice2Of2 b ->
     Sum<<`ty,`a,`b>>(
       x.FoldMeta(b,f) |> Choice1Of2)
-
+\end{code}
+\pagebreak
+\begin{code}
 member x.FoldMeta<<`ty>>(
   k : K<<`ty,int>>,f : int -> int) = (K (f k.Elem))
 
@@ -1017,6 +1020,7 @@ The second generic function we define is |Instantiate|, that
 reconstructs the value of an algebraic datatype when passed the list
 of child nodes. We will store this list in a local, mutable variable
 |value|, to which each of the instance definitions below may refer.
+\pagebreak
 \begin{code}
 
 type Instantiate<<vart>>(values` : vart list) =
@@ -1183,6 +1187,7 @@ can be solved by enforcing that all overloads return values which are
 a subtype of some other type, in this case |`m|, so the dispatcher can
 safely cast the result to this type. This can be enforced with
 additional type constraints:
+\pagebreak
 \begin{code}
 type FoldMeta<<
   -- [...]
