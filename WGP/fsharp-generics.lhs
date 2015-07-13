@@ -93,7 +93,7 @@
       right=0pt,
       top=0pt,
       bottom=0pt,
-      colback=yellow!20,
+      colback=gray!10,
       colframe=white,
       width=8.5cm,
       enlarge left by=0mm,
@@ -157,10 +157,6 @@
 datatype generic programming, reflection, F\#
 
 \section{Introduction}
-
-\wouter{How about only using the grey background for Haskell
-  fragments? That way it will still look good when printed
-  black-and-white}
 
 Over the last decade, datatype generic programming has emerged as an
 powerful mechanism for exploiting \emph{type structure} to define families of functions. In Haskell
@@ -266,7 +262,7 @@ types on which it operates:
   page/column -- or at least, not break in the middle of a
   definition. You may want to consider tweaking the formatting/exact
   code placement to avoid this.}
-\begin{fsharp}\begin{code}
+\begin{code}
 AbstractClass
 type Employee() = class
     abstract Salary : float with get and set
@@ -294,13 +290,13 @@ type GuatemalanEmployee(salary' : int) =
     let mutable salary = salary'
     override self.Salary  
       with get() = salary
-\end{code}\end{fsharp}
-\begin{fsharp}\begin{code}
+\end{code}
+\begin{code}
       and  set(value) = salary <- value
     override self.NetSalary 
       with get() = self.Salary / 1.12
   end
-\end{code}\end{fsharp}
+\end{code}
 This example demonstrates the different type declarations that F\#
 supports.  Besides records, such as |Metadata|, F\# supports algebraic
 datatypes (ADTs) that should be familiar to functional
@@ -335,7 +331,7 @@ Next, we implement the |IncreaseSalary| function. To do so, we will
 begin by defining an auxiliary function called |UpdateEmployee| that
 applies its argument function to every |Employee| of the company:
 
-\begin{fsharp}\begin{code}
+\begin{code}
 type generic(Staff)(t) with
   member self.UpdateEmployee(f) = 
     match self.with
@@ -346,8 +342,8 @@ type generic(Department)(t) with
   member self.UpdateEmployee(f) =
     match self.with
     | Tech of meta,staff -> 
-\end{code}\end{fsharp}
-\begin{fsharp}\begin{code}
+\end{code}
+\begin{code}
         Tech (meta,staff.UpdateEmployee f)
     | HR of meta,staff -> 
         HR (meta,staff.UpdateEmployee f)
@@ -360,7 +356,7 @@ type generic(Company)(t) with
         Member(
           d.UpdateEmployee f, 
           c.UpdateEmployee f)
-\end{code}\end{fsharp}
+\end{code}
 Here we have chosen to \emph{overload} the |UpdateEmployee| function,
 allowing a function with the same name to be defined for different
 types. To overload functions in F\#, they must be defined as a member
@@ -368,12 +364,12 @@ function. Member functions may be defined post-hoc, i.e., after the
 type has been defined.
 
 Using |UpdateEmployee|,  the |IncreaseSalary| function can be defined as follows:
-\begin{fsharp}\begin{code}
+\begin{code}
 type generic(Company)(t) with
   member self.IncreaseSalary(v) =
     self.UpdateEmpolyee (
       fun e -> e.Salary <- e.Salary + v;e)
-\end{code}\end{fsharp}
+\end{code}
 Note that because we have defined the |Employee| type as a class, it
 is passed by reference in the |UpdateEmployee| function. The argument
 function we pass to |UpdateEmployee| mutates the object's |Salary|
@@ -451,21 +447,6 @@ since its use requires good understanding of .NET's internals.
 
 \begin{figure*}
 \centering
-\tcbset{
-      frame code={}
-      center title,
-      left=0pt,
-      right=0pt,
-      top=0pt,
-      bottom=0pt,
-      colback=gray!10,
-      colframe=white,
-      width=18cm,
-      enlarge left by=0mm,
-      boxsep=0pt,
-      arc=0pt,outer arc=0pt,
-    }
-\begin{tcolorbox}
 \begin{subfigure}[t]{0.3\textwidth}
 \begin{code} 
 AbstractClass
@@ -525,7 +506,6 @@ type Prod<<`ty,vara,varb
   end
 \end{code}
 \end{subfigure}
-\end{tcolorbox}
 \caption{Definition in F\# of all the types used to build type representations.}
 \label{fig:rep-def}
 \end{figure*}
@@ -604,14 +584,14 @@ code~\cite{FSharp-Generics-Repo}.
 
 We conclude this section with an example of our type
 representation. Given the following ADT in F\#:
-\begin{fsharp}\begin{code}
+\begin{code}
 type Elems = Cons of int*Elems
                    | Val of int
                    | Nil 
-\end{code}\end{fsharp}
+\end{code}
 We can represent this type as a subtype of the |Meta| class as
 follows:
-\begin{fsharp}\begin{code}
+\begin{code}
 type ElemsRep = 
   Sum<<
     Elems,
@@ -624,7 +604,7 @@ type ElemsRep =
         Prod<<K << Elems>>,int >>, U<< Elems>> >> >>,
         U<<Elems>> >> >>,
     U<<Elems>> >> >>
-\end{code}\end{fsharp}
+\end{code}
 
 This example shows how nested |Sum| types are used to represent the
 three type constructors of the |Elems| type. We show how constructors
@@ -668,11 +648,11 @@ obtain type information at runtime which is used to
 traverse the |Type| value and generate the necessary conversion
 functions. This functionality is implemented by the |Generic<<`t>>|
 class with the following members:
-\begin{fsharp}\begin{code}
+\begin{code}
 type Generic<<`t>>() =
   member x.To : vart -> Meta
   member x.From : Meta -> vart
-\end{code}\end{fsharp}
+\end{code}
 Note that these conversions are generated \emph{dynamically}, in
 contrast to most Haskell approaches to generic
 programming. Intermediate results of this conversion can be cached to
@@ -682,22 +662,7 @@ reduce the performance penalty.
 \label{sec:generic-functions}
 
 \begin{figure*}
-\tcbset{
-      frame code={}
-      center title,
-      left=0pt,
-      right=0pt,
-      top=0pt,
-      bottom=0pt,
-      colback=gray!10,
-      colframe=white,
-      width=10cm,
-      enlarge left by=0mm,
-      boxsep=0pt,
-      arc=0pt,outer arc=0pt,
-    }
 \begin{centering}
-\begin{tcolorbox}
 \begin{code}
 AbstractClass
 type FoldMeta<<`t,varin,`out>>() =
@@ -709,7 +674,6 @@ type FoldMeta<<`t,varin,`out>>() =
   abstract FoldMeta : Id<<`t>> * varin -> `out
   abstract FoldMeta<<`ty>> : U<<`ty>> * varin -> `out
 \end{code}
-\end{tcolorbox}
 \end{centering}
 \caption{Definition of the |Meta| abstract class for 
   generic functions taking one argument.}
@@ -731,7 +695,7 @@ generic function in our library is implemented as a subclass of the
 minimal implementation required to define a generic function. Its
 definition is given in Figure \ref{fig:def-meta}.
 
-\begin{fsharp}\begin{code}
+\begin{code}
 type GMap<<`t,`x>>() = 
   class 
   inherit FoldMeta<<
@@ -740,7 +704,7 @@ type GMap<<`t,`x>>() =
     Meta>>()
   -- [...] Implementation [...]
   end
-\end{code}\end{fsharp}
+\end{code}
 The |FoldMeta| class is parametrized by three type
 arguments: |`t| which is the type on which the generic functions are
 invoked, |varin| which is the input type of the function, |`x->`x| in
@@ -777,7 +741,7 @@ member functions will be explained in detail in Section
 \ref{sec:foldmeta}; for the moment, we will restrict ourselves to the
 methods that we override in the |GMap| class. The first method we
 override handles the |Sum| type constructor:
-\begin{fsharp}\begin{code}
+\begin{code}
 override self.FoldMeta<<`ty>>
   (v : Sum<<`ty,Meta,Meta>>
   ,f : `x -> `x) =
@@ -789,7 +753,7 @@ override self.FoldMeta<<`ty>>
       Sum<<`ty,Meta,Meta>>(
       self.FoldMeta(m,f) |> Choice2Of2)
     :> Meta
-\end{code}\end{fsharp}
+\end{code}
 This example uses the following F\# specific constructs:
 \begin{itemize}
 \item the the pipeline operator ($\!\!\!\!$ | ||> | $\!\!\!\!$) which
@@ -810,7 +774,7 @@ member function |FoldMeta : Meta * varin -> `out| of the |FoldMeta|
 class. We defer its description to section \ref{sec:foldmeta}.
 
 The next definition handles products:
-\begin{fsharp}\begin{code}
+\begin{code}
 override x.FoldMeta<<`ty>>
   (v : Prod<<`ty,Meta,Meta>>
   ,f : `x -> `x) =
@@ -818,7 +782,7 @@ override x.FoldMeta<<`ty>>
       x.FoldMeta(v.E1,f),
       x.FoldMeta(v.E2,f))
     :> Meta
-\end{code}\end{fsharp}
+\end{code}
 The type |Prod| contains the properties |E1| and |E2| which store the
 two constituent elements of the product. Once again, we recursively
 invoke |FoldMeta| on these values, reassemble the result and cast it
@@ -826,7 +790,7 @@ back to the type |Meta|. The definition for unit types, |U|, is
 similarly unremarkable.
 
 We define two cases to handle the |K| type constructor:
-\begin{fsharp}\begin{code}
+\begin{code}
 member x.FoldMeta<<`ty>>(
   v : K<<`ty,`x>>, f : `x->`x) = 
   K(f v.Elem) :> Meta
@@ -834,7 +798,7 @@ member x.FoldMeta<<`ty>>(
 override x.FoldMeta<<`ty,`a>>(k : K<<`ty,`a>>
                          ,f : `x -> `x) = k :> Meta
 
-\end{code}\end{fsharp}
+\end{code}
 The first definition defines a new member function. It applies the
 function |f| to a value of type |`x|. The property |Elem| of the |K|
 constructor returns the value of type |`x|, which we pass to |f|,
@@ -843,13 +807,13 @@ definition overrides the required |FoldMeta| member function on |K|;
 this definition leaves the underlying value untouched.
 
 The case for the |Id| constructor is a bit more involved: 
-\begin{fsharp}\begin{code}
+\begin{code}
 override x.FoldMeta(v : Id<<`t>>,f : `x -> `x) =
     let g = Generic<<`t>>()
     Id<<`t>>(x.FoldMeta(
       g.To c.Elem,f) |> g.From)
     :> Meta
-\end{code}\end{fsharp}
+\end{code}
 The |Id| case of the abstract |FoldMeta| member instantiates the |`ty|
 argument of the |Id| constructor to |`t|. This means that the |Id|
 case only needs to be specified for the type |`t|, the type to which
@@ -876,7 +840,7 @@ type. Recall that in our declaration of |GMap|, we stated that the
 argument |f| has type |`x -> `x|. Each of the new member functions
 will specifically work on representations of the type |`x|, that is,
 the type of values being transformed using the |GMap| function:
-\begin{fsharp}\begin{code}
+\begin{code}
 let mapper (f : `x->`x) (v : Meta) =
   let g = Generic<<`x>>()
   v |> g.From |> f |> g.To
@@ -886,11 +850,11 @@ member x.FoldMeta<<`a>>(
   u : K<<`x,`a>>,f : `x->`x) = mapper f u
 member x.FoldMeta(
   p : Prod<<`x,Meta,Meta>>,f : `x->`x) = mapper f p
-\end{code}\end{fsharp}
-\begin{fsharp}\begin{code}
+\end{code}
+\begin{code}
 member x.FoldMeta(
   s : Sum<<`x,Meta,Meta>>,f : `x->`x) = mapper f s
-\end{code}\end{fsharp}
+\end{code}
 All of these member functions behave similarly: they convert the
 generic representation back to a value of type |`x|, apply the
 function |f|, and convert the result back to its corresponding
@@ -898,12 +862,12 @@ representation of type |Meta|.
 
 Now we can use the |GMap :> FoldMeta| class to define the
 following |gmap| function:
-\begin{fsharp}\begin{code}
+\begin{code}
 member x.gmap(x : vart,f : `x -> `x) =
     let gen = Generic<<`x>>()
     x.FoldMeta(gen.To x,f)
     |> gen.From
-\end{code}\end{fsharp}
+\end{code}
 Calling this function, requires dispatching on the representation
 type, which is handled by the |FoldMeta| and its member function. An
 instance of |GMap| with | <<`t>> | set to |Company| and | <<`x>> | set
@@ -941,7 +905,7 @@ K Int|.  The chosen overload depends on the types at the \emph{call
 
 We could try adopting a similar approach in F\#, by defining the
 following member functions:
-\begin{fsharp}\begin{code}
+\begin{code}
 
 member x.FoldMeta<<`ty,`a,`b>>(
   s : Sum<<`ty,`a,`b>>, f : int -> int) =
@@ -958,7 +922,7 @@ member x.FoldMeta<<`ty>>(
 
 member x.FoldMeta<<`ty>>(
   u : U<<`ty>>,f : int -> int) = u
-\end{code}\end{fsharp}
+\end{code}
 However, this code is rejected by the F\# compiler. At the definition
 site of the |Sum| case of |FoldMeta|, it is still unclear how to
 resolve the recursive calls to specific overloads. The F\# compiler
@@ -1009,7 +973,7 @@ of all the immediate child nodes of type |a| and a function that can
 be used to reassemble the original value, given a list of child
 nodes. The F\# version of |uniplate|, that we will define shortly,
 should work as follows:
-\begin{fsharp}\begin{code}
+\begin{code}
 type Arith =
   | Op of string*Arith*Arith
   | Neg of Arith
@@ -1021,11 +985,11 @@ let (c,f) = uniplate (
 printf "%A" c
 -- prints\ Op (``add",Val 1,Val 2)
 printf "%A" (f [Val 1;Val 2]) 
-\end{code}\end{fsharp}
+\end{code}
 To define the function, we will define two auxiliary generic
 functions. The first is |Collect| which computes the list of
 child nodes:
-\begin{fsharp}\begin{code}
+\begin{code}
 type Collect<<vart>>() =
   inherit FoldMeta<<vart,vart list>>()
 
@@ -1046,7 +1010,7 @@ type Collect<<vart>>() =
 
   override self.FoldMeta(i : Id<<vart>>) =
     [i.Elem]
-\end{code}\end{fsharp}
+\end{code}
 The function is straightforward to understand. Values of the |Sum|
 type are processed recursively; the results of products are combined
 by concatenating the resulting lists. Constants and unit types return
@@ -1063,7 +1027,7 @@ The second generic function we define is |Instantiate|, that
 reconstructs the value of an algebraic datatype when passed the list
 of child nodes. We will store this list in a local, mutable variable
 |value|, to which each of the instance definitions below may refer.
-\begin{fsharp}\begin{code}
+\begin{code}
 
 type Instantiate<<vart>>(values` : vart list) =
   inherit FoldMeta<<vart,Meta>>()
@@ -1074,24 +1038,24 @@ type Instantiate<<vart>>(values` : vart list) =
                 | [] -> None
 
 ...
-\end{code}\end{fsharp}
+\end{code}
 To complete this definition, we need to define suitable instances for
 the subclasses of |Meta|. The most interesting case is that for the
 |Id| type constructor:
-\begin{fsharp}\begin{code}
+\begin{code}
   override self.FoldMeta(i : Id<<vart>>) =
     match pop () with
     | Some x -> Id x
     | None -> failwith "Not enough args"
     :> Meta
-\end{code}\end{fsharp}
+\end{code}
 To produce the desired child, we |pop| it off the mutable list of
 children we have at our disposal. If such child doesn't exist, the
 list we passed is too short and the function fails.
 
 The case of sums and products are analogous to the |Collect| function,
 making two recursive calls to construct a new |Meta| value:
-\begin{fsharp}\begin{code}
+\begin{code}
   override self.FoldMeta<<`ty>>(
     p: Prod<<`ty,Meta,Meta>>) =
     Prod(self.FoldMeta p.E1,self.FoldMeta p.E2) 
@@ -1102,11 +1066,11 @@ making two recursive calls to construct a new |Meta| value:
     | Choice1Of2 m -> Sum<<`ty,Meta,Meta>>(
       self.FoldMeta m |> Choice1Of2)
     | Choice2Of2 m -> Sum<<`ty,Meta,Meta>>(
-\end{code}\end{fsharp}
-\begin{fsharp}\begin{code}
+\end{code}
+\begin{code}
       self.FoldMeta m |> Choice2Of2)
     :> Meta
-\end{code}\end{fsharp}
+\end{code}
 Note that these definitions rely on the list of values being mutable
 and F\#'s call-by-value semantics. In the case for products, we know
 that the first call |self.FoldMeta p.E1| will be evaluated first,
@@ -1115,17 +1079,17 @@ evaluation continues with the second component of the tuple.
 
 Finally, the cases for the type constructors |U| and |K| are trivial,
 as they do not need to modify the list of |values|.
-\begin{fsharp}\begin{code}  
+\begin{code}  
   override self.FoldMeta<<`ty>>(u : U<<`ty>>) = 
     u :> Meta
 
   override self.FoldMeta<<`ty,`a>>(k : K<<`ty,`a>>) = 
     k :> Meta
-\end{code}\end{fsharp}
+\end{code}
 
 The |uniplate| function simply wraps both these results together and
 handles the conversions to our type representation:
-\begin{fsharp}\begin{code}
+\begin{code}
 let uniplate<<vart>> (x : vart) =
   let g = Generic<<vart>>()
   let rep = g.To x
@@ -1134,7 +1098,7 @@ let uniplate<<vart>> (x : vart) =
     xs |> Instantiate<<vart>>(xs').FoldMeta<<vart>>
     |> g.From
   (xs, inst)
-\end{code}\end{fsharp}
+\end{code}
 
 
 \section{Limitations of the |FoldMeta| class}
@@ -1151,13 +1115,13 @@ Variants of the |FoldMeta| class that perform induction over more than
 one value are possible. We only need to enforce that all cases for one
 argument are covered to ensure that pattern matching is
 exahustive. For example, we can extend |FoldMeta| as:
-\begin{fsharp}\begin{code}
+\begin{code}
 AbstractClass
 type FoldMeta<<`t,`out>>() =
 abstract FoldMeta 
   : Meta * Meta -> `out
-\end{code}\end{fsharp}
-\begin{fsharp}\begin{code}
+\end{code}
+\begin{code}
 abstract FoldMeta<<`ty>> 
   : Sum<<`ty,Meta,Meta>> * Meta -> `out
 abstract FoldMeta<<`ty>> 
@@ -1168,16 +1132,16 @@ abstract FoldMeta
   : Id<<`t>> * Meta -> `out
 abstract FoldMeta<<`ty>> 
   : U<<`ty>> * Meta -> `out
-\end{code}\end{fsharp}
+\end{code}
 The programmer can then overload any of the methods with specific
 instances of the second argument which can then be pattern matched
 with reflection. For example, to define generic equality, one would
 like to have an overload of the |Sum| case with type:
-\begin{fsharp}\begin{code}
+\begin{code}
 member FoldMeta<<`ty>> 
   : Sum<<`ty,Meta,Meta>> * Sum<<`ty,Meta,Meta>> 
   -> `out
-\end{code}\end{fsharp}
+\end{code}
 If |FoldMeta| were invoked with both arguments being |Sum| then this
 overload would get called. If the second argument is not |Sum| then the
 overload accepting a |Meta| would be invoked. In this way, it is possible
@@ -1190,17 +1154,17 @@ form of dependent types, possibly through type classes or type
 families, to allow generic functions to return values of different
 types. The |FoldMeta| class lacks such mechanism as it can be used to
 subvert the F\# type system. Consider the following example:
-\begin{fsharp}\begin{code}
+\begin{code}
 member self.FoldMeta<<`ty>>(
   v : K<<`ty,Employee>>) = K(v.Elem) :> Meta
-\end{code}\end{fsharp}
+\end{code}
 The type checker would not object to changing the
 function as follows:
-\begin{fsharp}\begin{code}
+\begin{code}
 member self.FoldMeta<<`ty>>(
   v : K<<`ty,Employee>>) = 
   K("I am not an Employee!!") :> Meta
-\end{code}\end{fsharp}
+\end{code}
 This function now changes the type of the value stored in the |K|
 constructor, before casting it to the |Meta| type. This is type
 correct since any instance of |K| is a subtype of |Meta|. However, if
@@ -1210,7 +1174,7 @@ generated the original representation it results in a runtime error.
 Such errors could be prevented by revisiting the previous definition
 of the |FoldMeta| class and adding additional type parameters for each
 required overload.
-\begin{fsharp}\begin{code}
+\begin{code}
 type FoldMeta<<
   vart,  -- Generic\ type
   `m,    -- Return\ type\ of\ the\ Meta\ overload
@@ -1220,7 +1184,7 @@ type FoldMeta<<
   `k,    -- Return\ type\ of\ the\ K\ overload
   `u,    -- Return\ type\ of\ the\ U\ overload
   >>
-\end{code}\end{fsharp}
+\end{code}
 However, to perform recursive calls, all overloaded functions invoke
 the overload specialized for the |Meta| type, which dispatches as
 discussed in section \ref{sec:foldmeta}. Since the current
@@ -1233,7 +1197,7 @@ can be solved by enforcing that all overloads return values which are
 a subtype of some other type, in this case |`m|, so the dispatcher can
 safely cast the result to this type. This can be enforced with
 additional type constraints:
-\begin{fsharp}\begin{code}
+\begin{code}
 type FoldMeta<<
   -- [...]
   when `s :> `m
@@ -1242,23 +1206,23 @@ type FoldMeta<<
   and `k :> `m
   and `u :> `m
   >>
-\end{code}\end{fsharp}
+\end{code}
 Unfortunately, type constraints in F\# can only be used to enforce
 that a type must be a subclass of a \emph{concrete} type, not a type
 variable. One alternative is to make the subtyping relation explicit
 with the help of member constraints:
-\begin{fsharp}\begin{code}
+\begin{code}
 type FoldMeta<<
   -- [...]
   when `s : (member Cast : unit -> `m)
   and `p : (member Cast : unit -> `m)
   and `i : (member Cast : unit -> `m)
   and `k : (member Cast : unit -> `m)
-\end{code}\end{fsharp}
-\begin{fsharp}\begin{code}
+\end{code}
+\begin{code}
   and `u : (member Cast : unit -> `m)
   >>
-\end{code}\end{fsharp}
+\end{code}
 These member constraints impose the requirement that a member function of
 the specified type is present in the type that instantiates the
 variable. This way the dispatcher |FoldMeta| member can safely cast
@@ -1274,12 +1238,12 @@ occurrences of its argument. Essentially, these two definitions are
 the same -- the only difference is in the |Id| case. Using the F\#
 approach we have described, we can define a new subclass of |GMap|,
 overriding the instance for |Id|:
-\begin{fsharp}\begin{code}
+\begin{code}
 type ShallowGMap<<`t,`x>>() =
   inherit GMap<<`t,`x>>()
  
   override self.FoldMeta(i : Id<<`t>>,f : `x -> `x) = i
-\end{code}\end{fsharp}
+\end{code}
 This is harder to do in most Haskell libraries. Generic functions
 defined using type classes, such as those in the Regular library, make
 it very hard to re-use existing instance definitions in new generic
@@ -1317,11 +1281,11 @@ increase expressiveness, but this clutters the library with
 definitions. An alternative would be to allow the programmers to
 provide their own definitions of the |FoldMeta| class. This could be
 achieved by requiring that the programmer annotates the definition
-with a special pragma. Then the compiled F\# assemblies can be
-checked post-compilation for consistency using reflection since all
-the type information is still present after compilation and the
-compiled assemblies can be dynamically loaded. This technique is used
-by Websharper~\cite{websharper} to compile F\# into Javascript.
+with a special pragma. Then the compiled F\# assemblies can be checked
+post-compilation for consistency using reflection since all the type
+information is still present after compilation and the compiled
+assemblies can be dynamically loaded. This technique is used by
+Websharper~\cite{websharper} to compile F\# into Javascript.
 
 
 %% Although reflection is a very powerful
