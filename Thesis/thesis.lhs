@@ -144,7 +144,7 @@ generalization of this approach (for constructors taking any
 arguments) is called \emph{datatype generic programming}. In the
 remainder of this thesis, the term generic programming will always
 mean datatype generic programming. The next section introduces generic
-programming using the Regular~\cite{regular} library.
+programming using the Regular~\cite{Regular} library.
 
 \subsection{Generic Programming with Regular}
 
@@ -391,6 +391,7 @@ function that goes from |`a| to the |IO| monad. Such errors would
 not be caught by the typechecker.
 
 \subsection{Reflection}
+\label{sec:reflection}
 
 Through the .NET platform, the F\# language has access to a very rich
 reflection library. Reflection consists of using type information
@@ -419,7 +420,7 @@ interface when annotated with the right type. The implementation of
 the function will typically perform unsafe coercions in order to match
 the type. Code that uses reflection is very common, for example,
 FsPickler~\cite{fspickler}, a general purpose .NET serializer, and
-Nancy~\cite{nancyfx}, a .NET web framework, use reflection for a
+Nancy~\cite{Nancy}, a .NET web framework, use reflection for a
 variety of reasons.
 
 \part{Research Topic}
@@ -503,11 +504,12 @@ representation type. Such type operator is not possible in F\# since
 it has a higher kind.
 
 In F\#, member constraints are sometimes used as a replacement for
-higher kinds. The best example are the computation expressions of
-F\#. They are analogous to Haskell's do notation. For example, to use
-the |let!| constructor in F\#, one requires the member function:
+higher kinds. The best example are the computation
+expressions~\cite{compExp} of F\#. They are analogous to Haskell's do
+notation. For example, to use the |let!| constructor in F\#, one
+requires the member function:
 \begin{code}
- member Bind : M<'T> * ('T -> M<'U>) -> M<'U> 
+ member Bind : M<< `T >> * (`T -> M<< `U >>) -> M<< `U >> 
 \end{code}
 where |M| is of higher kind. However, this simply means that if type
 |T| wishes to use the |let!| operator, then it must define the member
@@ -1181,28 +1183,29 @@ library must be total for its universe -- every value can be applied
 to every generic function as long as the value can be represented as
 an instance of |Meta|. As a result, the |FoldMeta| class requires an
 implementation for four methods which are able to handle all
-representations. More specialized methods can be additionally included
-and they will be used whenever the function's arguments are compatible
-with the method. Otherwise, the more general method is selected.
+representations. More specialized overloads can be included and they
+will be used whenever the function's arguments are compatible with the
+method.
 
 \subsection{Overload Selection}
+\label{sec:overloads}
 
 The |GMap| function defined above has overlapping overloads -- cases
 where several methods can be invoked for a particular value. This is a
 problem that many datatype generic libraries have. In the case of
-Haskell based libraries, the problem is generally solved by enabling
-the overlapping instances language extension.
+Haskell based libraries, the problem is usually solved by enabling the
+overlapping instances language extension.
 
 In the case of F\#, the problem must be approached differently. For
 starters, all overload selections must be statically resolved at
-compile time (as mentioned in section \ref{sec:typeclasses}). This, in
-principle, makes a feature such as overlapping instances usleless in
-F\#. However, this also restricts the library from allowing functions
-like |GMap| to be defined, which demand that a similar feature
-exists. To resolve the problem, a customized dispatch mechanism is
-implemented using reflection. This mechanism inspects, at runtime, the
-types of the arguments provided to the |FoldMeta| method and selects
-the correct overload based on rules:
+compile time (as mentioned in section \ref{sec:typeclasses}). For this
+reason, the F\# language cannot support an extension similar to
+Overlapping Instances. However, this also restricts the library from
+allowing functions like |GMap| to be defined, which demand that a
+similar feature exists. To resolve the problem, a customized dispatch
+mechanism is implemented using reflection. This mechanism inspects, at
+runtime, the types of the arguments provided to the |FoldMeta| method
+and selects the correct overload based on rules:
 
 \begin{tabular}{cccc}
 \multirow{15}{*}{|self.FoldMeta(m : Meta)|} & \multirow{15}{*}{$=\left\{\begin{array}{c} \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \end{array}\right.$} & \multirow{2}{*}{|self.FoldMeta(m)|} & |exists self.FoldMeta : tau->tau1| \\
@@ -1231,7 +1234,7 @@ where
 \item |[tau1/tau2]tau| indicates replacing |tau2| with |tau1| in |tau|
 \end{itemize}
 
-This selection mechanism is very simple and it replaces the type level
+This selection mechanism is very simple and supplants the type level
 computations carried out by the Haskell compiler in order to select
 the right overloads. The process happens in stages. First the method
 |FoldMeta : Meta->`out| is invoked with an argument of type
@@ -1261,14 +1264,14 @@ happens by cases:
 
 When many methods with compatible signature exist. Priority is first
 given to the closest match and then the position in the class
-hierarchy of the type that declared the selected method. Although this
-mechanism is immitating the overlapping instances mechanism of the
-Haskell compiler, it gives the user a finer control on which method is
-selected. In fact, this makes it trivial to extend or customize
-generic functions. For example, to define a function |GMapShallow|
-which does the same as |GMap| but does not traverse structures that
-occurr recursively, one can simply extend from |GMap| and override the
-|Id| case:
+hierarchy of the type that declared the candidate method. Although
+this mechanism is immitating the overlapping instances mechanism of
+the Haskell compiler, it gives the user a finer control to specify
+which method should be selected. In fact, this makes it trivial to
+extend or customize generic functions. For example, to define a
+function |GMapShallow| which does the same as |GMap| but does not
+traverse structures that occurr recursively, one can simply extend
+from |GMap| and override the |Id| case:
 \begin{code}
 type GMapShallow<<`t,`x>>(f : `x -> `x) = 
   class 
@@ -1285,28 +1288,29 @@ fact, a function could invoke both of them as if they were any two
 generic functions.
 
 \subsection{Limitations of the |FoldMeta| class}
+\label{sec:limitations}
 
 The most obvious limitation of the |FoldMeta| class is the number of
-arguments it can do induction on. For example, the generic equality
+arguments on which it can induct. For example, the generic equality
 function cannot be defined with |FoldMeta| as it stands since it must
 do recursion on two representations. To overcome the limitation, a
 variant of |FoldMeta| that performs induction on two of its arguments
-could be defined. The definition would look like: 
+could be defined. The definition would look like:
 \begin{code}
 AbstractClass
 type FoldMeta<<`t,`out>>() =
-abstract FoldMeta : Meta * Meta -> `out
-abstract FoldMeta<<`ty>> : Sum<<`ty,Meta,Meta>> * Meta -> `out
-abstract FoldMeta<<`ty>> : Prod<<`ty,Meta,Meta>> * Meta -> `out
-abstract FoldMeta<<`ty,`a>> : K<<`ty,`a>> * Meta -> `out
-abstract FoldMeta : Id<<`t>> * Meta -> `out
-abstract FoldMeta<<`ty>> : U<<`ty>> * Meta -> `out
+  abstract FoldMeta : Meta * Meta -> `out
+  abstract FoldMeta<<`ty>> : Sum<<`ty,Meta,Meta>> * Meta -> `out
+  abstract FoldMeta<<`ty>> : Prod<<`ty,Meta,Meta>> * Meta -> `out
+  abstract FoldMeta<<`ty,`a>> : K<<`ty,`a>> * Meta -> `out
+  abstract FoldMeta : Id<<`t>> * Meta -> `out
+  abstract FoldMeta<<`ty>> : U<<`ty>> * Meta -> `out
 \end{code}
 This definition ensures that all cases are covered when defining
 generic functions that accept two arguments. Additional overloads can
-be added to this class in order to in order to pattern match specific
-cases. For example, when defining generic equality, one would like a
-method with type:
+be added to this class in order to pattern match specific cases. For
+example, when defining generic equality, one would like a method with
+type:
 \begin{code}
 member FoldMeta<<`ty>> : Sum<<`ty,Meta,Meta>> * Sum<<`ty,Meta,Meta>> -> `out
 \end{code}
@@ -1370,5 +1374,266 @@ type FoldMeta<<
 However, sub-type constraints cannot be enforced against type
 variables. This results in a compile time error since |`m| is a type
 variable.
+
+\part{Evaluation and Conclusions}
+
+\section{Evaluation of the library in the F\# language}
+One of the objectives is to asses the value generic programming can
+have for the F\# programmer. The most important consideration is
+whether the library serves as a competitive approach to other means
+F\# offers for implementing polytipic functions.
+
+If a programmer needs to implement a polytipic function generically,
+he will typically have to use reflection. As mentioned in
+section~\ref{sec:prob}, it has a lot of drawbeacks and will hardly
+become a tool for everyday use. The most important drawbacks from the
+generic programming point of view are:
+\begin{itemize}
+\item Error prone and type unsafe
+\item Requires a lot of boilerplate code
+\item Requires knowledge about the .NET platform
+\item Imperative programming style
+\end{itemize}
+The following section explores in greater detail these drawbacks and
+evaluates how our library addresses them.
+
+On the positive side, this library provides a lightweight interface to
+define generic traversals. Generic traversals are defined simply by
+overriding the methdos of the |FoldMeta| class. Since those methods
+have well defined signatures and are implemented entirely in F\#, the
+porgramer can benefit from all the type level features that the
+language offers. The main problem with generic traversals is that
+overlapping cases are not checked for type correctness until
+runtime. Nevertheless, it is easy to ensure that the type is correct
+since the function has the same signature as the abstract members but
+specialized to a type.
+
+Since the interface of the |FoldMeta| class is much simpler that the
+interface of reflection and requires much less knowledge to be used,
+generic functions will probably have less bugs than functions
+implemented with reflection. On a more fundamentalist perspective,
+code that uses reflection looks highly imperative. It usually consists
+of invoking .NET routines in a specific order to obtain some data or
+invoke an operation. This is definitely not the way a functional first
+language should implement polytipic functions.
+
+On the negative side, this library is much less expressive than
+reflection. It can only be used with ADTs -- although it can handle
+other types embeded inside ADTs. Based on what was learned through
+this work, there is little hope that generic programming can work with
+classes sicne representations rely on objects being immutable. The
+reason is that a value and its representation are required to be an
+\emph{embedding projection pair}. That means that |to circ from == id|
+and |from circ to sqsubseteq id|~\cite{hinze}. Now classes may have
+mutable state, contrast to ADTs, the full state of a value cannot be
+recovered from the arguments that were given to the constructor. This
+means that a representation must contain information about every
+internal variable in a class rather than the constructor's
+arguments. Furthermore, the |Sum| constructor is probably useless
+since in the case of classes, it is not very relevant what constructor
+was used to create the value.
+
+\section{Evaluation of the library against Regular}
+
+Comparing the library to Regular is a bit on the negative side. A lot
+of Regular's advantages had to be surrendered due to F\#'s type
+system. Surprisingly, there are a couple of unexpected advantages
+comming from the use of reflection and the object oriented approach of
+this library. If F\# supported kind-polymorphism, this library could
+be a competitive alternative to Regular.
+
+The primary disadvantage occurs when values are constructed
+generically. Regular uses Haskell's type system to ensure that invalid
+representations will never be converted into values. The |to| and
+|from| functions use type families to give a unique type signature for
+every type that is an instance of |Regular|. It was pointed out in
+section \ref{sec:limitations} that this library can easily run into
+runtime errors since the compiler allows the |from| function
+of any |Generic| instance to be applied to any representation.
+
+The lack of dependent types in F\# leads to the possible scenario that
+a method dispatch might fail at runtime if a generic function is not
+total for all representations. Haskell addresses this issue by
+checking at compile time that a representation type is compatible with
+the generic function it is applied to. The only alternative to prevent
+method dispatch failures at runtime is to require that all generic
+functions are total for the universe. One can still define partial
+functions which fail at runtime when provided with incompatible
+arguments but Regular's advantage is that the failure happens at
+compile time.
+
+On the performance side, this library must perform more work at
+runtime than Regular. Through cacheing, it is possible to achieve some
+performance gains but it will always require to do more work at
+runtime than Regular. On the bright side, using the information
+available at runtime it is possible to dynamically generate code once
+which can be efficiently executed on further applications of a generic
+function. Optimization was not thorughly studied in this thesis but
+generating the code dynamically might bring some of the benefits of
+\emph{just in time} compilation to this library. It is left as future
+research how to optimize this implementation.
+
+On the other hand, this library has some advantages over Regular. The
+most important one is being able to handle types that accept any
+number of type arguments. The reason is that Regular instances define
+a indexed type |Rep| that corresponds to representations. This type
+only allows representations that accept at most one type argument. In
+this library, all representations are of type |Meta|. This means they
+can take any number of arguments since they are hidden by the
+subtypeing relation. Although this library supports more type
+arguments, it is a consequence of it being less type safe.
+
+Another nice advantage of this library is extensibility. As studied in
+section \ref{sec:overloads} it is easy to customize the behavior of
+generic functions by overriding generic methods. This is much harder
+to do in Haskell since only one instance per typeclasse is
+allowed. This advantage is also shared by the Scala
+implementation~\cite{ScalaGen} of generic programming. The problem in
+Haskell relies in the fact that typeclasses are not well suited to
+define generic functions. Typeclasses are meant to express global
+properties of types but functions are local operations.
+
+\section{Remarks about F\# and .NET}
+To develop this library, many features of F\# where taken into
+consideration. This section talks about the limitations of some of
+F\#'s features that made them un-suitable for generic programming.
+
+\subsection{Type Providers}
+Type providers are a mechanism in F\# that can be used to generate
+types at compile time by executing .NET code. They use reflection to
+create instances of the |Type| class and those types are then included
+as if they were part of the program. Type providers support static
+parameters that can influence the types produced by the type
+provider. Type providers were initally designed to provide typed
+access to external data sources.
+
+Type providers were considered as the first alternative to develop the
+library. The basic idea was that instead of having to provide several
+variants of the |FoldMeta| class accepting different number and kind
+of arguments, one could have a type provider that is able to generate
+many variants of the |FoldMeta| class to fulfill the requirements of
+many generic functions. This way, the programmer could specify as
+static parameters the number of parameters on which recursion should
+be done and the number of extra parameters accepted by the generic
+function.
+
+Unfortunately, type providers are restricted on what types they are
+allowed to produce. Types that contain polymorphic type arguments
+cannot be produced by type providers. This means that no variant of
+the |FoldMeta| class is possible with a type provider since it must at
+least accept the generic type as argument. This wouldn't be a problem
+if type providers could accept types as static arguments, but the only
+static arguments supported by type providers are strings, integers and
+booleans.
+
+It is not unexpected that type providers are not enirely suitable for
+type level programming (they were designed with other objectives in
+mind) but the limitations show a lot of potential that F\# could
+exploit by using reflection to generate types at compile time.
+
+\subsection{Add-Hoc Polymorphism}
+Ad-hoc polymorphism allows constraining polymorphic types to types
+that support a particular set of operations. This is the foundation on
+which Regular is built since generic functions are defined by
+extending the operations supported by representations. The same
+approach would have been the natural choice for this library, but F\#
+deals with ad-hoc porlymorphism differently.
+
+It is possible to add methods to types post-hoc (after the type has
+been defined), it can even be done in external modules. Since F\# has
+memeber constraints, it should be possible to define generic functions
+as extension of the representation types and use member constraints to
+enforce that the type variables corresponding to representation types
+support the generic function. However, member constraints in F\# do
+not check if there exist extension members that satisfy the
+constraint. In F\#, extension members are a convenient way to organize
+code but not a feature useful in the type system.
+
+\section{Conclusions and Future Work}
+
+It is well known that polytipic functions can lead to boilerplate code
+since they usually cannot be implemented generically with the
+constructs typically offered by functional languages. Since many of
+those functions are only dependent on the structure of types, it is
+possible to define algorithms that work on families of type. This has
+been achieved by methods such as datatype generic programming.
+
+Generic programming has enjoyed lots of success in the Haskell
+programming language. It allows high levels of abstraction and uses
+the type system in an effective way to prevent errors. Many methods
+even allow values to be constructed generically and ensure at compile
+time that the resulting representations are valid. The main drawback
+of generic programming is its relience on a powerful type system and
+immutability; making it hard to implement in other languages.
+
+Even though F\# is far away from having a type system that fully
+supports generic programming it runs on top of the .NET platform which
+provides a rich reflection api that can perform many of Haskell's type
+operations at runtime. Leveraging on reflection, it is possible to
+provide a safe interface that allows functions to be defined in a
+style similar to the generic programming approach of Regular.
+
+This is evidenced by the library presented in this thesis along with
+some classic examples of generic functions. The interface provided by
+this library is easy to understand, provides some level of type safety
+and compared to reflection, which is typically used in F\#, it has
+less room for errors and functions are cleaner and more succint since
+it eliminates the invokation of .NET internal routines. Under a
+fundamentalist perspective, functions can be inductively defined.
+
+Compared to Regular, it lacks many features due to F\#'s simpler type
+system. The major flaw is that constructing values generically can
+easily lead to runtime errors since representations cannot be checked
+for correctness at compile time. Another shortcomming is that this
+library enforces that all generic functions are total for the
+universe. Regular allows partial functions since it can check at
+compile time that the function is not used on values for which the
+function is undefined. Finally, the library is less expressive since
+functions must be defined through the |FoldMeta| class and it is
+restricted on the arguments it can do induction with and values it can
+take as parameters.
+
+On the other hand, this library confirms (as pointed out in
+\cite{scalaGen} that ideas from the object oriented world can benefit
+generic programming. In particular, method overriding is a powerful
+feature that allows the re-usage of existing generic functions to
+implement new generic functions by simply modifying individual
+induction cases. Alternatives to Haskell's typeclass approach should
+be considered by the Haskell community since typeclasses are quite
+rigid with the extensibility it provides.
+
+This research shows that through reflection, one can immitate a lot of
+Haskell's type level computations. Currently, all reflection was
+carried out at run time in order to show what is possible with that
+framework. It would be interesting to research how much of theese
+computations could be performed post-compilation by implementing a
+tool that inspects the generated assemblies using reflection for
+correctness. This could potentially allow the programmer to define its
+own variations of the |FoldMeta| class without having to worry that
+the definition is not complete and the overloads have the right
+signature in order to prevent runtime errors. It would also be
+interesting to research possible runtime optimizaitions that can be
+done through reflection. Even though performance might never be on par
+to Regular (or a similar library) it could be possible that F\#'s
+ability to generate code at runtime combined with the ideas from
+\emph{just in time} compilation might lead to performance gains. This
+highlights a lot of the power that .NET's reflection framework has.
+
+Bringing ideas of generic programming into everyday usage is a
+challenging work. F\# is a nice playground because it allows
+programers (especially C\# programmers) to switch into the language
+with minimal overhead. The language runs in Microsoft's .NET platform
+which has been deployed across many devices. This thesis shows that
+.NET's reflection API is capable of supporting many of the type level
+computations carried out by the Haskell compiler that are necessary
+for generic programming. The approach is far from complete compared to
+what is available in Haskell but there is room for improvement using
+the existing tools. Hopefully this thesis will inspire other
+researchers to investigate creative approaches to effectively combine
+reflection and generic programmers in a effective way.
+
+\part{References}
+
+\bibliographystyle{plain} \bibliography{references}
 
 \end{document}
