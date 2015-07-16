@@ -158,14 +158,15 @@ datatype generic programming, reflection, F\#
 
 \section{Introduction}
 
-Over the last decade, datatype generic programming has emerged as an
-powerful mechanism for exploiting \emph{type structure} to define families of functions. In Haskell
-alone, there are numerous tools and libraries for datatype generic
-programming, including PolyP~\cite{polyp}, Generic
-Haskell~\cite{GenericHaskell}, Scrap your boilerplate~\cite{SYB},
-RepLib~\cite{RepLib}, Uniplate~\cite{Uniplate},
-Regular~\cite{Regular}, Multi-Rec~\cite{multirec}, Instant
-Generics~\cite{instant2} and many others.
+Over the last decade, datatype generic programming has emerged as a
+powerful mechanism for exploiting \emph{type structure} to define
+families of functions. In Haskell alone, there are numerous tools and
+libraries for datatype generic programming, including
+PolyP~\cite{polyp}, Generic Haskell~\cite{GenericHaskell}, Scrap your
+boilerplate~\cite{SYB}, RepLib~\cite{RepLib},
+Uniplate~\cite{Uniplate}, Regular~\cite{Regular},
+Multi-Rec~\cite{multirec}, Instant Generics~\cite{instant2} and many
+others.
 
 Many of these libraries are implemented in the same fashion. They
 define a \emph{representation type} or \emph{universe} that can be
@@ -177,9 +178,9 @@ corresponding representation. This enables users to call generic
 functions on custom datatypes, without having to implement the
 underlying conversions manually.
 
-Yet this approach has not been as widely adopted in other
-languages. In this paper, we will attempt to address this by
-implementing a library for data type generic programming in F\#~\cite{export:192596}. More
+Yet this approach has not been adopted in other languages. In this
+paper, we will attempt to address this by implementing a library for
+data type generic programming in F\#~\cite{export:192596}. More
 specifically, we make the following contributions:
 
 \begin{itemize}
@@ -200,15 +201,15 @@ specifically, we make the following contributions:
 
 \item Next, we show how generic functions may be defined over this
   representation type (Section~\ref{sec:generic-functions}). As an
-  example, we will implement a generic map function. Instead of recursing
-  over the representation type directly, we develop several 
-  auxiliary functions to hide the usage of .NET reflection and 
+  example, we will implement a generic map function. Instead of
+  recursing over the representation type directly, we develop several
+  auxiliary functions to hide the usage of .NET reflection and
   facilitate the definition of generic functions.
 
 \item Where many Haskell libraries use type classes to implement
   type-based dispatch, F\#'s overloading mechanism is too limited for
   our purposes. To address this, we will implement our own system of
-  ad-hoc polymorphism using the .NET reflection mechanism
+  ad-hoc polymorphism using the .NET reflection.
   (Section~\ref{sec:foldmeta})
 
 % Wouter -- I'm commenting this out for now. I think these points are already covered -- 
