@@ -209,7 +209,7 @@ specifically, we make the following contributions:
 \item Where many Haskell libraries use type classes to implement
   type-based dispatch, F\#'s overloading mechanism is too limited for
   our purposes. To address this, we will implement our own system of
-  ad-hoc polymorphism using the .NET reflection.
+  ad-hoc polymorphism using .NET's reflection.
   (Section~\ref{sec:foldmeta})
 
 % Wouter -- I'm commenting this out for now. I think these points are already covered -- 
@@ -254,7 +254,8 @@ F\# designers have adopted numerous features from languages such as
 Haskell or OCaml, without sacrificing the ability to interface well
 with other .NET languages.  As a result, the language has a much
 simpler type system than the type system of Haskell, OCaml or Scala.
-For instance, F\# performs no type erasure when compiled to the .NET platform.
+On the other hand, F\# performs no type erasure when compiled to the
+.NET platform.
 
 Before we can define the |IncreaseSalary| function, we will define the
 types on which it operates:
@@ -311,11 +312,10 @@ which they are invoked as an argument, as witnessed by the |self|
 identifier before a member function's definition.
 
 These data declarations also use polymorphic types and type
-constraints. In our example, |Company|, |Department| and
-|Staff| are all types parametrized by a single type as argument. These
-type arguments have a type constraint, stating that they must be a
-subtype of the |Employee| class. The type constraints are
-declared using the |when| keyword.
+constraints. In our example, |Company|, |Department| and |Staff| are
+parametrized by a single type argument. These type arguments have a
+type constraint, stating that they must be a subtype of the |Employee|
+class. The type constraints are declared using the |when| keyword.
 
 It is worth pointing out that type arguments can only be of kind
 |*|. This is a particularly important limitation in the context of
@@ -370,10 +370,10 @@ is passed by reference in the |UpdateEmployee| function. The argument
 function we pass to |UpdateEmployee| mutates the object's |Salary|
 property directly and subsequently returns the argument object.
 
-In the later sections, the |UpdateEmployee| function will be
-defined in terms of a generic map, that is implemented with our
-library.  Before doing so, we will give a brief overview of some of
-the relevant features of the .NET platform.
+In the later sections, the |UpdateEmployee| function will be defined
+in terms of a generic map implemented with our library.  Before doing
+so, we will give a brief overview of some of the relevant features of
+the .NET platform.
 
 \subsection{The .NET platform}
 The .NET platform is a common runtime environment supporting a family
@@ -559,10 +559,10 @@ products, we will use the class |U :> Meta| to represent the unit type
 which takes no extra type arguments.
 
 Next, the subclass |K| of |Meta| is used to represent types not
-defined as algebraic datatypes. This can be used to represent primitive
-types, such as |int| or |float|. The |K| constructor takes one extra
-type argument: |vara|, corresponding to the type of the value it stores. 
-Since F\# cannot statically constrain a type to be an
+defined as algebraic datatypes. This can be used to represent
+primitive types, such as |int| or |float|. The |K| constructor takes
+one extra type argument, |vara|, corresponding to the type of the
+value it stores. Since F\# cannot statically constrain a type to be an
 algebraic datatype or not, |vara| has no constraints.
 
 Finally, |Id| is the last subclass of |Meta|. This type is used to
@@ -595,7 +595,7 @@ type ElemsRep =
       Prod<<Elems,K<<Elems,int>>,
         Prod<<Id<<Elems>> >>,U<<Elems>> >> >> >>,
       Sum<<
-        unit,
+        Elems,
         Prod<<K << Elems>>,int >>, U<< Elems>> >> >>,
         U<<Elems>> >> >>,
     U<<Elems>> >> >>
@@ -608,8 +608,8 @@ recursive occurrence of |Elems| in the |Cons| constructor is
 represented by the |Id| type.
 
 There is some overhead in this representation -- we could simplify the
-definition a bit by removing spurious unit types. It is important to
-emphasize, however, that these definitions will be \emph{generated}
+definition a bit by removing spurious unit types. However, it is
+important to emphazise that these definitions will be \emph{generated}
 using .NET's reflection mechanism. To keep the generation process as
 simple as possible, we have chosen not to optimize the representation
 types.
@@ -619,15 +619,15 @@ types.
 
 The representations are used as a universal interface to implement
 algorithms that work on a family of types. It is important to perform
-the conversion between types and their representations automatically, otherwise
-the cost of using a library for generic programming may exceed writing 
-instances of generic functions by hand.
-Haskell libraries
-usually use Template Haskell~\cite{Sheard02templatemeta-programming}
-to generate these conversions. Some Haskell compilers even have a
-built-in mechanism~\cite{GenericDeriving} for these conversions. The
-F\# language does not have the same facilities for meta-programming but
-we can use .NET's reflection mechanism to achieve similar results.
+the conversion between types and their representations automatically;
+otherwise the cost of using a library for generic programming may
+exceed writing instances of generic functions by hand.  Haskell
+libraries usually use Template
+Haskell~\cite{Sheard02templatemeta-programming} to generate these
+conversions. Some Haskell compilers even have a built-in
+mechanism~\cite{GenericDeriving} for these conversions. The F\#
+language does not have the same facilities for meta-programming but we
+can use .NET's reflection mechanism to achieve similar results.
 
 The |Object| class of .NET has a method called |GetType : unit ->
 Type| which returns a value that contains all the information about
@@ -862,10 +862,10 @@ member x.gmap(x : vart,f : `x -> `x) =
     |> gen.From
 \end{code}
 Calling this function, requires dispatching on the representation
-type, which is handled by the |FoldMeta| and its member function. An
-instance of |GMap| with | <<`t>> | set to |Company| and | <<`x>> | set
-to |Employee| would implement the |UpdateEmployee| function introduced
-in section \ref{sec:fsharp}.
+type, which is handled by the |FoldMeta : Meta * 'in -> 'out| member
+function. An instance of |GMap| with | <<`t>> | set to |Company| and |
+<<`x>> | set to |Employee| would implement the |UpdateEmployee|
+function introduced in section \ref{sec:fsharp}.
 
 \section{The |FoldMeta| class}
 \label{sec:foldmeta}
@@ -873,8 +873,8 @@ in section \ref{sec:fsharp}.
 In the previous section, we assumed the existence of a |FoldMeta|
 function with type |Meta * (`x->`x) -> Meta|. Before getting into the
 details of this function, we would like to revisit the problem that it
-needs to solve. Consider the following instances, defining a fragment
-of a generic |map| function in Haskell:
+needs to solve. Consider the following instances that define a
+fragment of a generic |map| function in Haskell:
 \begin{hask}\begin{code}
 instance (GMap a,GMap b) => 
   GMap (a :+: b) where
@@ -933,7 +933,7 @@ differently. For example, if for the |K| constructor one wanted a
 
 We resolved this problem by defining a |FoldMeta| function of type
 |Meta*varin -> `out|.  This function can also be invoked with the
-internal elements of |Sum| or |Product| constructors since they are
+internal elements of |Sum| or |Prod| constructors since they are
 parametrized by variables |`a,`b :> Meta|. This |FoldMeta| function
 then selects the corresponding `instance' that should be invoked based
 on the type of its argument. Note that this is handled statically in
@@ -965,8 +965,7 @@ the following type signature:
 Given an argument of type |a|, the |uniplate| function returns a list
 of all the immediate child nodes of type |a| and a function that can
 be used to reassemble the original value, given a list of child
-nodes. The F\# version of |uniplate|, that we will define shortly,
-should work as follows:
+nodes. The F\# version of |uniplate| should work as follows:
 \begin{code}
 type Arith =
   | Op of string*Arith*Arith
@@ -1017,7 +1016,7 @@ library defines several variations of the |FoldMeta| class. F\# allows
 types with the same name and different number of type arguments to
 coexist in the same namespace.
 
-The second generic function we define is |Instantiate|, that
+The second generic function we define is |Instantiate|, which
 reconstructs the value of an algebraic datatype when passed the list
 of child nodes. We will store this list in a local, mutable variable
 |value|, to which each of the instance definitions below may refer.
@@ -1040,7 +1039,7 @@ the subclasses of |Meta|. The most interesting case is that for the
 \begin{code}
   override self.FoldMeta(i : Id<<vart>>) =
     match pop () with
-    | Some x -> Id x
+    | Some x -> Id<<`t>>(x)
     | None -> failwith "Not enough args"
     :> Meta
 \end{code}
@@ -1087,8 +1086,8 @@ let uniplate<<vart>> (x : vart) =
   let g = Generic<<vart>>()
   let rep = g.To x
   let xs = rep |> Collect<<`t>>().FoldMeta
-  let inst xs = 
-    xs |> Instantiate<<vart>>(xs').FoldMeta<<vart>>
+  let inst xs' = 
+    rep |> Instantiate<<vart>>(xs').FoldMeta<<vart>>
     |> g.From
   (xs, inst)
 \end{code}
@@ -1133,8 +1132,8 @@ member FoldMeta<<`ty>>
   : Sum<<`ty,Meta,Meta>> * Sum<<`ty,Meta,Meta>> 
   -> `out
 \end{code}
-If |FoldMeta| were invoked with both arguments being |Sum| then this
-overload would get called. If the second argument is not |Sum| then the
+If |FoldMeta| were invoked with both arguments being |Sum|, then this
+overload would get called. If the second argument is not |Sum|, then the
 overload accepting a |Meta| would be invoked. In this way, it is possible
 increase the class of generic functions definable by our library.
 
