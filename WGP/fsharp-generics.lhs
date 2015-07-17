@@ -362,7 +362,7 @@ Using |UpdateEmployee|,  the |IncreaseSalary| function can be defined as follows
 \begin{code}
 type generic(Company)(t) with
   member self.IncreaseSalary(v) =
-    self.UpdateEmpolyee (
+    self.UpdateEmployee (
       fun e -> e.Salary <- e.Salary + v;e)
 \end{code}
 Note that because we have defined the |Employee| type as a class, it
@@ -609,7 +609,7 @@ represented by the |Id| type.
 
 There is some overhead in this representation -- we could simplify the
 definition a bit by removing spurious unit types. However, it is
-important to emphazise that these definitions will be \emph{generated}
+important to emphasize that these definitions will be \emph{generated}
 using .NET's reflection mechanism. To keep the generation process as
 simple as possible, we have chosen not to optimize the representation
 types.
@@ -925,7 +925,7 @@ information is present in order to decide which function to invoke. In
 object oriented languages, abstract methods are usually used to
 dispatch different methods depending on the argument. This approach
 does not work for our purposes because it would require that every
-specific instance of a polymporphic type overrides the method
+specific instance of a polymorphic type overrides the method
 differently. For example, if for the |K| constructor one wanted a
 |FoldMeta| specialized for |int| and another polymorphic for all |`t|;
 |K<<int>>| and |K<<`t>>| would require a different override of
@@ -1106,7 +1106,7 @@ requires induction on two values instead of one.
 Variants of the |FoldMeta| class that perform induction over more than
 one value are possible. We only need to enforce that all cases for one
 argument are covered to ensure that pattern matching is
-exahustive. For example, we can extend |FoldMeta| as:
+exhaustive. For example, we can extend |FoldMeta| as:
 \begin{code}
 AbstractClass
 type FoldMeta<<`t,`out>>() =
@@ -1133,9 +1133,10 @@ member FoldMeta<<`ty>>
   -> `out
 \end{code}
 If |FoldMeta| were invoked with both arguments being |Sum|, then this
-overload would get called. If the second argument is not |Sum|, then the
-overload accepting a |Meta| would be invoked. In this way, it is possible
-increase the class of generic functions definable by our library.
+overload would get called. If the second argument is not |Sum|, then
+the overload accepting a |Meta| would be invoked. In this way, it is
+possible increase the class of generic functions definable by our
+library.
 
 Another limitation of the current implementation is that all the
 overloads of |FoldMeta| must return a value of the same type. More
@@ -1262,7 +1263,7 @@ performance.
 The library makes it possible to define a wide variety of generic
 functions. Our implementation of the |uniplate| method highlights that
 new generic functions can be added without having to use any .NET
-reflection. The expresiveness of the library is limited by the fact
+reflection. The expressiveness of the library is limited by the fact
 that the programmer must use the |FoldMeta| class as the interface to
 define generic functions. This is done to ensure complete
 definitions. It is possible to provide variants of |FoldMeta| to
