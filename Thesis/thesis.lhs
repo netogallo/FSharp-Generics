@@ -36,68 +36,70 @@
 Functional programming languages have relied on algebraic data types
 (ADTs) as the mechanism to represent data structures. They allow
 inductively defined types which can be de-constructed using pattern
-matching. The type system keeps track of the locations where pattern
-matching takes place to prevent programming errors. To allow code
-re-use, the type system is able to abstract a type into a variable if
-a function does not pattern match a particular value. This feature is
-very powerful but does not scale to functions, such as equality, that
-cannot be defined without using pattern matching. This drawback leads
-to boilerplate code when implementing functions which are only
-concerned about the structure of a value but not its type.
+matching. Whenever a value is pattern matched inside a function, its
+type becomes constrained to a monomorphic type. This is very useful
+since it allows the compiler to infer types but has consequences for
+certain functions. For example, the equality function is trival to
+define. Simply check that both arguments were constructed with the
+same constructor, if so, apply equality to the arguments of the
+constructor. However, most languages will require pattern matching to
+be done in isolation for each type making it impossible to define
+equiality that works on more than one type.
 
 To mitigate the problem, polytypic programming~\cite{polyp}, which
 later became datatype generic programming, was developed. The idea
-behind polytypic programming is to encode values of ADTs using a
-representation. Algorithms can then be defined for representations of
-types instead of the types themselves. These algorithms can be
-executed on any value encodable with a representation -- even if
-values are of different type. This happens because two values with the
-same structure have representations with the same type.
+behind polytypic programming is to define functions by induction over
+the structure of types. The structure is encoded using a
+representation type and functions are defined on values of the
+representation type. Finally, a translation between types and
+representations allows functions to be applied to ordinary values.
 
-Datatype generic programming has been actively researched in the last
-years. Many approaches exists such as Regular~\cite{Regular},
-Multirec~\cite{multirec}, Generic Haskell~\cite{GenericDeriving},
-RepLib~\cite{RepLib} and Instant
+Datatype generic programming has been actively researched in the
+Haskell programming language. Many approaches exists such as
+Regular~\cite{Regular}, Multirec~\cite{multirec}, Generic
+Haskell~\cite{GenericDeriving}, RepLib~\cite{RepLib} and Instant
 Generics~\cite{Cheney02alightweight}. Most of the appraches differ in
 the class of types that can be represented by the library -- called
 the universe. In general, if the universe is smaller, the library is
 easier to learn and its implementation is less demanding for the type
 system.
 
-Unfortunately, little work has been done to bring theese ideas into
+Unfortunately, little work has been done to bring these ideas into
 other programming languages. One of the main difficulties is that most
 approaches rely on advanced type system features to ensure correct
-behavior. For example none of the libraries mentioned above work with
+behavior. For example none of the libraries mentioned above works with
 plain Haskell 98 and all of them use higher kinded polymorphic
-types. Since most ordinary programming languages still lack many of
-theese features, the ideas cannot be directly implemented in such
-languages and need to be adapted.
+types. Since most ordinary programming languages still lack theese
+features, the ideas cannot be directly implemented in such languages
+and need to be adapted.
 
 The present thesis investigates how to adapt the ideas of datatype
 generic programming to the F\# programming language. The approach is
 inspired by Regular which is a library designed with ease of use in
-mind. To adapt the ideas, several compromises had to be made which
+mind. The approach leverages from .NET's reflection to carry out the
+type level comptations necessary for generic programming at
+runtime. To adapt the ideas, several compromises had to be made which
 resulted in both advantages and disadvantages. The result is packed as
 a library which can be used to declare generic functions which can be
 used with little programming overhead in the F\# language.
 
+\pagebreak
 \part{Background}
 \section{Datatype Generic Programming}
 
 Functional programming languages often use algebraic data types (ADTs)
-to represent values. ADTs are defined in cases by providing a type
-constructor for each case and specifying the type of values the
+to represent values. ADTs are defined in cases by providing a
+constructor for each case and specifying the type of the values the
 constructor needs to create a new value. In other words, a type
 constructor is a function that takes a group of values of different
 types and produces a value of the ADT's type.
 
 To define functions over ADTs, functional languages provide a
 mechanism to deconstruct ADTs called pattern matching. This mechanism
-allows the programmer to check wether a particular value was
-constructed using the specified type constructor and allows the
-programmer to extract the arguments used to produce the value. This
-mechanism is very elegant since it allows to define functions by
-induction but it has several shortcommings.
+allows the programmer to check if a particular value was constructed
+using the specified constructor and extract the arguments used to
+produce the value. This mechanism is very elegant since it allows
+defining functions by induction but it has several shortcommings.
 
 A function that pattern matches a value over the constructors of a
 particular ADT constraints the type of the value being pattern matched
@@ -107,64 +109,101 @@ declared~\cite{polyp}. Due to the importance of abstraction, sevaral
 methods for polymorphism have been developed to address these
 restrictions.
 
-An ADT can be decalred to be higher-kinded. This means that a
-definition of a list |data List = Cons Int List palo Nil| can abstract
-over its content and become |data List a = Cons a (List a) palo
-Nil|. Then a function, such as lenght, might de-construct the list
-without performing any operations on its content (the type represented
-by |a|). Such function can operate on a list of any type -- this is
-called parametric polymorphism. The programmer might also wish to
-implement functions that operate on the contents of a list without
-restricting the type of the list's content to be monomorphic. This can
-be done by requiring that the function is also provided with a set of
-operations that it may perform on its content. For example, the |sum|
-function could be implemented by requiring that a function to add two
-elements of type |a| is provided. This is called ad-hoc polymorphism.
+An ADT can be higher-kinded. This means that a definition of a list
+|data List = Cons Int List palo Nil| can abstract over its content and
+become |data List a = Cons a (List a) palo Nil|. A function, such as
+lenght, might de-construct the list without performing any operations
+on its content (the type represented by |a|). Such function can
+operate on a list of any type -- this is called parametric
+polymorphism. The programmer might also wish to implement functions
+that operate on the contents of a list without restricting the type of
+the list's content to be monomorphic. This can be done by requiring
+that the function is also provided with a set of operations that it
+may perform on its content. For example, the |sum| function could be
+implemented by requiring that a function to add two elements of type
+|a| is provided. This is called ad-hoc polymorphism.
 
-Both of these approaches can be used to define generic
-functions. This is evidenced by the libraries Scrap your Boilerpate
-Code~\cite{SYB} and Uniplate~\cite{Uniplate}. Both libraries specify a
-family of operations that must be supported by a type and use ad-hoc
-polymorphism to implement many generic functions (for example |length|
-or |increment|) in terms of the family of operations. The programer
-only needs to do pattern matching when defining these base operations
-and both libraries provide mechanisms to do it automatically.
+These approaches can be used to define many polytipic functions. This
+is evidenced by the libraries Scrap your Boilerpate Code~\cite{SYB}
+and Uniplate~\cite{Uniplate}. Both libraries specify a family of
+operations that must be supported by a type and use ad-hoc
+polymorphism to implement many polytipic functions (for example
+|length| or |increment|) in terms of the family of operations. The
+programer only needs to do pattern matching when defining these base
+operations and both libraries provide mechanisms to do it
+automatically.
 
-Although both of these features allow the definition of many generic
-functions, a more general approach exists. Recall that every value
-expressed as an ADT is a type constructor followed by values of other
-types. For simplicity consider type constructors taking only one
-argument, they can be seen as |C a|. With this abstraction, it is
-possible to define a function that operates on all type constructors
-that accept one argument. More specific functions, such as
-|increment|, can be defined for type constructors that accept an |Int|
-as an argument. This would be type safe because the type checker is
-able to compare the type of the arguments of the constructors. The
-generalization of this approach (for constructors taking any
-arguments) is called \emph{datatype generic programming}. In the
-remainder of this thesis, the term generic programming will always
-mean datatype generic programming. The next section introduces generic
-programming using the Regular~\cite{Regular} library.
+Although it's possible to define many polytipic functions with these
+approaches, there exists a more general apprach called \emph{datatype
+  generic programming}. The following example shows the intuition. For
+simplicity consider types with constructors that either accept zero or
+one argument. Such as the types:
+\begin{code}
+  data Maybe a = Nothing | Just a
+  data Circle = Radius Int
+\end{code}
+Then a typeclass to match constructors with zero and one arguments are
+defined as follows:
+\begin{code}
+  class ZeroArgs t where
+    value0 :: t -> Maybe ()
+    constr0 :: t
+    
+  class OneArg t a where
+    value1 :: t -> Maybe a
+    constr1 :: a -> t
+    
+\end{code}
+The following instances are valid for the types given above:
+\begin{code}
+  instance ZeroArgs (Maybe a) a
+  instance OneArg (Maybe a) a
+  instance OneArg Circle Int
+\end{code}
+With those constructors one can easily define an increment function:
+\begin{code}
+  increment :: OneArg t Int => t -> t
+  increment v = case value1 v of
+    Nothgin -> v
+    Just i -> constr1 (i + 1)
+\end{code}
+The idea is encoding type constructors using other types, |ZeroArgs|
+and |OneArgs| in this case, and the arguments of the constructor as
+type parameters of the encoding type. The type used to encode other
+types is called \emph{representation type} or \emph{universe}. The
+approach above has many limitation in the types it is able to encode.
+For example, it cannot encode a type, such as |data Int = Pos Nat palo
+Neg Nat|, with two type constructors that accept the same
+argument. Richer representation types are able to encode more
+types. The remainder of this section introduces Regular~\cite{Regular}
+which is an approach to \emph{datatype generic programming} able to
+express many more types. In the rest of this thesis, \emph{generic
+  programming} will always refer to \emph{datatype generic
+  programming} and functions defined using \emph{generic programming}
+will be called \emph{generic functions}.
 
 \subsection{Generic Programming with Regular}
 
-The idea behind Datatype Generic Programming is to encode ADTs using
-only a handful of datatypes, such encoding is called a
-\emph{representation}. Each library uses different types to define
-representations. Representations can encode many ADTs but not all of
-them; the ADTs that are expressible by a representation is called the
-\emph{universe}.
+\emph{Generic functions} are defined by induction on the structure of
+a type. Since pattern matching can only do induction on one type,
+generic programming libraries include facilities to define functions
+that work on many types. The most important things are: a
+\emph{representation type} (|U|) that can represent values of other
+types, and a decoding function, |Set -> U|, that decodes
+representations back to types. The \emph{representation type} along
+with the decoding function is called the \emph{universe}. The
+\emph{universe} specifies the types that can be represented by the
+library.
 
-In the case of Regular, its universe is all the ADTs that:
+In the case of Regular, its \emph{universe} can handle all ADTs that:
 \begin{itemize}
-\item Have no type arguments (are of kind *) \todo{revise, it might be
+\item Are of kind |*| \todo{revise, it might be
   one type argument}
 \item Are not mutually recursive
 \end{itemize}
 This universe includes many common types like lists, trees and simple
-DSLs but is smaller than the set of types definible in Haskell 98.
-
-To represent its universe, regular uses the following types:
+DSLs but is smaller than the set of types definible in Haskell 98. To
+represent its universe, Regular uses the following types:
 \begin{code}
 data K a r = K a
 data Id r = Id r
@@ -176,15 +215,14 @@ data (f otimes g) r = f r otimes g r
 The types have the following roles:
 \begin{itemize}
 \item |K| represents the occurence of values of primitive types (eg. |Int| or |Bool|)
-\item |Id| represents recursion over the same type
+\item |Id| represents recursion on the type being represented (eg. the
+  |List| argument of the |Cons| constructor).
 \item |Unit| represents a constructor which takes no arguments
 \item |(f oplus g)| represents sum of two representations. This happens when a type has multiple constructors
 \item |(f otimes g)| represents product of two representstions. This happens when a constructor takes multiple arguments.
 \end{itemize}
 
-To familiarize ourselves how a type can be encoded with a
-representation, consider representing a list of |Int| with theese
-types:
+As an example, a list of |Int| is represented as follows:
 \begin{code}
 data List = Cons Int List | Nil
 \end{code}
@@ -200,8 +238,11 @@ primitive |Int| represented with |K Int| and the second arguments is a
 recursive ocurrence of the list, represented by |Id|. Finally, the
 |Nil| constructor is represented by |Unit|.
 
-To write generic functions in Regular, one must declare a type as an
-instance of the Regular typeclass. The Regular typeclass is the following:
+The types above are used to define \emph{generic functions} but in
+order to do so, values must be translated to representations. In
+Regular, the translation is defined by making a type an instance of
+the |Regular| typeclass. The |Regular| typeclass is defined as
+follows:
 \begin{code}
 class (Functor (PF a)) => Regular a where
   type PF a :: * -> *
@@ -209,11 +250,11 @@ class (Functor (PF a)) => Regular a where
   to :: PF a a -> a
 \end{code}
 
-The constituients of the class are a type called |PF| which simply is
-the representation using the types of Regular and two functions, |to|
-and |from|, that convert values to representations and representations
-to values. For the case of the |List| provided above, an instance
-could be the following:
+The constituients of the class are a type called |PF| which is the
+representation of the argument type and two functions, |to| and
+|from|, that convert values to representations and representations to
+values. In the case of list of |Int|, an instance could be the
+following:
 \begin{code}
 instance Regular List where
   type PF List = (K Int otimes Id) oplus Unit
@@ -226,18 +267,17 @@ instance Regular List where
 
 \end{code}
 
-This instance declaration is very unremarkable. In general, providing
-an instance of Regular for a particular type is a mechanical process
-and Template Haskell~\cite{TemplateHaskell} is used to automatically
-derive them.
+This instance declaration is straightforward. In general, instances of
+the Regular class are straightforward and libraries usually provide an
+automatic way to generate them.
 
 Generic functions can now be expressed in terms of values of
 representation types instead of using values of the type itself. A
-generic function is expressed as a typeclass and is implemented by
-creating instances of type representations for that typeclass. To
-illustrate this approach, the generic increment function will be
-defined. This function increases by one the value of every integer
-that occurs in a type. This is expressed by the following class:
+generic function is specified as a typeclass and is implemented by
+making representations instances of that class. As an example, the
+generic increment function will be defined. This function increases
+the value of every integer that occurs in a type by one. It is defined
+as the following class:
 \begin{code}
 class GInc r where
   gInc :: r -> r
@@ -273,22 +313,37 @@ representation, it must be converted into a representation to apply
 type. The rest of the cases leave the value untouched.
 
 What is important about this function is that Haskell's add-hoc
-polymorphism (type-classes) are used to allow recursion and to provide
-type safety. For instance, if the |K Int| case returned a value |K
-"value" : K String|, the compiler produces a type error. This is a
-consequence of the way parametric polymorphism is used by the
-typeclasses.
-
-This definition requires the overlapping instances extension (among
-others) since there is no way to provide a specific case for |Int| and
-a case for everything but |Int|. It can be observed that the |GInc|
-function works for any representation given in terms of Regular's
-types. To finalize the definition, a wrapper must be written:
+polymorphism (type-classes) is used to perform recursion and to
+provide type safety. For instance, consider the following definition:
 \begin{code}
+instance GInc (K Int) where
+  gInc (K i) = K "wrong!"
+\end{code}
+This definition does not type-check since |gInc :: a -> a| but |K i ::
+K Int| and |K "wrong!" :: K String| making |gInc :: K Int -> K
+String|.
+
+The definition of |GInc| requires the overlapping instances extension
+(among others) since there is no way to provide a specific case for
+|Int| and a case for everything but |Int|. Ommiting the |K Int| case
+would still result in a valid definition and the Haskell compiler is,
+in principle, allowed to ignore it. Regular relies on the compiler to
+select the correct instance and is unable to accept custom selection
+rules.
+
+For convenience, generic functions are usually wrapped around the
+conversion functions to provide a toplevel function that works on
+every instance of the Regular typeclass:
+\begin{code}
+inc :: Regular a => a -> a
 inc = from circ gInc circ to
 \end{code}
-This wrapper simply converts the value into the representation and
-then converts the result back to a value.
+
+This definition of |GInc| is total for Regular's \emph{universe} since
+any representation can be applied to it. This is not
+necessary. Consider deleting the instance: |instance Regular (K
+a)|. |GInc| will still work for any ADT such that all of its type
+constructors take only values of type |Int| as arguments.
 
 \section{The F\# language}
 
@@ -313,7 +368,7 @@ happens transparently depending on how a value is used.
 Types and Records. Both of theese structures are immutable and do not
 allow inheritance/sub-type relations (they are sealed in .NET
 terminology). ADTs in F\# are very similar to those of a traditional
-functional language. Type constructors are defined by cases along with
+functional language. constructors are defined by cases along with
 the arguments the constructor requires to build the type. Records are
 defined by enlisting the fields of the record along with the type of
 each field. Records can then be constructed by providing the arguments
@@ -404,13 +459,13 @@ declared in the program. This is an abstract class and specifies all
 the information that .NET needs about a type. The class must be
 extended by the .NET languages. This allows the storage of any type
 information that the language wishes to include. In the case of F\#,
-information about the type constructors and record fields is included
+information about the constructors and record fields is included
 in the type.
 
 Using the type information provided by reflection, one can generically
 de-construct values by querying the available patterns that exist for
 a type. One can also generically construct values since it is possible
-to obtain the available type constructors to construct a type.
+to obtain the available constructors to construct a type.
 
 Since functions and methods in the reflection API work for all .NET
 types and the result could be any .NET type, there isn't much
@@ -521,7 +576,7 @@ generic programming.
 %% constructors and define functions using such abstraction. Since type
 %% constructors usually take other type arguments one must necesarily
 %% abstract over types of higher kind. In other words, |C a| where |C| is
-%% a type variable that abstracts over type constructors is of kind |(*
+%% a type variable that abstracts over constructors is of kind |(*
 %% -> *)|.
 
 \subsection{Dependent types and Generic Programming}
@@ -811,8 +866,8 @@ type FSharpType =
 \end{code}
 The |IsUnion| method checks at runtime whether or not values of the
 given type are defined as ADTs. The |GetUnionCases| method gives a
-list of all the type constructors of an ADT. The |UnionCaseInfo| type
-contains information about each of the type constructors and can be
+list of all the constructors of an ADT. The |UnionCaseInfo| type
+contains information about each of the constructors and can be
 used to construct and pattern match values.
 
 The remainder of this section describes the algorithm to convert
@@ -862,13 +917,13 @@ function nests an application of the |Sum| type for every type
 constructor available in the argument type. For each of the type
 constructors, the function |getTyValue| is called. The |toUnion|
 function takes as arguments the type obtained by the |getTyUnion|
-function, the list of type constructors and the value being converted
+function, the list of constructors and the value being converted
 to a representation. It tries to match the given value to a type
 constructor. For each constructor that dosen't match, it applies a
 nesting of the |Sum| constructor and recursively calls itself with the
 next type argument of the |Sum| (the |<<`b>>|) and the remainder of
-the type constructors. When the match is positive, it provides the
-value and the matched type constructor to the |toValue| function and
+the constructors. When the match is positive, it provides the
+value and the matched constructor to the |toValue| function and
 packs the result in the corresponding |Sum|.
 
 \begin{code}
@@ -905,20 +960,20 @@ constructor. The code above uses the member function
 |ArgumentsTypes|. That function is not available in the reflection API
 but can be defined by querying the arguments accepted by the
 constructor method. Applications of the |Prod| constructor are nested
-for each argument accepted by the type constructor. Each of the
+for each argument accepted by the constructor. Each of the
 arguments is subsequently expanded into its representation which is
 done by calling the |getTyUnion| function for ADTs or using the |K|
 constructor for other types.
 
 The |toValue| function looks involved but is also very simple. It is
 divided in three cases: |Prod|, |K| and |U|. The |K| case simply
-unpacks the only argument that is accepted by the type constructor and
+unpacks the only argument that is accepted by the constructor and
 packs the argument into the |K| constructor. The |U| case simply
 returns an instance of the |U<<`t>>| type. The |Prod| case extracts
 the value of all the arguments that were given to the type
 constructor. Again, the example uses the |GetArguments| member
 function which can be defined by invoking all the property accessors
-of the values accepted by the type constructors. For each value, it
+of the values accepted by the constructors. For each value, it
 applies the |Prod| constructor giving it as a first argument the
 representation of the value (obtained by calling the |to| function)
 and the recursive application of the function to serialize the
@@ -1039,7 +1094,7 @@ override self.FoldMeta<<`ty>>
       self.FoldMeta(m) |> Choice2Of2)
     :> Meta
 \end{code}
-The |Sum| constructor encodes the type constructor that was used to
+The |Sum| constructor encodes the constructor that was used to
 create the value that was provided. The choice is encoded as nestings
 of the |Choice| type and the nesting is defined by using the
 |Choice1Of2| and |Choice2Of2| constructors. This override will
