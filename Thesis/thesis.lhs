@@ -40,11 +40,11 @@ matching. Whenever a value is pattern matched inside a function, the
 function will demand a concrete type (instead of a type variable) for
 that value. This is very useful since it allows the compiler to infer
 types but has consequences for certain functions. For example, the
-equality function is trival to define. Simply check that both
+equality function is trivial to define. Simply check that both
 arguments were constructed with the same constructor, if so, apply
 equality to the arguments of the constructor. However, most languages
 will require pattern matching to be done in isolation for each type
-making it impossible to define equiality that works on more than one
+making it impossible to define equality that works on more than one
 type.
 
 To mitigate the problem, polytypic programming~\cite{polyp}, which
@@ -59,7 +59,7 @@ Datatype generic programming has been actively researched in the
 Haskell programming language. Many approaches exists such as
 Regular~\cite{Regular}, Multirec~\cite{multirec}, Generic
 Haskell~\cite{GenericDeriving}, RepLib~\cite{RepLib} and Instant
-Generics~\cite{Cheney02alightweight}. Most of the appraches differ in
+Generics~\cite{Cheney02alightweight}. Most of the approaches differ in
 the class of types that can be represented by the library -- called
 the universe. In general, if the universe is smaller, the library is
 easier to learn and its implementation is less demanding for the type
@@ -70,7 +70,7 @@ other programming languages. One of the main difficulties is that most
 approaches rely on advanced type system features to ensure correct
 behavior. For example none of the libraries mentioned above works with
 plain Haskell 98 and all of them use higher kinded polymorphic
-types. Since most ordinary programming languages still lack theese
+types. Since most ordinary programming languages still lack these
 features, the ideas cannot be directly implemented in such languages
 and need to be adapted.
 
@@ -78,7 +78,7 @@ The present thesis investigates how to adapt the ideas of datatype
 generic programming to apply them in the F\# programming language. The
 approach is inspired by Regular which is a library designed with ease
 of use in mind. It leverages from .NET's reflection to carry out the
-type level comptations necessary for generic programming at
+type level computations necessary for generic programming at
 runtime. To adapt the ideas, several compromises had to be made which
 resulted in both advantages and disadvantages. The result is packed as
 a library which can be used to declare generic functions which can be
@@ -100,20 +100,20 @@ to deconstruct ADTs called pattern matching. This mechanism allows the
 programmer to check if a particular value was constructed using the
 specified constructor and extract the arguments used to produce the
 value. This mechanism is very elegant since it allows defining
-functions by induction but it has several shortcommings.
+functions by induction but it has several shortcomings.
 
 A function that pattern matches a value over the constructors of a
 particular ADT constraints the type of that value to be the ADT
 defined by those constructors. This leads to functions being
 implemented multiple times -- either when a existing ADT is modified
 or a new ADT is declared~\cite{polyp}. Due to the importance of
-abstraction, sevaral methods for polymorphism have been developed to
+abstraction, several methods for polymorphism have been developed to
 address these restrictions.
 
 An ADT can be higher-kinded. This means that a definition of a list
 |data List = Cons Int List palo Nil| can abstract the type of its
 content and become |data List a = Cons a (List a) palo Nil|. A
-function, such as lenght, might de-construct the list without
+function, such as length, might de-construct the list without
 performing any operations on its content (the type represented by
 |a|). Such function can operate on a list of any type -- this is
 called parametric polymorphism. The programmer might also wish to
@@ -125,18 +125,18 @@ of operations that it may perform on its content. For example, the
 add two elements of type |a| is provided. This is called ad-hoc
 polymorphism.
 
-These approaches can be used to define many polytipic functions
-generically. This is evidenced by the libraries Scrap your Boilerpate
+These approaches can be used to define many polytypic functions
+generically. This is evidenced by the libraries Scrap your Boilerplate
 Code~\cite{SYB} and Uniplate~\cite{Uniplate}. Both libraries specify a
 family of operations that must be supported by a type and use ad-hoc
 polymorphism to implement many polytipic functions (for example
 |length| or |increment|) in terms of the family of operations. The
-programer only needs to do pattern matching when defining these base
+programmer only needs to do pattern matching when defining these base
 operations and both libraries provide mechanisms to do it
 automatically.
 
 Although it's possible to define many polytipic functions with these
-approaches, there exists a more general apprach called \emph{datatype
+approaches, there exists a more general approach called \emph{datatype
   generic programming}. The following example shows the intuition. For
 simplicity consider types with constructors that either accept zero or
 one argument. Such as the types:
@@ -166,14 +166,14 @@ With those constructors one can easily define an increment function:
 \begin{code}
   increment :: OneArg t Int => t -> t
   increment v = case value1 v of
-    Nothgin -> v
+    Nothing -> v
     Just i -> constr1 (i + 1)
 \end{code}
 The idea is encoding type constructors using other types, |ZeroArgs|
-and |OneArgs| in this case, and the arguments of the constructor as
+and |OneArg| in this case, and the arguments of the constructor as
 type parameters of the encoding type. The type used to encode other
 types is called \emph{representation type} or \emph{universe}. The
-approach above has many limitation in the types it is able to encode.
+approach above has many limitations in the types it is able to encode.
 For example, it cannot encode a type, such as |data Int = Pos Nat palo
 Neg Nat|, with two type constructors that accept the same
 argument. Richer representation types are able to encode more
@@ -197,14 +197,14 @@ with the decoding function is called the \emph{universe}. The
 \emph{universe} specifies the types that can be represented by the
 library.
 
-In the case of Regular, its \emph{universe} can handle all ADTs that:
+In the case of Regular, its \emph{universe} consists of all ADTs that:
 \begin{itemize}
 \item Are of kind |*| \todo{revise, it might be
   one type argument}
 \item Are not mutually recursive
 \end{itemize}
 This universe includes many common types like lists, trees and simple
-DSLs but is smaller than the set of types definible in Haskell 98. To
+DSLs but is smaller than the set of types definable in Haskell 98. To
 represent its universe, Regular uses the following types:
 \begin{code}
 data K a r = K a
@@ -216,12 +216,12 @@ data (f otimes g) r = f r otimes g r
 
 The types have the following roles:
 \begin{itemize}
-\item |K| represents the occurence of values of primitive types (eg. |Int| or |Bool|)
+\item |K| represents the occurrence of values of primitive types (eg. |Int| or |Bool|)
 \item |Id| represents recursion on the type being represented (eg. the
   |List| argument of the |Cons| constructor).
 \item |Unit| represents a constructor which takes no arguments
 \item |(f oplus g)| represents sum of two representations. This happens when a type has multiple constructors
-\item |(f otimes g)| represents product of two representstions. This happens when a constructor takes multiple arguments.
+\item |(f otimes g)| represents product of two representations. This happens when a constructor takes multiple arguments.
 \end{itemize}
 
 As an example, this list of integers:
@@ -237,7 +237,7 @@ It is straightforward to see that the sum of constructors gets
 translated to the |oplus| type. The |otimes| type is used to join the
 arguments of the first constructor. One of the arguments is a
 primitive |Int| represented with |K Int| and the second arguments is a
-recursive ocurrence of the list, represented by |Id|. Finally, the
+recursive occurrence of the list, represented by |Id|. Finally, the
 |Nil| constructor is represented by |Unit|.
 
 The types above are used to define \emph{generic functions} but in
@@ -252,7 +252,7 @@ class (Functor (PF a)) => Regular a where
   to :: PF a a -> a
 \end{code}
 
-The constituients of the class are a type called |PF| which is the
+The constituents of the class are a type called |PF| which is the
 representation of the argument type and two functions, |to| and
 |from|, that convert values to representations and representations to
 values. In the case of list of |Int|, an instance could be the
@@ -443,12 +443,12 @@ become static members and type definitions become nested types.
 %% signature but different implementation. The implementation of an
 %% overriden method can invoke the previous implementation if necessary.
 {\bf Polymorphic types: } Types in F\# can accept type
-arguments. These are type variables that can then be instantiated to
-any concrete type as long as the concrete type satisfies the
-constraints given to the argument. A major difference between F\# and
-other functional laungauges is that type variables are restricted to
-kind |*|. Functions such as the bind (|>>=|) function in Haskell
-cannot be implemented in F\#. For example:
+arguments. These are type variables that can be instantiated to any
+concrete type as long as the concrete type satisfies the constraints
+given to the argument. A major difference between F\# and other
+functional laungauges is that type variables are restricted to kind
+|*|. Functions such as the bind (|>>=|) function in Haskell cannot be
+implemented in F\#. For example:
 \begin{code}
 (>>=) :: Monad m => m a -> (a -> m b) -> m b
 \end{code}
@@ -511,8 +511,10 @@ would look like if it were defined as a class:
     
 \end{code}
 The definition is not a valid F\# definition since classes cannot
-inherit from a sealed class but this is roughly how F\# translates an
-ADT into a .NET object.
+inherit from a sealed class but compilers targeting .NET are allowed
+to generate such definitions. This definition ignores some details but
+includes the information that is necessary to present the reflection
+library.
 
 In this example, the |List| type has no constructors and cannot be
 instantiated. Instead, |List| values are created using the |Cons| type
@@ -580,7 +582,7 @@ method is still quite unknown but if more languages adopt it, it could
 eventually become a tool to prevent boilerplate code and unecessary
 refactoring within large software systems. However, it is not trivial
 to translate the Haskell approach to other languages, especially
-languages like F\# which have simple type systems.
+languages like F\# which have simpler type systems.
 
 \subsection{Why should F\# adopt Datatype Generic Programming}
 Programmers of the F\# language also face the problem of having to
@@ -747,8 +749,8 @@ instantiated.
 
 \subsection{Higher-Rank Polymorphism and Generic Programming}
 
-The RepLib~\cite{replib} can be used to define generic functions for
-any Haskell 98 type. To achieve this it makes use of rank 1 types. The
+The RepLib~\cite{RepLib} can be used to define generic functions for
+any Haskell 98 type. To achieve this it makes use of rank 2 types. The
 rank of a type is determined by the depth of nestings that the forall
 quantifier can appear. For example, RepLib defines the following
 rank-2 type:
@@ -792,12 +794,31 @@ constructor. Since every constructor accepts arguments of different
 types, it must be a rank-2 type in order to have them all in the same
 list.
 
-The type |Emb l a| contains functions to construct and pattern match
-values generically. As said before, the |l| argument encodes the type
-of the type constructor. This ensures that those functions are only
-applied to values of the correct type. Functions must pattern match
-over the |l| type in order to construct by induction a suitable list
-of arguments that can then be used to construct new values.
+RepLib also defines a type |Emb|:
+\begin{code}
+data Emb l a = Emb {
+  to :: l -> a,
+  from :: a -> Maybe l
+}
+\end{code}
+
+This is the type used to pattern match constructors generically. For
+every type constructor, a value of type |Emb| is defined. This value
+contains two functions. The function |from| is used to generically
+pattern match this a value with a constructor. If the match is
+positive, it returns a value |l| inside a |Just|. As said before, |l|
+is used to encode the type of the arguments of the
+type-constructor. This allows the inclusion of the values given as
+parameters to the type constructor inside the |Just|
+constructor. Similarly, the |to| function takes a set of values with
+the type accepted by the type constructor and creates a new value
+using that constructor.
+
+The RepLib library shows that rank polymorphism allows the programmer
+to specify how a generic function should behave depending on how the
+|l| argument is instantiated but at the same time, values that
+instantiate the |l| argument differently can be treated as if they
+were the same type.
 
 \subsection{Remarks}
 
@@ -986,7 +1007,7 @@ within a type, analogous to |Id| in Regular. This type only contains a
 single value of type |`ty| which is the recursively occurring value.
 
 The definitions of these types are given in Figure~\ref{fig:rep-def}.
-This definitions are not complete since the actual implementation
+These definitions are not complete since the actual implementation
 contains extra code used for reflection which is not relevant when
 discussing the universe of types that the library can handle.
 
@@ -1095,14 +1116,15 @@ function takes as arguments the type obtained by the |getTyUnion|
 function, the list of constructors and the value being converted to a
 representation. It tries to match the given value to the
 constructor. This is done using the |Matches| extension method of
-|UnionCaseInfo| which is implemented using the |Is_Constr| methdos
-that are generated by the F\# compiler in the |Type| class.  For each
-constructor that dosen't match, it applies a nesting of the |Sum|
-constructor and recursively calls itself with the next type argument
-of the |Sum| (the |<<`b>>|) and the remaining constructors. When the
-match is positive, it provides the value and the matched constructor
-to the |toValue| function and packs the result in the corresponding
-|Sum|.
+|UnionCaseInfo| type. This method is implemented using special methods
+generated by the F\# compiler for every ADT which allow checking at
+runtime if a value was constructed using a particular type
+constructor. For each constructor that dosen't match, it applies a
+nesting of the |Sum| constructor and recursively calls itself with the
+next type argument of the |Sum| (the |<<`b>>|) and the remaining
+constructors. When the match is positive, it provides the value and
+the matched constructor to the |toValue| function and packs the result
+in the corresponding |Sum|.
 
 \begin{code}
 let getTyValue : << Type >> -> UnionCaseInfo -> Type
@@ -1183,6 +1205,8 @@ type Generic<<`t>> =
   abstract From : Meta -> `t
 \end{code}
 
+\pagebreak
+
 \section{Defining generic functions as classes}
 
 \begin{figure*}
@@ -1228,13 +1252,13 @@ is parametrized by the following type argumetns:
 In addition to those arguments, the |Sum|, |Prod|, |K| and |U|
 variants of the method also include the type parameter |`ty|. Recall
 that all type representatios take as first type parameter the type
-being represented. In the case of 'nested types' or types that contain
-within them other types, the parameter will vary in different sections
-of the representation. Therefore, it is necessary to quantify over all
-types, not only |`t|. Regular does not do this but it is necessary to
-define certain generic functions which will be covered later. The |K|
-override also contains the type parameter |`a| which denotes the
-primitive type contained by |K|.
+being represented. In the case of \emph{nested types} or types that
+contain within them other types, the parameter will vary in different
+sections of the representation. Therefore, it is necessary to quantify
+over all types, not only |`t|. Regular does not do this but it is
+necessary to define certain generic functions which will be covered
+later. The |K| override also contains the type parameter |`a| which
+denotes the primitive type contained by |K|.
 
 This class can only handle generic functions that take a single
 argument. However, F\# allows types to have the same name as long as
@@ -1369,8 +1393,8 @@ sections explain how the library correctly selects the methdos that
 are invoked in each case. Note that all recursive calls of the
 |FoldMeta| method invoke the overload with signature |FoldMeta : Meta
 -> `out| for which no implementation was given. The implementation of
-the method is derived automatically using reflection and will be
-explained in section \todo{sec:foldmeta}.
+the method is derived automatically using reflection and is explained
+in section \ref{sec:foldmeta}.
 
 %% \subsection{Generic Equality}
 
@@ -1380,11 +1404,10 @@ explained in section \todo{sec:foldmeta}.
 
 \subsection{Uniplate}
 One of the popular combinator based libraries is the
-Uniplate~\cite{uniplate} library. All generic functions in this
+Uniplate~\cite{Uniplate} library. All generic functions in this
 library are implemented on top of a single function called
-|uniplate|. The implementation of this function shows that the
-library is capable of expressing an extensive family of generic
-functions.
+|uniplate|. Being able to implement the |uniplate| function with this
+library is a way to demostrate the expressiveness of the library.
 
 The |uniplate| function takes as an argument a value and returns a
 tuple. The first element contains a list with all the recursive
@@ -1436,7 +1459,7 @@ type Collect<<vart>>() =
     [i.Elem]
 \end{code}
 
-The definition is very straightforward. The most important case
+The definition is straightforward. The most important case is
 |Id|. Recall that |Id| indicates a recursive occurence of a value with
 the same type as the type that produced the current
 representation. Therefore that value is packed inside a list and
@@ -1564,11 +1587,11 @@ define generic equality:
 
     override x.FoldMeta<<`ty,`x>>(v1 : K<<`ty,`x>>, v2 : Meta) = false
       
-    member x.FoldMeta(v1 : Id<<`t>, v2 : Id<<`t>>) =
+    member x.FoldMeta(v1 : Id<<`t>>, v2 : Id<<`t>>) =
       let g = Generic<<`t>>()
       x.FoldMeta(v1.Elem |> g.From, v2.Elem |> g.From)
 
-    override x.FoldMeta(v1 : Id<<`t>, v2 : Meta) = false
+    override x.FoldMeta(v1 : Id<<`t>>, v2 : Meta) = false
 \end{code}
 
 This definition is very straightforward to understand. When values of
@@ -1578,6 +1601,8 @@ case. What is important about this definition is that |FoldMeta|
 variants that accept multiple representation arguments can be enforced
 to be complete by requiring an overload that instantiates all
 representation arguments excepting the first to |Meta|.
+
+\pagebreak
 
 \section{The |FoldMeta| class}
 \label{sec:foldmeta}
@@ -1837,7 +1862,7 @@ of such functions is provided as a type argument to the class. This
 means that the return type of all cases must be the same. This is
 restrictive compared to other datatype generic programming libraries
 like Regular where the |Id| case might have a different return type as
-de |K| case. This is particularly important to ensure type safety on
+the |K| case. This is particularly important to ensure type safety on
 functions that construct values generically, such as |read|. The
 |FoldMeta| class cannot fully solve the problem without higher
 kinds. For example, to define |GMap| properly, one would like that the
@@ -1885,13 +1910,15 @@ However, sub-type constraints cannot be enforced against type
 variables. This results in a compile time error since |`m| is a type
 variable.
 
+\pagebreak
+
 \part{Evaluation and Conclusions}
 
 \section{Evaluation of the library in the F\# language}
 One of the objectives is to asses the value generic programming can
 have for the F\# programmer. The most important consideration is
 whether the library serves as a competitive approach to other means
-F\# offers for implementing polytipic functions.
+F\# offers for implementing polytipic functions generically.
 
 If a programmer needs to implement a polytipic function generically,
 he will typically have to use reflection. As mentioned in
@@ -1933,15 +1960,14 @@ other types embeded inside ADTs. Based on what was learned through
 this work, there is little hope that generic programming can work with
 classes sicne representations rely on objects being immutable. The
 reason is that a value and its representation are required to be an
-\emph{embedding projection pair}. That means that |to circ from == id|
-and |from circ to sqsubseteq id|~\cite{hinze}. Now classes may have
-mutable state, contrast to ADTs, the full state of a value cannot be
-recovered from the arguments that were given to the constructor. This
-means that a representation must contain information about every
-internal variable in a class rather than the constructor's
-arguments. Furthermore, the |Sum| constructor is probably useless
-since in the case of classes, it is not very relevant what constructor
-was used to create the value.
+\emph{embedding projection pair}. This means that |to circ from == id|
+and |from circ to sqsubseteq id|~\cite{GenericHaskell}. Classes may have
+mutable state and the state of an object cannot be recovered from the
+constructor that was used to create it. This means that a
+representation must contain information about every internal variable
+in a class rather than the constructor's arguments. Furthermore, the
+|Sum| constructor is probably useless since in the case of classes, it
+is not very relevant what constructor was used to create the value.
 
 Classes are very important in F\# code because other .NET languages do
 not support ADTs. It is often desirable that functions defined in F\#
@@ -1949,14 +1975,16 @@ also work on types defined in, for example, C\#. Since some objects
 are immutable, a special interface could be defined to specify how to
 translate and object from/to an ADT-like structure.
 
+\pagebreak
+
 \section{Evaluation of the library against Regular}
 
-Comparing the library to Regular is a bit on the negative side. A lot
-of Regular's advantages had to be surrendered due to F\#'s type
-system. Surprisingly, there are a couple of unexpected advantages
-comming from the use of reflection and the object oriented approach of
-this library. If F\# supported kind-polymorphism, this library could
-be a competitive alternative to Regular.
+Compared to Regular, this library has many shortcommings because of
+F\#'s limited type system. Surprisingly, there are a couple of
+unexpected advantages comming from the use of reflection and the
+object oriented approach of this library. If F\# supported
+kind-polymorphism, this library could be a competitive alternative to
+Regular.
 
 The primary disadvantage occurs when values are constructed
 generically. Regular uses Haskell's type system to ensure that invalid
@@ -1973,15 +2001,15 @@ total for all representations. Haskell addresses this issue by
 checking at compile time that a representation type is compatible with
 the generic function it is applied to. The only alternative to prevent
 method dispatch failures at runtime is to require that all generic
-functions are total for the universe. One can still define partial
-functions which fail at runtime when provided with incompatible
-arguments but Regular's advantage is that the failure happens at
-compile time.
+functions are total for the universe. With this library one can still
+define partial functions that fail at runtime when applied to
+incompatible arguments but the advantage or Regular is that such
+runtime failure is converted to a compile time error.
 
 On the performance side, this library must perform more work at
 runtime than Regular. Through cacheing, it is possible to achieve some
-performance gains but it will always require to do more work at
-runtime than Regular. On the bright side, using the information
+performance gains but the first invokation will always require more
+work than with Regular. On the bright side, using the information
 available at runtime it is possible to dynamically generate code once
 which can be efficiently executed on further applications of a generic
 function. Optimization was not thorughly studied in this thesis but
@@ -2009,6 +2037,8 @@ Haskell relies in the fact that typeclasses are not well suited to
 define generic functions. Typeclasses are meant to express global
 properties of types but functions are local operations.
 
+\pagebreak
+
 \section{Remarks about F\# and .NET}
 To develop this library, many features of F\# where taken into
 consideration. This section talks about the limitations of some of
@@ -2035,8 +2065,8 @@ function.
 
 Unfortunately, type providers are restricted on what types they are
 allowed to produce. Types that contain polymorphic type arguments
-cannot be produced by type providers. This means that no variant of
-the |FoldMeta| class is possible with a type provider since it must at
+cannot be generated with type providers. This means that no variant of
+the |FoldMeta| class is feasible with a type provider since it must at
 least accept the generic type as argument. This wouldn't be a problem
 if type providers could accept types as static arguments, but the only
 static arguments supported by type providers are strings, integers and
@@ -2058,12 +2088,14 @@ deals with ad-hoc porlymorphism differently.
 It is possible to add methods to types post-hoc (after the type has
 been defined), it can even be done in external modules. Since F\# has
 memeber constraints, it should be possible to define generic functions
-as extension of the representation types and use member constraints to
-enforce that the type variables corresponding to representation types
-support the generic function. However, member constraints in F\# do
-not check if there exist extension members that satisfy the
-constraint. In F\#, extension members are a convenient way to organize
-code but not a feature useful in the type system.
+as extension members of the representation types and use member
+constraints to enforce that the type variables corresponding to
+representation types support the generic function. However, member
+constraints in F\# do not check if there exist extension members that
+satisfy the constraint. In F\#, extension members are a convenient way
+to organize code but not a feature useful in the type system.
+
+\pagebreak
 
 \section{Conclusions and Future Work}
 
@@ -2071,7 +2103,7 @@ It is well known that polytipic functions can lead to boilerplate code
 since they usually cannot be implemented generically with the
 constructs typically offered by functional languages. Since many of
 those functions are only dependent on the structure of types, it is
-possible to define algorithms that work on families of type. This has
+possible to define algorithms that work on families of types. This has
 been achieved by methods such as datatype generic programming.
 
 Generic programming has enjoyed lots of success in the Haskell
@@ -2094,9 +2126,10 @@ This is evidenced by the library presented in this thesis along with
 some classic examples of generic functions. The interface provided by
 this library is easy to understand, provides some level of type safety
 and compared to reflection, which is typically used in F\#, it has
-less room for errors and functions are cleaner and more succint since
-it eliminates the invokation of .NET internal routines. Under a
-fundamentalist perspective, functions can be inductively defined.
+less room for errors. Functions are cleaner and more succint since the
+library eliminates the invokation of .NET internal routines. A more
+fundamentalist advantage over reflection is that it allows inductively
+defined functions.
 
 Compared to Regular, it lacks many features due to F\#'s simpler type
 system. The major flaw is that constructing values generically can
@@ -2111,7 +2144,7 @@ restricted on the arguments it can do induction with and values it can
 take as parameters.
 
 On the other hand, this library confirms (as pointed out in
-\cite{scalaGen} that ideas from the object oriented world can benefit
+\cite{ScalaGen}) that ideas from the object oriented world can benefit
 generic programming. In particular, method overriding is a powerful
 feature that allows the re-usage of existing generic functions to
 implement new generic functions by simply modifying individual
@@ -2126,15 +2159,15 @@ framework. It would be interesting to research how much of theese
 computations could be performed post-compilation by implementing a
 tool that inspects the generated assemblies using reflection for
 correctness. This could potentially allow the programmer to define its
-own variations of the |FoldMeta| class without having to worry that
-the definition is not complete and the overloads have the right
-signature in order to prevent runtime errors. It would also be
-interesting to research possible runtime optimizaitions that can be
-done through reflection. Even though performance might never be on par
-to Regular (or a similar library) it could be possible that F\#'s
-ability to generate code at runtime combined with the ideas from
-\emph{just in time} compilation might lead to performance gains. This
-highlights a lot of the power that .NET's reflection framework has.
+own variations of the |FoldMeta| class while ensuring that the
+definition will not crash at runtime due to missing overloads. It
+would also be interesting to research possible runtime optimizaitions
+that can be done through reflection. Even though performance might
+never be on par to Regular (or a similar library) it could be possible
+that F\#'s ability to generate code at runtime combined with the ideas
+from \emph{just in time} compilation might lead to performance
+gains. This highlights a lot of the power that .NET's reflection
+framework has.
 
 Bringing ideas of generic programming into everyday usage is a
 challenging work. F\# is a nice playground because it allows
@@ -2146,8 +2179,10 @@ computations carried out by the Haskell compiler that are necessary
 for generic programming. The approach is far from complete compared to
 what is available in Haskell but there is room for improvement using
 the existing tools. Hopefully this thesis will inspire other
-researchers to investigate creative approaches to effectively combine
-reflection and generic programmers in a effective way.
+researchers to investigate creative approaches to combine reflection
+and generic programming in a effective way.
+
+\pagebreak
 
 \part{References}
 
