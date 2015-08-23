@@ -1,0 +1,420 @@
+\documentclass{beamer}
+\usepackage{graphicx}
+\usepackage{multicol}
+\usepackage{color}
+
+\newcommand{\pos}{
+
+    \includegraphics[scale=0.1]{plus.jpg}
+}
+
+\newcommand{\nig}{
+
+  \includegraphics[scale=0.1]{minus.jpg}
+}
+
+\begin{document}
+
+\begin{frame}
+
+  \begin{tabular}{c}
+    {\color{blue}\Huge Generic Programming in F\#} \\
+    \\
+    Ernesto Rodriguez \\
+    Supervisor: Prof. Dr. Wouter Swierstra \\
+    \\
+    Software Technology Group\\
+    Utrecht University
+    
+  \end{tabular}
+  
+\end{frame}
+
+\begin{frame}
+  \frametitle{Generic Programming and F\#}
+
+  \begin{itemize}
+  \item Some functions cannot be implemented generically due to the
+    lack of type constructor polymorphism
+  \item Many approaches exists in Haskell: Regular, RepLib, Multi-Rec
+    and more
+  \item Require advanced type system features such as
+    kind-polymorphism
+  \item Little research about generic programming has been done in F\#
+  \item The only alternative to implement polytipic functions
+    generically in F\# is reflection
+  \end{itemize}
+    
+\end{frame}
+
+\begin{frame}
+
+  \frametitle{Generic Programming}
+
+  \begin{itemize}
+  \item Many functions, such as equality, have to be written over and
+    over again (Jeuring and Jansson)
+  \item This leads to code duplication and scalability problems
+  \item Polymorphism can help mitigate the problem
+  \item In many cases, polymorphism isn't enough: pattern matching
+    cannot be done generically!
+  \item Generic programming was developed to solve the problem
+  \item Combinator based libraries and datatype generic programming
+  \end{itemize}
+
+  \centering \includegraphics[scale=0.4]{pattern} \\
+    
+\end{frame}
+
+\begin{frame}
+
+  \frametitle{Datatype Generic Programming}
+  \begin{itemize}
+  \item Will now be called generic programming
+  \item Represent types and values using a representation type $U$
+  \item Provide functions $from : Set \rightarrow U$ and $to : U
+    \rightarrow Set$ to convert between values and representations
+  \item Define functions on values of the representation type instead
+    of ordinary values
+  \item Values can be constructed generically
+  \item Many approaches exist for Haskell: Regular, RepLib and
+    Multi-Rec (among others)
+  \item Each differs in the family of types that it can represent
+  \item In general, the bigger the family the more complex the library
+  \item This thesis is based on Regular due to its simplicity
+  \end{itemize}
+  
+\end{frame}
+
+\begin{frame}
+  \frametitle{Regular}
+
+  \begin{itemize}
+    \item Types are made an instance of the Regular typeclass by
+      specifying the representation of the type and the conversion
+      functions
+    \item Can be done automatically using Template Haskell
+    \item Shallow representations
+  \end{itemize}
+  
+  \begin{tabular}{ll}
+    \includegraphics[scale=0.4]{rep1} & \includegraphics[scale=0.4]{reg} \\
+    \includegraphics[scale=0.4]{rep3} & \\
+  \end{tabular}
+\end{frame}
+
+
+\begin{frame}
+
+  \frametitle{Regular: Example}
+
+
+  \begin{multicols}{2}
+    \begin{itemize}
+    \item Generic functions are defined as typeclasses
+    \item The individual constituents of the representation type are
+      made an instance of the typeclass
+    \item Compiler typechecks functions by instantiating type
+      variables
+    %\item Variables have higher kinds
+    \item This function requires the Overlapping Instances extension
+    \end{itemize}
+    \pagebreak
+    \includegraphics[scale=0.4]{gsum}
+  \end{multicols}
+  
+\end{frame}
+
+\begin{frame}
+
+  \frametitle{The F\# programming languages}
+
+  \begin{itemize}
+  \item Functional language of the ML-family (OCaml implementation for .NET).
+  \item Syntax directed type inference based on Hindley-Miller.
+  \item Inter-operates with other .NET languages $\rightarrow$ no type erasure.
+  \item Parametric polymorphism with first order type variables.
+  \item Ad-hoc polymorphism through interfaces and member constrains.
+  \item Inheritance support for class types.
+  \item Designed to be practical language that is easy to adopt by
+    .NET programmers.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+
+  \frametitle{The F\# programming language}
+  
+  \begin{tabular}{c}
+    ADTs and Pattern Matching \\
+    \includegraphics[scale=0.4]{adts} \\
+    Classes and Inheritance \\
+    \includegraphics[scale=0.4]{classes} \\
+  \end{tabular}
+  
+\end{frame}
+
+\begin{frame}
+
+  \frametitle{Reflection}
+
+  \begin{itemize}
+  \item F\# runs on top of .NET and uses .NET's type system
+  \item All types are available at run-time (no type erasure)
+  \item Type information can be queried at run-time
+  \item It is possible to inspect many constructs at runtime: methods, functions, types
+  \item It is possible to perform almost any .NET operation
+  \item Not type safe
+  \item Requires (a lot) boilerplate code :(
+  \item Requires knowledge about .NET to be used
+  \item Not cross-platform
+    
+  \end{itemize}
+
+  \centering\includegraphics[scale=0.4]{boilerplate}
+  
+\end{frame}
+
+\begin{frame}
+
+  \frametitle{Research}
+
+  \begin{itemize}
+  \item Investigate if datatype generic programming can be used in F\#
+  \item Implement a library based on Regular
+  \item Determine if F\#'s type system is powerful enough for generic programming
+  \item Explore the advantages and disadvantages of this implementation
+  \item Compare results with Regular and Reflection
+    
+  \end{itemize}
+    
+\end{frame}
+
+\begin{frame}
+
+  \frametitle{Representations in F\#}
+  \begin{itemize}
+  \item Typeclass constraints are converted into sub-type constraints
+%  \item Sub-typeing is used to hide higher kinded variables
+  \item The role of these representations mirrors that of Regular's
+    types
+  \end{itemize}
+  
+  \begin{tabular}{cc}
+    \includegraphics[scale=0.4]{meta1} & \includegraphics[scale=0.4]{meta2} \\
+  \end{tabular}
+  
+\end{frame}
+
+\begin{frame}
+
+  \frametitle{Automatic Conversion}
+
+  \begin{itemize}
+
+  \item Use the type information available at runtime to convert values into representations
+  \item Every .NET value has the member function $GetType : unit \rightarrow Type$
+  \item .NET defines the toplevel function $typeof\langle `t \rangle : Type$
+  \item Every .NET language extends the $Type$ class in order to
+    include metadata.
+    
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Automatic Conversion}
+  \centering\includegraphics[scale=0.4]{reflection}
+\end{frame}
+
+\begin{frame}
+
+  \frametitle{Generic Functions as Classes}
+
+  \begin{itemize}
+  \item Generic functions are defined by overriding the
+    \emph{FoldMeta} class
+  \item The \emph{FoldMeta} class contains one overload for every
+    sub-type of \emph{Meta}
+  \item Contains three type arguments: the generic type (\emph{'ty}),
+    the input type (\emph{'in}) and the output type (\emph{'out})
+  \item Contains a member to dispatch other methods (more about it later)
+  \end{itemize}
+  
+  \centering\includegraphics[scale=0.4]{foldmeta}
+  
+\end{frame}
+
+\begin{frame}
+  \frametitle{Example: GMap}
+  \includegraphics[scale=0.4]{gmap}
+\end{frame}
+
+\begin{frame}
+  \frametitle{The FoldMeta class: problem} Consider invoking
+  \emph{gsum} on a value of type: $(K\ Int\ \otimes\ I)\ \oplus\ U$
+  \begin{itemize}
+  \item Is the definition correct? How can the compiler check?
+  \item What \emph{gsum} overload must be selected? Input could be of
+    type $U \oplus U$ or $GSum\ a \Rightarrow a \oplus U$.
+  \item Can F\# do it this way?
+  \end{itemize}
+  \centering\includegraphics[scale=0.4]{pgsum}
+\end{frame}
+
+\begin{frame}
+  \frametitle{The FoldMeta class: solution}
+  \begin{itemize}
+  \item Require that all cases are covered
+  \item All recursive calls are performed on values of type
+    \emph{Meta}
+  \item Select an overload using reflection: specific type $>$
+    polymorphic type
+  \item All overloads must return the same type
+  \item Generic functions must be total (for the universe)
+  \item Instead of abstracting using type variables we use subtypeing
+  \end{itemize}
+  \centering\includegraphics[scale=0.4]{foldmeta}
+    
+\end{frame}
+
+\begin{frame}
+  \frametitle{What about Ad-Hoc polymorphism?}
+  \begin{itemize}
+  \item Extension members are not checked when solving member
+    constrains
+  \item The signature of type extensions must be the same as the
+    original signature
+  \item Method definitions might overlap
+  \end{itemize}
+  If the restrictions above didn't exists, extension members would
+  be very similar to typeclasses.
+
+  \centering\includegraphics[scale=0.4]{adhoc}
+  
+\end{frame}
+
+\begin{frame}
+
+  \frametitle{Type Providers}
+
+  An F\# tool that allows types to be generated at compile time by
+  executing arbitrary .NET code. However:
+  
+  \begin{itemize}
+  \item Can only generate isomorphic types
+  \item Only accept strings, integers and booleans as static
+    arguments.
+    
+  \end{itemize}
+
+  \centering\includegraphics[scale=0.4]{provider}
+  
+\end{frame}
+
+\begin{frame}
+  \frametitle{Extensibility}
+  \begin{itemize}
+  \item It is trivial to modify the functionality in a modular way
+  \item Generic functions and their variants can easily co-exist in
+    the same namespace
+  \item Method dispatch is easy to customize
+  \item Overriding is natural for OOP (FP prefers abstraction)
+  \end{itemize}
+  
+  \centering\includegraphics[scale=0.4]{extensible}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Multi-Argument Recursion}
+  \begin{itemize}
+  \item \emph{FoldMeta} variant that takes more representation
+    arguments
+  \item Selection works in a similar way as before
+  \end{itemize}
+  
+  \includegraphics[scale=0.4]{mrec}
+  
+\end{frame}
+
+\begin{frame}
+
+  \frametitle{Regular vs FoldMeta}
+
+  \begin{tabular}{l p{4cm} l p{4cm}}
+    \hline
+    \multicolumn{2}{c}{Regular} & \multicolumn{2}{c}{FoldMeta} \\
+    \hline
+
+    \pos & Enforces representations to always be valid & \nig & Ill
+    formed representations result in runtime errors \\
+
+    \pos & Partial generic functions & \nig & Generic functions must
+    be total \\
+
+    \pos & Different cases of a generic function can return different
+    types & \nig & All cases of a generic function must return the same type \\
+
+    \nig & Hard to modify generic functions & \pos & Easy to
+    modify generic functions \\
+
+    \nig & Requires the Overlapping Instances extension to select
+    overlapping overloads & \pos & Uses inheritance to customize
+    overload selection \\
+    
+  \end{tabular}
+  
+\end{frame}
+
+\begin{frame}
+  \frametitle{Conclusions}
+
+  \begin{itemize}
+
+    \item Datatype generic programming heavily relies on higher kinds
+      and their absence has many shortcomings (esp. when generating
+      values generically)
+
+    \item F\# could adopt ideas from generic programming since the
+      only alternative available at the moment is reflection
+
+    \item Datatype generic programming can benefit from the
+      OO-paradigm
+
+    \item Type providers and ad-hoc polymorphism do not suffice for
+      Datatype Generic Programming
+
+    \item Reflection is able to supplant the typelevel computations
+      performed by the Haskell compilers
+
+    \item This library is a lightweight alternative to Reflection
+      
+  \end{itemize}
+  
+\end{frame}
+
+\begin{frame}
+  \frametitle{Future Work}
+  \begin{itemize}
+
+    \item Reflection can be used to perform static analysis on
+      compiled assemblies for extra type safety
+    \item Function calls can be cached to reduce the runtime penalty
+      of reflection
+    \item Consider other approaches for generic programming in F\#
+      since the advantages of Datatype Generic Programming are absent
+      without kind-polymorphism and typeclasses
+  \end{itemize}
+  
+\end{frame}
+
+\begin{frame}
+
+  \centering{\Huge Thank you for listening}
+  \vspace{2cm}
+  \\Special thanks to Dr. Wouter Swierstra for his guidance and advice
+  while performing this research and the reading club of the Software
+  Technology Group for reviewing a draft of this work.
+
+\end{frame}
+
+\end{document}
