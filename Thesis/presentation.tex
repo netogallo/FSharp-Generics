@@ -41,8 +41,8 @@
   \item Require advanced type system features such as
     kind-polymorphism
   \item Little research about generic programming has been done in F\#
-  \item The only alternative to implement polytipic functions
-    generically in F\# is reflection
+  \item The only alternative to implement functions generically in F\#
+    is reflection
   \end{itemize}
     
 \end{frame}
@@ -127,7 +127,7 @@
 
 \begin{frame}
 
-  \frametitle{The F\# programming languages}
+  \frametitle{The F\# programming language}
 
   \begin{itemize}
   \item Functional language of the ML-family (OCaml implementation for .NET).
@@ -184,7 +184,7 @@
   \item Implement a library based on Regular
   \item Determine if F\#'s type system is powerful enough for generic programming
   \item Explore the advantages and disadvantages of this implementation
-  \item Compare results with Regular and Reflection
+  \item Compare library with Regular and Reflection
     
   \end{itemize}
     
@@ -237,7 +237,8 @@
     sub-type of \emph{Meta}
   \item Contains three type arguments: the generic type (\emph{'ty}),
     the input type (\emph{'in}) and the output type (\emph{'out})
-  \item Contains a member to dispatch other methods (more about it later)
+  \item Contains a member function to dispatch other member functions
+    (more about it later)
   \end{itemize}
   
   \centering\includegraphics[scale=0.4]{foldmeta}
@@ -312,9 +313,23 @@
 \end{frame}
 
 \begin{frame}
+
+  \frametitle{Matching nested ADTs}
+
+  \begin{itemize}
+
+  \item The $GMap$ function presented above does not work when $f$ maps ADTs
+  \item Additional member functions are required to match these cases
+  \end{itemize}
+
+  \centering\includegraphics[scale=0.4]{gmap_ext}
+  
+\end{frame}
+
+\begin{frame}
   \frametitle{Extensibility}
   \begin{itemize}
-  \item It is trivial to modify the functionality in a modular way
+  \item It is trivial to modify generic functions
   \item Generic functions and their variants can easily co-exist in
     the same namespace
   \item Method dispatch is easy to customize

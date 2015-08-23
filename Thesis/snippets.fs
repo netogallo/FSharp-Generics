@@ -173,3 +173,19 @@ type GEQ<'t>() =
   override self.FoldMeta<'ty>(_ : Prod<'ty,Meta,Meta>, _ : Meta) = false
   member self.FoldMeta<'ty>(p1 : Prod<'ty,Meta,Meta>, p2 : Prod<'ty,Meta,Meta>) =
     self.FoldMeta(p1.E1, p2.E1) && self.FoldMeta(p1.E2, p2.E2)
+
+// gmap_ext
+
+type GMap<'t,'x>(f : 'x->'x) =
+
+  // Rest of the code removed for brevity
+
+  let mapADT adt = adt |> Generic<'t>.To |> f |> Generic<'t>.From
+
+  member self.FoldMeta(sum : Sum<'t,Meta,Meta>) = mapADT sum
+
+  member self.FoldMeta(prod : Prod<'t,Meta,Meta>) = mapADT prod
+
+  member self.FoldMeta<'x>(k : K<'t,'x>) = mapADT k
+
+  member self.FoldMeta(u : U<'t>) = mapADT u
