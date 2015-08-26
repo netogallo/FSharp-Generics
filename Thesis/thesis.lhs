@@ -1080,6 +1080,45 @@ the method |GetGenericTypeDefinition : unit -> Type| of the |Type|
 class is used to un-instantiate the type variables. The resulting type
 can be checked for equality.
 
+Another simplification of the language is that it omits conversion
+from/to type variables (the types that appear inside |<< >>|) to .NET
+values of type |Type|. This is straightforward to do. Suppose one has
+a generic function |foo<<`t>>|, the |Type| object represented by the
+|`t| variable can be obtained in the body of |foo<<`t>>| using the
+|typeof<<`t>> : Type| function.
+
+The final simplification is that constructors for types that contain
+polymorphic type arguments are invoked by instantiating the
+polymorphic types with values of type |Type|. Suppose we wish to
+invoke the |Sum<<`t,`a,`b>>| constructor with the values |T,A,B :
+Type| (which are runtime .NET values). First a |Type| object is
+constructed which instantiates |`t,`a,`b| with |T,A,B|:
+\begin{code}
+  let sumTy' = typeof<<Sum<<Meta,obj,obj>> >>
+  let sumTy = sumTy'.GetGenericTypeDefinition().MakeGenericType([|T;A;B|])
+\end{code}
+The |GetGenericTypeDefinition| member returns a |Type| object
+identical to the type it is invoked on but with all type variables
+un-instantiated. Then the |MakeGenericType| method instantiates all
+type variables of a type with other types which are given as arguments
+in an array. Nothe that the |MakeGenericType| function is un-safe
+because it cannot check until runtime that the |Type| values passed as
+argument are compatible with the variables they are
+instantiating. With this new type, the constructor can be obtained
+using the |GetConstructor : Type [] -> ConstructorInfo| and can then
+be called using the |Invoke : obj -> obj [] -> obj| method. The first
+argument is the object on which a method is called (always |null| for
+constructors), the second argument is an array with the arguments
+passed to the constructor and it returns the object that gets
+constructed (in this case an object of type |Sum<<T,A,B>>|). Note that
+this function is also unsafe because it dosen't check that the
+arguments given to the constructor are of the correct type and the
+resulting object from the |Invoke| function must be dynamically casted
+to the type that is expected to be produced. All these details are
+ignored in the pseudo-code and invoking constructors this way is
+simply done by using the notation |Sum<<T,A,B>>(args)| and assuming it
+returns the correct type.
+
 Type representations are constructed in two stages. First the type of
 such representation is obtained by the |getTy| function. Then, given a
 value, a representation is constructed with the |to| function. The
@@ -1128,9 +1167,9 @@ in the corresponding |Sum|.
 
 \begin{code}
 let getTyValue : << Type >> -> UnionCaseInfo -> Type
-^^ getTyValue<<`t>> uc =
+^^ getTyValue<<`t>> spc uc =
 ^^ ^^ let genTy<<`ty>> = 
-^^ ^^ ^^ if FSharpType.IsUnion<<`ty>> then getTyUnion<<`ty>>
+^^ ^^ ^^ if FSharpType.IsUnion<<`ty>> spc then getTyUnion<<`ty>>
 ^^ ^^ ^^ else K<<`t,`ty>>
 ^^ ^^ let tys = uc.ArgumentsTypes
 ^^ ^^ let go (`ty::tys) = Prod<<`t,getTy<<`ty>>,go tys>>
@@ -1722,34 +1761,24 @@ x.FoldMeta(v) : `out = \left\{
 \label{fig:sel}
 \end{figure*}
 
-%% \begin{tabular}{cccc}
-%% \multirow{15}{*}{|self.FoldMeta(m : Meta)|} & \multirow{15}{*}{$=\left\{\begin{array}{c} \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \end{array}\right.$} & \multirow{2}{*}{|self.FoldMeta(m)|} & |exists self.FoldMeta : tau->tau1| \\
-%% & & & $\wedge$ |m : tau| \\
-%% & & & \\
-%% & & \multirow{4}{*}{|self.FoldMeta<<tau_a>>(m.Cast())|} & |self.FoldMeta<<`ty>> : tau'->tau1| \\
-%% & & & $\wedge$ |m : tau<<tau_ty,tau_m1,tau_m2>>| \\
-%% & & & $\wedge$ |tau_m1 :> Meta| $\wedge$ |tau_m2 :> Meta| \\
-%% & & & $\wedge$ |[tau_ty/`ty]tau' = tau<<tau_a,Meta,Meta>>| \\
-%% & & & \\
-%% & & \multirow{3}{*}{|self.FoldMeta<<tau_a>>(m)|} & |exists self.FoldMeta<<`a>> : tau'->tau1| \\
-%% & & & $\wedge$ |m : tau<<tau_ty,tau_a>>|\\
-%% & & & $\wedge$ |[tau_a/`a]tau' = tau<<tau_ty,tau_a>>|\\
-%% & & & \\
-%% & & \multirow{3}{*}{|self.FoldMeta<<tau_ty,tau_a>>(m)|} & |self.FoldMeta<<`ty,`a>> : tau'->tau1| \\
-%% & & & $\wedge$ |m : tau<<tau_ty,tau_a>>|\\
-%% & & & $\wedge$ |[tau_ty/`t][tau_a/`a]tau' = tau<<tau_ty,tau_a>>|\\
-%% & & & \\
-%% %% & & | = o.Sum(x : Sum<<tau,Meta,Meta>>,v1 : tau1,...,vn : taun)| \\
-%% %% & & |self.Sum(x : Meta,v1 : tau1,...,vn : taun)| \\
-%% %% & & | = o.Sum<<tau>>(x : Sum<<tau,Meta,Meta>>,v_1 : tau1,...,v_n : taun)|
-%% \end{tabular}
-%% where
-%% \begin{itemize}
-%% \item |tau1 :> tau2| indicates that |tau1| is a sub-type of |tau2|
-%% \item |[tau1/tau2]tau| indicates replacing |tau2| with |tau1| in |tau|
-%% \end{itemize}
+This selection mechanism is very simple. An example will be used to
+explain how the figure \ref{fig:sel} is read. Consider a variant of
+|GMap| with the following overloads:
 
-This selection mechanism is very simple and supplants the type level
+\begin{code}
+type Dollars = Dollars of int
+  
+type GMap<<`t,`a>>(f : `a->`a) =
+  member x.FoldMeta<<`ty>> : K<<`ty,`a>> -> Meta
+  member x.FoldMeta : K<<Dollar,int>>
+  override x.FoldMeta<<`ty,`x>> : K<<`ty,`x>> -> Meta
+\end{code}
+The the chosen overload is different depending on the first argument
+given to |FoldMeta|. When it is provided with a value of type
+|K<<`ty,`a>>|, which corresponds to values that are mapped by |f|,
+only the |`ty| variable is universally quantified. 
+
+and supplants the type level
 computations carried out by the Haskell compiler in order to select
 the right overloads. The process happens in stages. First the method
 |FoldMeta : Meta->`out| is invoked with an argument of type
