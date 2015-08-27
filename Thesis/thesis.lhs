@@ -1,4 +1,4 @@
-\documentclass[10pt]{extarticle}
+\documentclass[12pt]{extarticle}
 
 %lhs2TeX imports -- don't remove!
 %include polycode.fmt
@@ -24,12 +24,24 @@
 
 \author{Ernesto Rodriguez}
 \begin{document}
-\Huge{\bf Generic Programming in F\#\\[1cm]}
-\large{\bf Ernesto Rodriguez\\[0.5cm]}
-\emph{Computer Science \\ Utrecht University \\ Utrecht \\ The Netherlands \\[0.5cm]}
-\emph{Type: Master's Thesis Proposal \\ Date: November 28th, 2015 \\ Supervisor: Dr. Wouter Swierstra\\}
-\line(1,0){520}\\ \\
-\line(1,0){520}
+{\centering\Huge{\bf Generic Programming in F\#\\[1cm]} \large{\bf Ernesto
+  Rodriguez\\[0.5cm]} \emph{Computer Science \\ Utrecht University
+  \\ Utrecht \\ The Netherlands \\[0.5cm]} \emph{Type: Master's Thesis
+  \\ Date: August 31st, 2015 \\ Supervisor: Dr. Wouter Swierstra \\}}
+\vspace{2cm}
+\begin{abstract}
+
+  Datatype generic programming is a
+  programming model that exploits the structural similarities of
+  different types in order to generically define functions on families
+  of types. This model demands a powerful type system so it has been
+  seldomly used outside Haskell. This thesis attempts to address this
+  problem by introducing a datatype generic programming for the F\#
+  language, which is a simpler functional language designed for
+  existing .NET programmers.
+\end{abstract}
+
+\pagebreak       
 
 \section{Introduction}
 
@@ -199,8 +211,7 @@ library.
 
 In the case of Regular, its \emph{universe} consists of all ADTs that:
 \begin{itemize}
-\item Are of kind |*| \todo{revise, it might be
-  one type argument}
+\item Are of kind |*|
 \item Are not mutually recursive
 \end{itemize}
 This universe includes many common types like lists, trees and simple
@@ -347,7 +358,7 @@ any representation can be applied to it. This is not
 necessary. Consider deleting the instance: |instance Regular (K
 a)|. |GInc| will still work for any ADT as long as all of its type
 constructors take only values of type |Int| as arguments.
-
+\pagebreak
 \section{The F\# language}
 
 The F\#~\cite{export:192596} programming language is a functional
@@ -1011,27 +1022,28 @@ These definitions are not complete since the actual implementation
 contains extra code used for reflection which is not relevant when
 discussing the universe of types that the library can handle.
 
-The List type defined above for Regular can also be defined in F\#
-along with its representation:
+To show how representations look in F\#, a similar list is defined in
+F\#. This list has nested ADTs to highlight some of the differences
+between the representations of this library and Regular's.
 \begin{code}
-type List = Cons of int*Elems
+type Shape = Square of int*in | Point
+ 
+  
+type SList = Cons of Shape*NatList
             | Nil 
 \end{code}
-\todo{Finish this once the final impl is ready}
 \begin{code}
-type ListRep = 
+type SListRep = 
   Sum<<
-    Elems,
-    Sum<<
-      Elems,
-      Prod<<Elems,K<<Elems,int>>,
-        Prod<<Id<<Elems>> >>,U<<Elems>> >> >> >>,
-      Sum<<
-        unit,
-        Prod<<K << Elems>>,int >>, U<< Elems>> >> >>,
-        U<<Elems>> >> >>,
-    U<<Elems>> >> >>
+    SList,
+    Prod<<List,Sum<<Shape,Prod<<Shape,K<<Shape,int>>,K<<Shape,int>>,U<<Shape>> >> >>,
+          Id<<SList>> >>,
+    U<<Elems>> >>
 \end{code}
+It is important to notice that the first type argumetn |`ty| of any
+subclass of |FoldMeta| is instantiated to the type being
+represented. In the next sections it will be highlighted why this is
+important.
 
 \pagebreak
 \section{Automatic conversion between values and representations}
@@ -1725,35 +1737,46 @@ for the | FoldMeta : Meta -> `out | overload. In this figure:
   types. In other words, the signatures $FoldMeta\ :\ \forall
   `ty\ .\ `ty \rightarrow X$ and |FoldMeta<<`ty>> : `ty -> X| are equivalent.
 \end{itemize}
-
+The figure describes a function defined by parts: the first column is
+used as a label, the second column is the result and the third column
+lists the conditions necessary to select the result on the second
+column on a particular input. The function takes as input the
+|FoldMeta| method call and returns the type that will be used to match
+a |FoldMeta| overload.
 \begin{figure*}
 \[
 x.FoldMeta(v) : `out = \left\{
-\begin{array}{cc}
-  Sum\langle T,Meta,Meta\rangle \rightarrow `out & v \prec Sum\langle T,Meta,Meta\rangle \\
-  & Sum\langle T,Meta,Meta\rangle \rightarrow `out \in x \\
-  & \\
-  \forall `ty\ .\ Sum\langle `ty,Meta,Meta\rangle \rightarrow `out & \exists `ty\ .\ v \prec Sum\langle `ty,Meta,Meta\rangle \\
-  & \\
-  Prod\langle T,Meta,Meta\rangle \rightarrow `out & v \prec Prod \langle T,Meta,Meta\rangle \\
-  & Prod\langle T,Meta,Meta\rangle \rightarrow `out \in x \\
-  & \\
-  K\langle T,V\rangle \rightarrow `out & v \prec K \langle T,V\rangle \\
-  & K\langle T,V\rangle \rightarrow `out \in x \\
-  & \\
-  \forall`ty\ .\ K\langle `ty,V\rangle \rightarrow `out & \exists `ty\ .\ v \prec K \langle `ty,V\rangle \\
-  & \forall`ty\ .\ K\langle `ty,V\rangle \rightarrow `out \in x\\
-  & \\
-  \forall`x\ .\ K\langle T,`x\rangle \rightarrow `out & \exists `x\ .\ v \prec K \langle T,`x\rangle \\
-  & \forall`x\ .\ K\langle T,`x\rangle \rightarrow `out \in x\\
-  & \\
-  \forall`ty,`x\ .\ K\langle `ty,`x\rangle \rightarrow `out & \exists `ty,`x\ .\ v \prec K \langle `ty,`x\rangle \\
-  & \forall`ty,`x\ .\ K\langle `ty,`x\rangle \rightarrow `out \in x\\
-  & \\
-  Id\langle T\rangle \rightarrow `out & v \prec Id \langle T\rangle \\
-  & Id\langle T\rangle \rightarrow `out \in x\\
-  & \\
-  \forall`ty\ .\ U\langle `ty\rangle \rightarrow `out & \exists `ty\ .\ v \prec U \langle `ty\rangle \\
+\begin{array}{ccc}
+  \text{(S1)} & Sum\langle T,Meta,Meta\rangle \rightarrow `out & v \prec Sum\langle T,Meta,Meta\rangle \\
+  & & Sum\langle T,Meta,Meta\rangle \rightarrow `out \in x \\
+  & & \\
+  \text{(S2)} & \forall `ty\ .\ Sum\langle `ty,Meta,Meta\rangle \rightarrow `out & \exists `ty\ .\ v \prec Sum\langle `ty,Meta,Meta\rangle \\
+  & & \\
+  \text{(P1)} & Prod\langle T,Meta,Meta\rangle \rightarrow `out & v \prec Prod \langle T,Meta,Meta\rangle \\
+  & & Prod\langle T,Meta,Meta\rangle \rightarrow `out \in x \\
+  & & \\
+  \text{(P2)} & \forall `ty\ .\ Prod\langle `ty,Meta,Meta\rangle \rightarrow `out & \exists `ty\ .\ v \prec Prod\langle `ty,Meta,Meta\rangle \\
+  & & \\
+  & & \\
+  \text{(K1)} & K\langle T,V\rangle \rightarrow `out & v \prec K \langle T,V\rangle \\
+  & & K\langle T,V\rangle \rightarrow `out \in x \\
+  & & \\
+  \text{(K2)} & \forall`ty\ .\ K\langle `ty,V\rangle \rightarrow `out & \exists `ty\ .\ v \prec K \langle `ty,V\rangle \\
+  & & \forall`ty\ .\ K\langle `ty,V\rangle \rightarrow `out \in x\\
+  & & \\
+  \text{(K3)} & \forall`x\ .\ K\langle T,`x\rangle \rightarrow `out & \exists `x\ .\ v \prec K \langle T,`x\rangle \\
+  & & \forall`x\ .\ K\langle T,`x\rangle \rightarrow `out \in x\\
+  & & \\
+  \text{(K4)} & \forall`ty,`x\ .\ K\langle `ty,`x\rangle \rightarrow `out & \exists `ty,`x\ .\ v \prec K \langle `ty,`x\rangle \\
+  & & \forall`ty,`x\ .\ K\langle `ty,`x\rangle \rightarrow `out \in x\\
+  & & \\
+  \text{(Id1)} & Id\langle T\rangle \rightarrow `out & v \prec Id \langle T\rangle \\
+  & & Id\langle T\rangle \rightarrow `out \in x\\
+  & & \\
+  \text{(U1)} & U\langle T \rangle \rightarrow `out & v \prec U \langle T \rangle \\
+  & & U\langle T\rangle \rightarrow `out \in x\\
+  & & \\
+  \text{(U2)} & \forall`ty\ .\ U\langle `ty\rangle \rightarrow `out & \exists `ty\ .\ v \prec U \langle `ty\rangle \\
 \end{array}
 \right.
 \]
@@ -1761,10 +1784,8 @@ x.FoldMeta(v) : `out = \left\{
 \label{fig:sel}
 \end{figure*}
 
-This selection mechanism is very simple. An example will be used to
-explain how the figure \ref{fig:sel} is read. Consider a variant of
-|GMap| with the following overloads:
-
+For example, consider a variant of |GMap| with the following overloads:
+i
 \begin{code}
 type Dollars = Dollars of int
   
@@ -1774,57 +1795,26 @@ type GMap<<`t,`a>>(f : `a->`a) =
   override x.FoldMeta<<`ty,`x>> : K<<`ty,`x>> -> Meta
 \end{code}
 The the chosen overload is different depending on the first argument
-given to |FoldMeta|. When it is provided with a value of type
-|K<<`ty,`a>>|, which corresponds to values that are mapped by |f|,
-only the |`ty| variable is universally quantified. 
-
-and supplants the type level
-computations carried out by the Haskell compiler in order to select
-the right overloads. The process happens in stages. First the method
-|FoldMeta : Meta->`out| is invoked with an argument of type
-|Meta|. Recall that |Meta| is an abstract class so all values of type
-|Meta| also have some other type |tau :> Meta|. To select the
-overload, one first checks if there is a method |FoldMeta : tau ->
-`out|, if such method exists, invoke the method with the supplied
-arguments. If the previous check fails, type variables are
-instantiated in order to invoke a suitable generic method. This
-happens by cases:
-\begin{itemize}
-\item When |m : U<<tau_ty>>|, methods with signature |FoldMeta<<tau>>
-  : U<<tau>> -> `out| are considered and |tau| is instantiated to
-  |tau_ty|
-\item When |m : K<<tau_ty,tau_a>>|, methods with signature
-  |FoldMeta<<tau1,tau2>> : K<<tau1,tau2>> -> `out| are
-  considered. |tau1| is instantiated to |tau_ty| and |tau2| is
-  instantiated to |tau_a|.
-\item When |m : Sum<<tau_ty,tau_a,tau_b>> -> `out| or |m :
-  Prod<<tau_ty,tau_a,tau_b>> -> `out|, methods with signatures
-  |FoldMeta<< tau >> : Sum<<tau,Meta,Meta>> -> `out| or
-  |FoldMeta<<tau>> : Prod<<tau,Meta,Meta>> -> `out| are
-  considered. |tau| is instantiated to |tau_ty|. The inner types
-  |tau_a| and |tau_b| are casted to |Meta| in order to make the method
-  call compatible.
-\end{itemize}
-
-For example, the |GMap| function defined above has two overloads for
-the |K| case:
-\begin{code}
-type GMap<<`t,`x>> =
-  member x.FoldMeta<<`ty>> : K<<`ty,`x>> -> Meta
-  override x.FoldMeta<<`ty,`x>> : K<<`ty,`x>> -> Meta
-\end{code}
-
-Whenever |FoldMeta| is invoked with some value |v : K<<T,V>>|, the
-|FoldMeta : Meta -> Meta| method first checks if there is an overload
-|FoldMeta : K<<T,V>> -> Meta|. Since there is no such overload, it
-then proceeds to check if there is an overload |FoldMeta<<`ty>> :
-K<<`ty,V>> -> Meta|. When |`x| is instantiated to |V|, the overload
-exists and gets selected. In the latter case, it proceeds to check for
-an overload |FoldMeta<<`x>> :K<<T,`x>> -> Meta| which dosen't
-exist. If all the checks above fail, it falls back to the mandatory
-|x.FoldMeta<<`ty,`x>> : K<<`ty,`x>> -> Meta| (required by the
-|FoldMeta| abstract class) and instantiates the type variables |`ty|
-and |`x| to |T| and |V| and calls the method.
+given to |FoldMeta|. Suppose |FoldMeta| is invoked with a value of
+type |K<<List<<int>>,int>>|. The applicable cases (available in figure
+\ref{fig:sel}) are: K1, K2, K3 and K4. Case K1 tries to find an
+overload that exactly matches the type of the input, in this case
+|K<<List<<int>>,int>>|, but no such overload exists. It then proceeds
+to the K2 case which matches any |`ty| but fixes the type of the
+second variable of |K| to some concrete type |V|. In the example
+above, if |`a| is instantiated to |int|, then the overload with type
+|forall `ty spc . spc K<<`ty,`a>>| is selected and the process
+finishes. If `a is instantiated to any other type, there is no
+match. The process then proceeds to the K3 case. This case is
+identical to K2 but fixes the |`ty| variable to a concrete type and
+matches any |`x| in the second type variable of |K|. Needless to say,
+the K3 is not applicable to this example because no overload fixes
+|`ty| to a concrete type and leaves |`x| polymorphic. Finally, if none
+of the cases matches, the case K4 serves as a catch-all since its type
+can match any value of type |K<<`ty,`x>>|. Similarly, when |FoldMeta|
+is invoked with a value of type |K<<Dollar,int>>| the case K1 finds an
+exact match since there is an overload that accepts values of type
+|K<<Dollar,int>>|.
 
 When many methods with compatible signature exist. Priority is first
 given to the closest match and then the position in the class
